@@ -1,0 +1,76 @@
+#include <QThread>
+#include <QCoreApplication>
+#include <QUrl>
+#include <QGeoPath>
+#include "Worker.h"
+#include "n2k/YdvrReader.h"
+#include "gopro/GoPro.h"
+#include "movie/MovieProducer.h"
+
+void Worker::readData(const QString &goproDir, const QString &nmeaDir, const QString &polarFile, bool bIgnoreCache){
+    std::cout << "goproDir " + goproDir.toStdString() << std::endl;
+    std::cout << "nmeaDir " + nmeaDir.toStdString() << std::endl;
+    std::cout << "polarFile " + polarFile.toStdString() << std::endl;
+
+    /* ... here is the expensive or blocking operation ... */
+    std::string stYdvrDir = QUrl(nmeaDir).toLocalFile().toStdString();
+    std::string stGoProDir = QUrl(goproDir).toLocalFile().toStdString();
+    std::string stCacheDir = "/tmp/sailvue";
+    std::string stPgnSrcCsv = "/Users/sergei/github/sailvue/data/pgn-src.csv";
+    bool bSummaryOnly = false;
+
+
+    if ( bIgnoreCache ){
+        std::cout << "Deleting cached files" << std::endl;
+        std::filesystem::remove_all(stCacheDir);
+    }
+
+    YdvrReader ydvrReader(stYdvrDir, stCacheDir, stPgnSrcCsv, bSummaryOnly, *this);
+    GoPro goPro(stGoProDir, stCacheDir, ydvrReader, *this);
+
+    // Create path containing points from all gopro clips
+    int clipCount = 0;
+    int pointsCount = 0;
+    m_rGoProClipInfoList.clear();
+    m_rInstrDataVector.clear();
+    for (const auto& clip : goPro.getGoProClipList()) {
+        m_rGoProClipInfoList.push_back(clip);
+        clipCount++;
+        for( auto &ii : *clip.getInstrData()) {
+            m_rInstrDataVector.push_back(ii);
+            pointsCount++;
+        }
+    }
+
+    std::cout << "clipCount " << clipCount << std::endl;
+    std::cout << "pointsCount " << pointsCount << std::endl;
+
+    emit pathAvailable();
+
+}
+
+void Worker::stopWork() {
+    std::cout << "stopWork " << std::endl;
+    b_keepRunning = false;
+}
+
+void Worker::progress(const std::string &state, int progress) {
+    emit ProgressStatus(QString::fromStdString(state), progress);
+}
+
+bool Worker::stopRequested() {
+    QCoreApplication::processEvents();
+    return !b_keepRunning;
+}
+
+void Worker::produce(const QString &url) {
+    std::cout << "produce " << url.toStdString() << std::endl;
+    std::string path = QUrl(url).toLocalFile().toStdString();
+
+    emit produceStarted();
+
+    MovieProducer movieProducer(path, m_rGoProClipInfoList, m_rInstrDataVector, m_RaceDataList, *this);
+    movieProducer.produce();
+
+    emit produceFinished();
+}

@@ -20,9 +20,9 @@ public:
     explicit operator std::string() const {
         std::stringstream ss;
         if( isValid())
-            ss << std::setprecision(3) << m_dDegrees << "°";
+            ss << std::setprecision(3) << m_dDegrees;
         else
-            ss << "--.--°";
+            ss << "";
         return ss.str();
     }
 private:

@@ -14,14 +14,15 @@ public:
         return UtcTime(ms);
     }
     explicit operator std::string() const {
-        struct tm *tm;
-        auto t  = time_t(m_uiUnixMilliSecs / 1000);
-        tm = gmtime(&t);
-        char dateStr[64];
-        strftime(dateStr, sizeof(dateStr), "%Y-%m-%d %H:%M:%S", tm);
-        uint32_t ms = m_uiUnixMilliSecs % 1000;
-        sprintf(dateStr, "%s.%03d", dateStr, ms);
-        return dateStr;
+        std::stringstream ss;
+        if( isValid())
+            ss << m_uiUnixMilliSecs;
+        else
+            ss << "";
+        return ss.str();
+    }
+    [[nodiscard]] uint64_t getUnixTimeMs() const {
+        return m_uiUnixMilliSecs;
     }
 
 private:

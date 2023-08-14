@@ -5,7 +5,16 @@
 #include <string>
 #include <map>
 #include <set>
-#include "InstrumentInput.h"
+#include <filesystem>
+#include <vector>
+#include <iostream>
+#include <fstream>
+#include <list>
+
+
+#include "navcomputer/InstrumentInput.h"
+#include "../InstrDataReader.h"
+#include "navcomputer/IProgressListener.h"
 
 extern "C" {
 #include "pgn.h"
@@ -16,20 +25,32 @@ static const double RES_LL_64 = 1e-16;
 static const double RES_LL_32 = 1e-7;
 static const double RES_MPS = 0.01;
 
-class YdvrReader {
+class DatFileInfo {
 public:
-    YdvrReader(const std::string& stYdvrDir, const std::string& stCacheDir);
+    std::string stYdvrFile;
+    std::string stCacheFile;
+    uint64_t m_ulStartGpsTimeMs = 0;
+    uint64_t m_ulEndGpsTimeMs = 0;
+    uint32_t m_ulEpochCount = 0;
+};
+
+class YdvrReader : public InstrDataReader {
+public:
+    YdvrReader(const std::string& stYdvrDir, const std::string& stCacheDir, const std::string& stPgnSrcCsv,
+               bool bSummaryOnly, IProgressListener& rProgressListener);
     ~YdvrReader();
 
-    void read(time_t tStart, time_t tEnd);
+    void read(uint64_t ulStartUtcMs, uint64_t ulEndUtcMs, std::list<InstrumentInput> &listInputs) override;
 
-    void processYdvrDir(const std::string& stYdvrDir, const std::string& stCacheDir);
-
-    void processDatFile(const std::string &ydvrFile);
-
-    void canIdToN2k(uint32_t id, uint8_t &prio, uint32_t &pgn, uint8_t &src, uint8_t &dst) const;
 private:
-    void ProcessPgn(const RawMessage &m) ;
+    void processYdvrDir(const std::string& stYdvrDir, const std::string& stCacheDir, bool bSummaryOnly);
+    void processDatFile(const std::string &ydvrFile, const std::string& stWorkDir,  const std::string& stSummaryDir, bool bSummaryOnly);
+    void readDatFile(const std::string &ydvrFile, const std::filesystem::path &stCacheFile,
+                     const std::filesystem::path &stSummaryFile);
+    static void canIdToN2k(uint32_t id, uint8_t &prio, uint32_t &pgn, uint8_t &src, uint8_t &dst);
+    void ReadPgnSrcTable(const std::string &basicString);
+
+    void ProcessPgn(const RawMessage &m, std::ofstream &cache) ;
         void processGpsFixPgn(const Pgn *pgn, const uint8_t *data, size_t len);
         void processCogSogPgn(const Pgn *pgn, const uint8_t *data, size_t len);
         void processPosRapidUpdate(const Pgn *pgn, const uint8_t *data, uint8_t len);
@@ -37,6 +58,7 @@ private:
         void processBoatSpeed(const Pgn *pPgn, const uint8_t *data, uint8_t len);
         void processWindData(const Pgn *pPgn, const uint8_t *data, uint8_t len);
         void processRudder(const Pgn *pPgn, const uint8_t *data, uint8_t len);
+        void processAttitude(const Pgn *pPgn, const uint8_t *data, uint8_t len);
 
     void ResetTime();
 
@@ -45,8 +67,12 @@ private:
     void UnrollTimeStamp(uint16_t ts);
 
     void ResetEpoch();
+    void ProcessEpoch(std::ofstream &cache);
 
 private:
+    static bool m_sCanBoatInitialized;
+    IProgressListener& m_rProgressListener;
+
     // For ech device we keep the set of received PGNs
     std::map<std::string, std::set<uint32_t>> m_mapPgnsByDeviceModelAndSerialNo;
     // Map of device network address to device model and serial number
@@ -65,9 +91,14 @@ private:
     uint16_t m_usLastTsMs = 0;          // Last time stamp in ms
     uint64_t m_ulUnrolledTsMs = 0;        // Unrolled local time (ms)
 
+    uint64_t m_ulStartGpsTimeMs = 0;
+    uint64_t m_ulEndGpsTimeMs = 0;
+    uint32_t m_ulEpochCount = 0;
+
     InstrumentInput m_epoch;
 
-    void PrintEpoch();
+    std::list<DatFileInfo> m_listDatFiles;
+
 };
 
 

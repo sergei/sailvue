@@ -4,3 +4,9 @@
 [submodule "n2k/canboat"]
 	path = n2k/canboat
 	url = git@github.com:sergei/canboat.git
+[submodule "cxxopts"]
+	path = cxxopts
+	url = https://github.com/jarro2783/cxxopts.git
+[submodule "gopro/gpmf-parser"]
+	path = gopro/gpmf-parser
+	url = https://github.com/gopro/gpmf-parser.git

@@ -1,12 +1,9 @@
-#include <filesystem>
-#include <vector>
-#include <iostream>
-#include <fstream>
-
 #include "YdvrReader.h"
 #include "InitCanBoat.h"
 #include "geo/Angle.h"
 #include "geo/Speed.h"
+
+bool YdvrReader::m_sCanBoatInitialized = false;
 
 std::string trim(const std::string& str,
                  const std::string& whitespace = " \t")
@@ -21,66 +18,145 @@ std::string trim(const std::string& str,
     return str.substr(strBegin, strRange);
 }
 
-YdvrReader::YdvrReader(const std::string& stYdvrDir, const std::string& stCacheDir)
+YdvrReader::YdvrReader(const std::string& stYdvrDir, const std::string& stCacheDir, const std::string& stPgnSrcCsv,
+                       bool bSummaryOnly, IProgressListener& rProgressListener)
+: m_rProgressListener(rProgressListener)
 {
-    m_mapDeviceForPgn = {
-            {129029, "ZG100        Antenna-100022#"     },  // GNSS Position Data
-            {129025, "ZG100        Antenna-100022#"     },  // Position, Rapid Update
-            {129026, "ZG100        Antenna-100022#"     },  // COG & SOG, Rapid Update
-            {127250, "Precision-9 Compass-120196210"    },  // Vessel Heading
-            {128259, "H5000    CPU-007060#"             },  // Speed
-            {130306, "H5000    CPU-007060#"             },  // Wind Data
-            {127245, "RF25    _Rudder feedback-038249#" },  // Rudder
-    };
-
-
-    initCanBoat();
-    processYdvrDir(stYdvrDir, stCacheDir);
+    if ( ! m_sCanBoatInitialized ){
+        initCanBoat();  // Initialize canboat library
+        m_sCanBoatInitialized = true;
+    }
+    ReadPgnSrcTable(stPgnSrcCsv); // Decide on what devices to use to get each PGN
+    processYdvrDir(stYdvrDir, stCacheDir, bSummaryOnly);
 }
 
 YdvrReader::~YdvrReader() = default;
 
-void YdvrReader::read(time_t tStart, time_t tEnd) {
-
+void YdvrReader::read(uint64_t ulStartUtcMs, uint64_t ulEndUtcMs, std::list<InstrumentInput> &listInputs) {
+    for( const DatFileInfo &di : m_listDatFiles){
+        if( di.m_ulEndGpsTimeMs < ulStartUtcMs)
+            continue;
+        if( di.m_ulStartGpsTimeMs > ulEndUtcMs)
+            break;
+        std::cout << "Reading cached file: " << di.stCacheFile << std::endl;
+        std::ifstream cache (di.stCacheFile, std::ios::in);
+        std::string line;
+        while (std::getline(cache, line)) {
+            std::stringstream ss(line);
+            std::string item;
+            std::getline(ss, item, ',');
+            uint64_t ulGpsTimeMs = std::stoull(item);
+            if( ulGpsTimeMs < ulStartUtcMs)
+                continue;
+            if( ulGpsTimeMs > ulEndUtcMs)
+                break;
+            InstrumentInput ii = InstrumentInput::fromString(line);
+            listInputs.push_back(ii);
+        }
+    }
 }
 
-void YdvrReader::processYdvrDir(const std::string& stYdvrDir, const std::string& stCacheDir) {
-    // Create list of all files with extension .DAT in stYdvrDir
-    // Craete empty list
-    std::vector<std::string> ydvrFiles;
+static bool CompareDatInfo(const DatFileInfo& a, const DatFileInfo& b) {
+    return a.m_ulStartGpsTimeMs < b.m_ulStartGpsTimeMs;
+}
+
+void YdvrReader::processYdvrDir(const std::string& stYdvrDir, const std::string& stWorkDir, bool bSummaryOnly) {
+
+    // Read all .DAT files in the directory and subdirectories
+
+    std::filesystem::path stCacheDir = std::filesystem::path(stWorkDir) / "ydvr" /"cache" ;
+    std::filesystem::create_directories(stCacheDir);
+    std::filesystem::path stSummaryDir = std::filesystem::path(stWorkDir) / "ydvr"/ "summary" ;
+    std::filesystem::create_directories(stSummaryDir);
+
     auto files = std::filesystem::recursive_directory_iterator(stYdvrDir);
+    float filesCount = 0;
+    for( const auto& file : files )
+        if (file.path().extension() == ".DAT")
+            filesCount++;
+
+    files = std::filesystem::recursive_directory_iterator(stYdvrDir);
+    float fileNo = 0;
     for( const auto& file : files ) {
         if (file.path().extension() == ".DAT") {
-            ydvrFiles.push_back(file.path().string());
-        }
-    }
-
-    // For each file in list
-    for (auto & ydvrFile : ydvrFiles) {
-        processDatFile(ydvrFile);
-    }
-
-    std::cout << "---------------------------------------" << std::endl;
-    std::cout << "DeviceName SerialNo, PGN, Description" << std::endl;
-    for (auto & mapIt : m_mapPgnsByDeviceModelAndSerialNo) {
-        for (auto setIt = mapIt.second.begin(); setIt != mapIt.second.end(); setIt++) {
-            int pgn = int(*setIt);
-            auto deviceName = mapIt.first;
-            std::cout << deviceName << "," << pgn ;
-            const Pgn *pPgn = searchForPgn(pgn);
-            if (pPgn != nullptr && pPgn->description != nullptr) {
-                std::cout << ",\"" << pPgn->description << "\"";
+            processDatFile(file.path().string(), stCacheDir, stSummaryDir, bSummaryOnly);
+            int progress = (int)round(fileNo / filesCount * 100.f);
+            m_rProgressListener.progress(file.path().filename(), progress);
+            if( m_rProgressListener.stopRequested() ) {
+                m_rProgressListener.progress("Terminated", 100);
+                break;
             }
-            std::cout << std::endl;
+            fileNo++;
         }
     }
-    std::cout << "---------------------------------------" << std::endl;
+
+    if( !bSummaryOnly ) {
+        std::cout << "---------------------------------------" << std::endl;
+        std::cout << "DeviceName SerialNo, PGN, Description" << std::endl;
+        for (auto & mapIt : m_mapPgnsByDeviceModelAndSerialNo) {
+            for (auto setIt = mapIt.second.begin(); setIt != mapIt.second.end(); setIt++) {
+                int pgn = int(*setIt);
+                auto deviceName = mapIt.first;
+                std::cout << deviceName << "," << pgn ;
+                const Pgn *pPgn = searchForPgn(pgn);
+                if (pPgn != nullptr && pPgn->description != nullptr) {
+                    std::cout << ",\"" << pPgn->description << "\"";
+                }
+                std::cout << std::endl;
+            }
+        }
+        std::cout << "---------------------------------------" << std::endl;
+    }
+
+    // Sort by UTC time
+    m_listDatFiles.sort(CompareDatInfo);
+}
+
+void YdvrReader::processDatFile(const std::string &ydvrFile, const std::string& stCacheDir, const std::string& stSummaryDir, bool bSummaryOnly){
+    std::cout << ydvrFile << std::endl;
+
+    std::string csvFileName = std::filesystem::path(ydvrFile).filename().string() + ".csv";
+    std::filesystem::path stCacheFile = std::filesystem::path(stCacheDir)  / csvFileName;
+    std::filesystem::path stSummaryFile = std::filesystem::path(stSummaryDir)  / csvFileName;
+
+    auto haveCache = std::filesystem::exists(stCacheFile) && std::filesystem::is_regular_file(stCacheFile) ;
+
+    auto haveSummary = std::filesystem::exists(stSummaryFile) && std::filesystem::is_regular_file(stSummaryFile) &&
+                     std::filesystem::file_size(stSummaryFile) > 0;
+    if (haveCache && haveSummary) {
+        std::cout << "Reading cached file: " << stSummaryFile << std::endl;
+        std::ifstream summary (stSummaryFile, std::ios::in);
+        std::string line;
+        std::getline(summary, line); // Skip header
+        std::getline(summary, line);
+        std::stringstream ss(line);
+        std::string item;
+        std::getline(ss, item, ',');
+        m_ulStartGpsTimeMs = std::stoull(item);
+        std::getline(ss, item, ',');
+        m_ulEndGpsTimeMs = std::stoull(item);
+        std::getline(ss, item, ',');
+        m_ulEpochCount = std::stoull(item);
+        if( m_ulEpochCount > 0 )
+            m_listDatFiles.push_back(DatFileInfo{ydvrFile, stCacheFile, m_ulStartGpsTimeMs, m_ulEndGpsTimeMs, m_ulEpochCount});
+    } else {
+        readDatFile(ydvrFile, stCacheFile, stSummaryFile);
+        std::cout << "Created cached file: " << stCacheFile << std::endl;
+        if( m_ulEpochCount > 0 )
+            m_listDatFiles.push_back(DatFileInfo{ydvrFile, stCacheFile, m_ulStartGpsTimeMs, m_ulEndGpsTimeMs, m_ulEpochCount});
+    }
 
 }
 
-void YdvrReader::processDatFile(const std::string &ydvrFile){
-    std::cout << ydvrFile << std::endl;
+void YdvrReader::readDatFile(const std::string &ydvrFile, const std::filesystem::path &stCacheFile,
+                             const std::filesystem::path &stSummaryFile ) {
+
+    std::ofstream cache (stCacheFile, std::ios::out);
     std::ifstream f (ydvrFile, std::ios::in | std::ios::binary);
+
+    m_ulStartGpsTimeMs = 0;
+    m_ulEndGpsTimeMs = 0;
+    m_ulEpochCount = 0;
 
     while (f) {
         uint16_t ts;
@@ -120,7 +196,7 @@ void YdvrReader::processDatFile(const std::string &ydvrFile){
                 std::cerr << "Invalid PGN: " << m.pgn << " file " << ydvrFile << " offset " << offset << std::endl;
                 ResetTime();
             }
-            const Pgn * pgn = searchForPgn(m.pgn);
+            const Pgn * pgn = searchForPgn(int(m.pgn));
 
             if ( m.pgn == 59904 ) {
                 m.len = 3;
@@ -151,16 +227,22 @@ void YdvrReader::processDatFile(const std::string &ydvrFile){
             }
 //            std::cout << "PGN: " << m.pgn << " len: " << int(m.len) <<  " offset " << offset << std::endl;
             UnrollTimeStamp(ts);
-            ProcessPgn(m);
+            ProcessPgn(m, cache);
         }
 
     }
 
     f.close();
+    cache.close();
+
+    std::ofstream summary (stSummaryFile, std::ios::out);
+    summary << "StartGpsTimeMs,EndGpsTimeMs,EpochCount" << std::endl;
+    summary << m_ulStartGpsTimeMs << "," << m_ulEndGpsTimeMs << "," << m_ulEpochCount << std::endl;
+    summary.close();
 
 }
 
-void YdvrReader::canIdToN2k(uint32_t can_id, uint8_t &prio, uint32_t &pgn, uint8_t &src, uint8_t &dst) const {
+void YdvrReader::canIdToN2k(uint32_t can_id, uint8_t &prio, uint32_t &pgn, uint8_t &src, uint8_t &dst) {
     uint8_t can_id_pf = (can_id >> 16) & 0x00FF;
     uint8_t can_id_ps = (can_id >> 8) & 0x00FF;
     uint8_t can_id_dp = (can_id >> 24) & 1;
@@ -180,11 +262,11 @@ void YdvrReader::canIdToN2k(uint32_t can_id, uint8_t &prio, uint32_t &pgn, uint8
 
 }
 
-void YdvrReader::ProcessPgn(const RawMessage &msg)  {
+void YdvrReader::ProcessPgn(const RawMessage &msg, std::ofstream& cache)  {
 
     auto data = msg.data;
     auto len = msg.len;
-    const Pgn *pgn = getMatchingPgn(msg.pgn, data, len);
+    const Pgn *pgn = getMatchingPgn(int(msg.pgn), data, len);
     if ( pgn == nullptr ) {
         return;
     }
@@ -206,13 +288,13 @@ void YdvrReader::ProcessPgn(const RawMessage &msg)  {
             switch(pgn->pgn){
                 case 129029:
                     processGpsFixPgn(pgn, data, len);
-                    PrintEpoch();
-                    break;
-                case 129026:
-                    processCogSogPgn(pgn, data, len);
                     break;
                 case 129025:
                     processPosRapidUpdate(pgn, data, len);
+                    ProcessEpoch(cache);
+                    break;
+                case 129026:
+                    processCogSogPgn(pgn, data, len);
                     break;
                 case 127250:
                     processVesselHeading(pgn, data, len);
@@ -225,6 +307,9 @@ void YdvrReader::ProcessPgn(const RawMessage &msg)  {
                     break;
                 case 127245:
                     processRudder(pgn, data, len);
+                    break;
+                case 127257:
+                    processAttitude(pgn, data, len);
                     break;
             }
         }
@@ -257,7 +342,7 @@ void YdvrReader::processGpsFixPgn(const Pgn *pgn, const uint8_t *data, size_t le
 
         m_ulGpsFixUnixTimeMs = date * 86400 * 1000 + time / 10;
         // Make it integer number of 200ms intervals
-        m_ulGpsFixUnixTimeMs = (m_ulGpsFixUnixTimeMs / 200) * 200;
+
         m_ulGpsFixLocalTimeMs = m_ulUnrolledTsMs;
 
         m_epoch.utc = UtcTime::fromUnixTimeMs(m_ulGpsFixUnixTimeMs);
@@ -280,6 +365,13 @@ void YdvrReader::processPosRapidUpdate(const Pgn *pgn, const uint8_t *data, uint
     double lon = double(val) *  RES_LL_32;
     m_epoch.loc = GeoLoc::fromDegrees(lat, lon);
 
+    // Infer epoch time using the last GPS fix time and the local time
+    // of the last received message
+    if( m_ulGpsFixUnixTimeMs > 0 && m_ulGpsFixLocalTimeMs > 0 ) {
+        uint64_t ulGpsFixTimeMs = m_ulGpsFixUnixTimeMs + (m_ulUnrolledTsMs - m_ulGpsFixLocalTimeMs);
+//        ulGpsFixTimeMs = uint64_t (ulGpsFixTimeMs / 100. + 0.5) * 100;
+        m_epoch.utc = UtcTime::fromUnixTimeMs(ulGpsFixTimeMs);
+    }
 }
 
 void YdvrReader::processVesselHeading(const Pgn *pgn, const uint8_t *data, uint8_t len) {
@@ -326,10 +418,22 @@ void YdvrReader::processRudder(const Pgn *pgn, const uint8_t *data, uint8_t len)
     m_epoch.rdr = val < 65532 ? Angle::fromRadians(double(val) * RES_RADIANS) : Angle::INVALID;
 }
 
+void YdvrReader::processAttitude(const Pgn *pgn, const uint8_t *data, uint8_t len) {
+    int64_t val;
+    extractNumberByOrder(pgn, 2, data, len, &val);
+    m_epoch.yaw = val < 65532 ? Angle::fromRadians(double(val) * RES_RADIANS) : Angle::INVALID;
+    extractNumberByOrder(pgn, 3, data, len, &val);
+    m_epoch.pitch = val < 65532 ? Angle::fromRadians(double(val) * RES_RADIANS) : Angle::INVALID;
+    extractNumberByOrder(pgn, 4, data, len, &val);
+    m_epoch.roll = val < 65532 ? Angle::fromRadians(double(val) * RES_RADIANS) : Angle::INVALID;
+
+}
+
 void YdvrReader::ResetTime() {
     m_ulGpsFixUnixTimeMs = 0;  // Time of last GPS fix in Unix time (ms)
     m_ulGpsFixLocalTimeMs = 0; // Time of last GPS fix in local time (ms)
     m_usLastTsMs = 0;          // Last time stamp in ms
+
 }
 
 void YdvrReader::UnrollTimeStamp(uint16_t ts) {
@@ -357,6 +461,8 @@ void YdvrReader::processProductInformationPgn(uint8_t  src, const Pgn *pgn, cons
         std::set<uint32_t> s;
         m_mapPgnsByDeviceModelAndSerialNo[modelIdAndSerialCode] = s;
     }
+
+    // Update mapping src to device
     m_mapDeviceBySrc[src] = modelIdAndSerialCode;
 
     // Update mapping src to PGNs
@@ -366,32 +472,50 @@ void YdvrReader::processProductInformationPgn(uint8_t  src, const Pgn *pgn, cons
         }
     }
 
-    std::cout << "acModelId=|" << acModelId << "|" << asSerialCode << "|" << int(src) << std::endl;
-
 }
 
 void YdvrReader::ResetEpoch() {
-    m_epoch.awa = Angle::INVALID;
-    m_epoch.twa = Angle::INVALID;
+    m_epoch = InstrumentInput(); // Reset
 }
 
-void YdvrReader::PrintEpoch() {
-    std::cout << static_cast<std::string>(m_epoch.utc)
-        << ",loc," << static_cast<std::string>(m_epoch.loc)
-        << ",cog," << static_cast<std::string>(m_epoch.cog)
-        << ",sog," << static_cast<std::string>(m_epoch.sog)
-        << ",aws," << static_cast<std::string>(m_epoch.aws)
-        << ",awa," << static_cast<std::string>(m_epoch.awa)
-        << ",tws," << static_cast<std::string>(m_epoch.tws)
-        << ",twa," << static_cast<std::string>(m_epoch.twa)
-        << ",mag," << static_cast<std::string>(m_epoch.mag)
-        << ",sow," << static_cast<std::string>(m_epoch.sow)
-        << ",rdr," << static_cast<std::string>(m_epoch.rdr)
-        << std::endl;
+void YdvrReader::ProcessEpoch(std::ofstream &cache) {
+    if( m_epoch.utc.isValid() ){
+        if ( m_ulStartGpsTimeMs == 0 )
+            m_ulStartGpsTimeMs = m_ulGpsFixUnixTimeMs;
+        m_ulEndGpsTimeMs = m_ulGpsFixUnixTimeMs;
+        m_ulEpochCount++;
+
+        cache << static_cast<std::string>(m_epoch) << std::endl;
+
+        ResetEpoch();
+    }
 }
 
+void YdvrReader::ReadPgnSrcTable(const std::string &csvFileName) {
+/*  Fill the map with the  data like this from CSV file
+    m_mapDeviceForPgn = {
+            {129029, "ZG100        Antenna-100022#"     },  // GNSS Position Data
+            {129025, "ZG100        Antenna-100022#"     },  // Position, Rapid Update
+            {129026, "ZG100        Antenna-100022#"     },  // COG & SOG, Rapid Update
+            {127250, "Precision-9 Compass-120196210"    },  // Vessel Heading
+            {128259, "H5000    CPU-007060#"             },  // Speed
+            {130306, "H5000    CPU-007060#"             },  // Wind Data
+            {127245, "RF25    _Rudder feedback-038249#" },  // Rudder
+            {127257, "Precision-9 Compass-120196210"    },  // Attitude
+    };
+*/
 
+    std::ifstream f (csvFileName, std::ios::in);
+    std::string line;
+    while (std::getline(f, line)) {
+        std::istringstream iss(line);
+        std::string pgn;
+        std::string device;
+        std::getline(iss, pgn, ',');
+        std::getline(iss, device, ',');
+        std::string modelIdAndSerialCode = trim(device);
+        int pgnInt = std::stoi(pgn);
+        m_mapDeviceForPgn[pgnInt] = modelIdAndSerialCode;
+    }
 
-
-
-
+}

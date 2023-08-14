@@ -19,9 +19,9 @@ public:
     explicit operator std::string() const {
         std::stringstream ss;
         if( isValid())
-            ss << std::setprecision(3) << m_dKnots << " kts";
+            ss << std::setprecision(3) << m_dKnots;
         else
-            ss << "--.-- kts";
+            ss << "";
         return ss.str();
     }
 private:

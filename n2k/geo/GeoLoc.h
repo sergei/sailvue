@@ -19,7 +19,7 @@ public:
         if( isValid())
             ss << std::setprecision(7) << m_dLat << ";" << std::setprecision(7) << m_dLon << "";
         else
-            ss << "--.-----;--.-----";
+            ss << "";
         return ss.str();
     }
 private:
