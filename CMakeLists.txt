@@ -15,7 +15,8 @@ add_executable(sailvue main.cpp
         n2k/canboat/common/utf.c
         n2k/YdvrReader.cpp
         n2k/YdvrReader.h
-        n2k/InitCanBoat.c n2k/InitCanBoat.h)
+        n2k/InitCanBoat.c n2k/InitCanBoat.h n2k/geo/Quantity.h n2k/geo/Angle.h n2k/InstrumentInput.h n2k/geo/Quantity.cpp n2k/geo/Direction.h n2k/geo/Speed.h n2k/geo/UtcTime.h
+        n2k/geo/GeoLoc.h)
 
 target_include_directories(sailvue PUBLIC
         n2k/canboat/analyzer

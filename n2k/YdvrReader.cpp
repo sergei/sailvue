@@ -5,6 +5,8 @@
 
 #include "YdvrReader.h"
 #include "InitCanBoat.h"
+#include "geo/Angle.h"
+#include "geo/Speed.h"
 
 std::string trim(const std::string& str,
                  const std::string& whitespace = " \t")
@@ -21,9 +23,14 @@ std::string trim(const std::string& str,
 
 YdvrReader::YdvrReader(const std::string& stYdvrDir, const std::string& stCacheDir)
 {
-    std::map<uint32_t, std::string> mapDeviceForPgn;
-    mapDeviceForPgn = {
-            {129025, "ZG100        Antenna           100022#                        "},  // Position, Rapid Update
+    m_mapDeviceForPgn = {
+            {129029, "ZG100        Antenna-100022#"     },  // GNSS Position Data
+            {129025, "ZG100        Antenna-100022#"     },  // Position, Rapid Update
+            {129026, "ZG100        Antenna-100022#"     },  // COG & SOG, Rapid Update
+            {127250, "Precision-9 Compass-120196210"    },  // Vessel Heading
+            {128259, "H5000    CPU-007060#"             },  // Speed
+            {130306, "H5000    CPU-007060#"             },  // Wind Data
+            {127245, "RF25    _Rudder feedback-038249#" },  // Rudder
     };
 
 
@@ -94,12 +101,16 @@ void YdvrReader::processDatFile(const std::string &ydvrFile){
             }
             if( !memcmp(data, "YDVR", 4) ) {
                 std::cout << "Start of file service record" << std::endl;
+                ResetTime();
             } else if( data[0] == 'E') {
                 std::cout << "End of file  service record: " << data[0] << std::endl;
+                ResetTime();
             } else if ( data[0] == 'T'){
                 std::cout << "Time gap service record: " << data[0] << std::endl;
+                ResetTime();
             } else {
                 std::cout << "Unknown service record: " << std::endl;
+                ResetTime();
             }
         }else {
             RawMessage m;
@@ -126,6 +137,7 @@ void YdvrReader::processDatFile(const std::string &ydvrFile){
                 }
                 if( m.len > sizeof(m.data) ) {
                     std::cerr << "Invalid length: " << m.len <<  " offset " << offset << std::endl;
+                    ResetTime();
                     continue;
                 }
                 if ( ! f.read((char*)&m.data, m.len) ) {
@@ -138,6 +150,7 @@ void YdvrReader::processDatFile(const std::string &ydvrFile){
                 }
             }
 //            std::cout << "PGN: " << m.pgn << " len: " << int(m.len) <<  " offset " << offset << std::endl;
+            UnrollTimeStamp(ts);
             ProcessPgn(m);
         }
 
@@ -168,6 +181,7 @@ void YdvrReader::canIdToN2k(uint32_t can_id, uint8_t &prio, uint32_t &pgn, uint8
 }
 
 void YdvrReader::ProcessPgn(const RawMessage &msg)  {
+
     auto data = msg.data;
     auto len = msg.len;
     const Pgn *pgn = getMatchingPgn(msg.pgn, data, len);
@@ -182,28 +196,55 @@ void YdvrReader::ProcessPgn(const RawMessage &msg)  {
         m_mapPgnsByDeviceModelAndSerialNo[modelIdAndSerialCode].insert(pgn->pgn);
     }
 
-    switch(pgn->pgn){
-        case 126996:
-            processProductInformationPgn(msg.src, pgn, data, len);
-            break;
-        case 129029:
-            processGpsFixPgn(pgn, data, len);
-            break;
-        case 129026:
-            processCogSogPgn(pgn, data, len);
-            break;
+    if (pgn->pgn ==  126996){
+        // We process this PGN coming from any source
+        processProductInformationPgn(msg.src, pgn, data, len);
+    }else {
+        // Here we check if it's coming from approved source address
+        if ( m_mapSrcForPgn[pgn->pgn] == msg.src )
+        {
+            switch(pgn->pgn){
+                case 129029:
+                    processGpsFixPgn(pgn, data, len);
+                    PrintEpoch();
+                    break;
+                case 129026:
+                    processCogSogPgn(pgn, data, len);
+                    break;
+                case 129025:
+                    processPosRapidUpdate(pgn, data, len);
+                    break;
+                case 127250:
+                    processVesselHeading(pgn, data, len);
+                    break;
+                case 128259:
+                    processBoatSpeed(pgn, data, len);
+                    break;
+                case 130306:
+                    processWindData(pgn, data, len);
+                    break;
+                case 127245:
+                    processRudder(pgn, data, len);
+                    break;
+            }
+        }
     }
 }
 
-void YdvrReader::processCogSogPgn(const Pgn *pgn, const uint8_t *data, size_t len) const {
+/// COG & SOG, Rapid Update
+void YdvrReader::processCogSogPgn(const Pgn *pgn, const uint8_t *data, size_t len) {
     int64_t val;
     extractNumberByOrder(pgn, 4, data, len, &val);
+    double rad = double(val) *  RES_RADIANS;
+    m_epoch.cog = rad < 7 ? Direction::fromRadians(rad) : Direction::INVALID;
+    extractNumberByOrder(pgn, 5, data, len, &val);
+    m_epoch.sog = val < 65532 ? Speed::fromMetersPerSecond(double(val) * RES_MPS) : Speed::INVALID;
 }
 
-void YdvrReader::processGpsFixPgn(const Pgn *pgn, const uint8_t *data, size_t len) const {
+/// GNSS Position Data
+void YdvrReader::processGpsFixPgn(const Pgn *pgn, const uint8_t *data, size_t len) {
     int64_t fixQuality;
     extractNumberByOrder(pgn, 8, data, len, &fixQuality);
-//    std::cout << "fixQuality: " << fixQuality << std::endl;
     if( fixQuality > 0 ){
         int64_t date;
         extractNumberByOrder(pgn, 2, data, len, &date);
@@ -213,25 +254,91 @@ void YdvrReader::processGpsFixPgn(const Pgn *pgn, const uint8_t *data, size_t le
         }
         int64_t time;
         extractNumberByOrder(pgn, 3, data, len, &time);
-        time_t t  = date * 86400 + time / 10000;
-        struct tm *tm;
-        tm = gmtime(&t);
-        char dateStr[20];
-        strftime(dateStr, sizeof(dateStr), "%Y-%m-%d %H:%M:%S", tm);
-//        std::cout << "date: " << dateStr << std::endl;
+
+        m_ulGpsFixUnixTimeMs = date * 86400 * 1000 + time / 10;
+        // Make it integer number of 200ms intervals
+        m_ulGpsFixUnixTimeMs = (m_ulGpsFixUnixTimeMs / 200) * 200;
+        m_ulGpsFixLocalTimeMs = m_ulUnrolledTsMs;
+
+        m_epoch.utc = UtcTime::fromUnixTimeMs(m_ulGpsFixUnixTimeMs);
 
         int64_t val;
         extractNumberByOrder(pgn, 4, data, len, &val);
-        double lat = double(val) *  1e-16;
-//        std::cout << "latitude: " << lat << std::endl;
+        double lat = double(val) * RES_LL_64;
         extractNumberByOrder(pgn, 5, data, len, &val);
-        double lon = double(val) *  1e-16;
-//        std::cout << "longitude: " << lon << std::endl;
+        double lon = double(val) * RES_LL_64;
+        m_epoch.loc = GeoLoc::fromDegrees(lat, lon);
     }
 }
 
-void YdvrReader::ResetTime() const {
+/// Position, Rapid Update
+void YdvrReader::processPosRapidUpdate(const Pgn *pgn, const uint8_t *data, uint8_t len) {
+    int64_t val;
+    extractNumberByOrder(pgn, 1, data, len, &val);
+    double lat = double(val) *  RES_LL_32;
+    extractNumberByOrder(pgn, 2, data, len, &val);
+    double lon = double(val) *  RES_LL_32;
+    m_epoch.loc = GeoLoc::fromDegrees(lat, lon);
 
+}
+
+void YdvrReader::processVesselHeading(const Pgn *pgn, const uint8_t *data, uint8_t len) {
+    int64_t val;
+    extractNumberByOrder(pgn, 2, data, len, &val);
+    double hdg = double(val) *  RES_RADIANS;
+    extractNumberByOrder(pgn, 5, data, len, &val);
+    if ( val == 1 && hdg < 7) { // Magnetic
+        m_epoch.mag = Direction::fromRadians(hdg);
+    }
+}
+
+void YdvrReader::processBoatSpeed(const Pgn *pgn, const uint8_t *data, uint8_t len) {
+    int64_t val;
+    extractNumberByOrder(pgn, 2, data, len, &val);
+    m_epoch.sow = val < 65532 ? Speed::fromMetersPerSecond(double(val) * RES_MPS) : Speed::INVALID;
+
+    extractNumberByOrder(pgn, 3, data, len, &val);
+    extractNumberByOrder(pgn, 4, data, len, &val);
+
+
+}
+
+void YdvrReader::processWindData(const Pgn *pgn, const uint8_t *data, uint8_t len) {
+    int64_t val;
+    extractNumberByOrder(pgn, 2, data, len, &val);
+    Speed windSpeed = val < 65532 ? Speed::fromMetersPerSecond(double(val) * RES_MPS) : Speed::INVALID;
+    extractNumberByOrder(pgn, 3, data, len, &val);
+    Angle windAngle = val < 65532 ? Angle::fromRadians(double(val) * RES_RADIANS) : Angle::INVALID;
+    extractNumberByOrder(pgn, 4, data, len, &val);
+    if( val == 2 ){  // Apparent Wind (relative to the vessel centerline)
+        m_epoch.awa = windAngle;
+        m_epoch.aws = windSpeed;
+    }else if ( val == 3 || val == 4 ){ // True Wind
+        m_epoch.twa = windAngle;
+        m_epoch.tws = windSpeed;
+    }
+
+}
+
+void YdvrReader::processRudder(const Pgn *pgn, const uint8_t *data, uint8_t len) {
+    int64_t val;
+    extractNumberByOrder(pgn, 5, data, len, &val);
+    m_epoch.rdr = val < 65532 ? Angle::fromRadians(double(val) * RES_RADIANS) : Angle::INVALID;
+}
+
+void YdvrReader::ResetTime() {
+    m_ulGpsFixUnixTimeMs = 0;  // Time of last GPS fix in Unix time (ms)
+    m_ulGpsFixLocalTimeMs = 0; // Time of last GPS fix in local time (ms)
+    m_usLastTsMs = 0;          // Last time stamp in ms
+}
+
+void YdvrReader::UnrollTimeStamp(uint16_t ts) {
+    int32_t tsDiff = int32_t(ts) - m_usLastTsMs;
+    m_usLastTsMs = ts;
+    if (tsDiff < 0) {
+        tsDiff += TS_WRAP;
+    }
+    m_ulUnrolledTsMs += tsDiff;
 }
 
 void YdvrReader::processProductInformationPgn(uint8_t  src, const Pgn *pgn, const uint8_t *data, uint8_t len)  {
@@ -242,8 +349,6 @@ void YdvrReader::processProductInformationPgn(uint8_t  src, const Pgn *pgn, cons
     char asSerialCode[32];
     extractStringByOrder(pgn, 6, data, len, asSerialCode, sizeof(asSerialCode));
 
-    std::cout << "acModelId=|" << acModelId << "|" << asSerialCode << "|" << int(src) << std::endl;
-
     std::string serialCode(asSerialCode);
     std::string modelId(acModelId);
 
@@ -253,5 +358,40 @@ void YdvrReader::processProductInformationPgn(uint8_t  src, const Pgn *pgn, cons
         m_mapPgnsByDeviceModelAndSerialNo[modelIdAndSerialCode] = s;
     }
     m_mapDeviceBySrc[src] = modelIdAndSerialCode;
+
+    // Update mapping src to PGNs
+    for( auto & mapIt :m_mapDeviceForPgn){
+        if( mapIt.second == modelIdAndSerialCode ){
+            m_mapSrcForPgn[mapIt.first] = src;
+        }
+    }
+
+    std::cout << "acModelId=|" << acModelId << "|" << asSerialCode << "|" << int(src) << std::endl;
+
 }
+
+void YdvrReader::ResetEpoch() {
+    m_epoch.awa = Angle::INVALID;
+    m_epoch.twa = Angle::INVALID;
+}
+
+void YdvrReader::PrintEpoch() {
+    std::cout << static_cast<std::string>(m_epoch.utc)
+        << ",loc," << static_cast<std::string>(m_epoch.loc)
+        << ",cog," << static_cast<std::string>(m_epoch.cog)
+        << ",sog," << static_cast<std::string>(m_epoch.sog)
+        << ",aws," << static_cast<std::string>(m_epoch.aws)
+        << ",awa," << static_cast<std::string>(m_epoch.awa)
+        << ",tws," << static_cast<std::string>(m_epoch.tws)
+        << ",twa," << static_cast<std::string>(m_epoch.twa)
+        << ",mag," << static_cast<std::string>(m_epoch.mag)
+        << ",sow," << static_cast<std::string>(m_epoch.sow)
+        << ",rdr," << static_cast<std::string>(m_epoch.rdr)
+        << std::endl;
+}
+
+
+
+
+
 
