@@ -1,0 +1,6 @@
+[submodule "canboat"]
+	path = canboat
+	url = git@github.com:sergei/canboat.git
+[submodule "n2k/canboat"]
+	path = n2k/canboat
+	url = git@github.com:sergei/canboat.git
