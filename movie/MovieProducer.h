@@ -5,18 +5,7 @@
 
 #include "navcomputer/IProgressListener.h"
 #include "Worker.h"
-
-struct ClipFragment {
-    ClipFragment(int64_t in, int64_t out, const std::string &fileName, int w, int h):
-        in(in), out(out),
-        fileName(fileName), width(w), height(h) {}
-
-    int64_t in; // Milliseconds
-    int64_t out; // Milliseconds
-    const int width;
-    const int height;
-    std::string fileName;
-};
+#include "ffmpeg/FFMpeg.h"
 
 class MovieProducer {
 public:
@@ -32,9 +21,12 @@ private:
     std::vector<InstrumentInput> &m_rInstrDataVector;
     std::list<RaceData *> &m_RaceDataList;
 
-    void produceChapter(Chapter &chapter, std::filesystem::path folder);
-
+    void produceChapter(Chapter &chapter, std::filesystem::path &folder);
     void findGoProClipFragments(std::list<ClipFragment> &clipFragments, uint64_t startUtcMs, uint64_t stopUtcMs);
+
+    const char *INSTR_OVL_FILE_PAT = "instr_%05d.png";
+    const char *POLAR_OVL_FILE_PAT = "polar_%05d.png";
+
 };
 
 

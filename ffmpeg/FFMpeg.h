@@ -7,6 +7,21 @@
 #include <string>
 #include <cstdio>
 
+#include <list>
+
+struct ClipFragment {
+    ClipFragment(int64_t in, int64_t out, const std::string &fileName, int w, int h):
+            in(in), out(out),
+            fileName(fileName), width(w), height(h) {}
+
+    int64_t in; // Milliseconds
+    int64_t out; // Milliseconds
+    const int width;
+    const int height;
+    const std::string &fileName;
+};
+
+
 struct CommandResult {
     std::string output;
     int exitstatus;
@@ -64,14 +79,31 @@ public:
 
 };
 
+struct OverlayPngSequence {
+    int x;
+    int y;
+    int fps;
+    const std::string &path;
+    const std::string &filePattern;
+};
+
 class FFMpeg {
 public:
     static bool setBinDir(const std::string &binDir);
     static std::tuple<int , int > getVideoResolution(const std::string &mp4name);
 
+    void setBackgroundClip(std::list<ClipFragment> *pClipFragments);
+    void addOverlayPngSequence(int x, int y, int fps, const std::string &path, const std::string &filePattern);
+
+    void makeClip(const std::string &clipPath);
+
 private:
     static std::string s_ffmpeg;
     static std::string s_ffprobe;
+
+
+    std::list<ClipFragment> *m_pClipFragments;
+    std::list<OverlayPngSequence> m_pOverlays;
 };
 
 

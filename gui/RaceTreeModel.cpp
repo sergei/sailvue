@@ -262,7 +262,6 @@ void RaceTreeModel::saveAs(const QString &path) {
 }
 
 void RaceTreeModel::handleProgress(const QString &state, int progress) {
-    std::cout << "handleProgress " + state.toStdString() << " " << progress << std::endl;
     emit progressStatus(state, progress);
 }
 

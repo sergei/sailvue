@@ -1,0 +1,46 @@
+
+#ifndef SAILVUE_POLAROVERLAYMAKER_H
+#define SAILVUE_POLAROVERLAYMAKER_H
+
+#include <filesystem>
+#include <QPainter>
+#include "navcomputer/InstrumentInput.h"
+
+class PolarOverlayMaker {
+public:
+    PolarOverlayMaker(std::vector<InstrumentInput> &instrDataVector, std::filesystem::path &workDir, int width,
+                      int startIdx, int endIdx,
+                      bool ignoreCache);
+    void addEpoch(const std::string &fileName, int epochIdx);
+private:
+    [[nodiscard]] QPoint toScreen(const std::pair<float, float> &xy) const;
+    void setHistory(int startIdx, int endIdx);
+private:
+    std::vector<InstrumentInput> &m_rInstrDataVector;
+    std::filesystem::path m_workDir;
+    const int m_width;
+    const bool m_ignoreCache;
+    const int m_dotRadius = 15;
+    const int m_xPad = m_dotRadius;
+    const int m_yPad = m_dotRadius;
+    const QColor m_polarGridColor = QColor(255, 255, 255, 127);
+
+    int m_height;
+    bool m_isTack = true;
+    int m_maxSpeedKts = 0;
+    int m_minSpeedKts = 100;
+    const int m_speedStep = 2;
+    int m_y0;
+
+    float m_xScale;
+    float m_yScale;
+
+    const int m_startIdx;
+
+    std::vector<std::pair<float, float>> m_history;
+
+    static std::pair<float, float> polToCart(float kts, float rad);
+};
+
+
+#endif //SAILVUE_POLAROVERLAYMAKER_H

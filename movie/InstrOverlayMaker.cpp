@@ -13,15 +13,15 @@ void InfoCell::setSize(int width) {
         fontPointSize = fs;
         font.setPointSize(fs);
         QFontMetrics fm(font);
-        QRect rect = fm.boundingRect("----");
+        QRect rect = fm.tightBoundingRect("----");
         if(rect.width() > width){
             fontPointSize = fs - 1;
             break;
         }
     }
 
-    m_mainFont = QFont(FONT_FAMILY_VALUE, fontPointSize);
-    QFontMetrics fm(m_mainFont);
+    m_valueFont = QFont(FONT_FAMILY_VALUE, fontPointSize);
+    QFontMetrics fm(m_valueFont);
     m_height = fm.ascent();
     m_labelFont = QFont(FONT_FAMILY_LABEL, fontPointSize / 2);
     QFontMetrics fl(m_labelFont);
@@ -31,20 +31,20 @@ void InfoCell::setSize(int width) {
 
 void InfoCell::draw(QPainter &painter, int x, int y, const QString &label, const QString &value) {
     QFontMetrics fl(m_labelFont);
-    QRect labelRect = fl.boundingRect(label);
+    QRect labelRect = fl.tightBoundingRect(label);
+    QFontMetrics fv(m_valueFont);
+    QRect valueRect = fv.tightBoundingRect(label);
+
     int labelXoffset = (m_width - labelRect.width())   / 2;
-    int labelYoffset = 0;
+    int labelYoffset = labelRect.height();
+    int valueXoffset = (m_width - valueRect.width())   / 2;
+    int valueYoffset = 10 + valueRect.height() + labelYoffset;
 
     painter.setFont(m_labelFont);
     painter.setPen(m_labelPen);
     painter.drawText(x + labelXoffset, y + labelYoffset, label);
 
-    QFontMetrics fv(m_mainFont);
-    QRect valueRect = fv.boundingRect(label);
-    int valueXoffset = (m_width - valueRect.width())   / 2;
-    int valueYoffset = labelRect.height() + labelYoffset;
-
-    painter.setFont(m_labelFont);
+    painter.setFont(m_valueFont);
     painter.setPen(m_valuePen);
     painter.drawText(x + valueXoffset, y + valueYoffset, value);
 }
@@ -85,7 +85,7 @@ void InstrOverlayMaker::chooseTimeStampFont(int timeStampHeight) {
     m_timeStampFont = QFont(FONT_FAMILY_TIMESTAMP, fontPointSize);
 }
 
-const std::string InstrOverlayMaker::addEpoch(const std::string &fileName, InstrumentInput &instrData) {
+std::string InstrOverlayMaker::addEpoch(const std::string &fileName, InstrumentInput &instrData) {
     std::filesystem::path pngName = std::filesystem::path(m_workDir) / fileName;
 
     if ( std::filesystem::is_regular_file(pngName) && !m_ignoreCache){
@@ -97,6 +97,7 @@ const std::string InstrOverlayMaker::addEpoch(const std::string &fileName, Instr
     QPainter painter(&image);
 
     painter.setPen(QColor(0x32, 0x32, 0x32, 0x80));
+    painter.setBrush(QColor(0x32, 0x32, 0x32, 0x80));
     painter.drawRect(0, 0, m_width, m_height);
 
     int x = m_cellStep;

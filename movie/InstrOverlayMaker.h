@@ -15,7 +15,7 @@ public:
     void draw(QPainter &painter, int x, int y, const QString &label, const QString &value);
     [[nodiscard]] int getHeight() const {return m_height;};
 private:
-    QFont m_mainFont;
+    QFont m_valueFont;
     QFont m_labelFont;
     int m_height;
 public:
@@ -23,7 +23,7 @@ public:
 private:
     int m_width;
 
-    QPen m_labelPen = QPen(QColor(255, 255, 255, 128));
+    QPen m_labelPen = QPen(QColor(255, 255, 255, 200));
     QPen m_valuePen = QPen(QColor(255, 255, 255, 255));
 };
 
@@ -31,7 +31,7 @@ private:
 class InstrOverlayMaker {
 public:
     InstrOverlayMaker(std::filesystem::path &workDir, int width, int height, bool ignoreCache);
-    const std::string addEpoch(const std::string &fileName, InstrumentInput &instrData);
+    std::string addEpoch(const std::string &fileName, InstrumentInput &instrData);
 private:
     void chooseTimeStampFont(int timeStampHeight);
 private:
@@ -40,7 +40,6 @@ private:
     int m_width;
     int m_height;
     bool m_ignoreCache;
-    bool n_bIgnoreCache;
 
     const int m_numCells = 5;
     int m_rectWidth;

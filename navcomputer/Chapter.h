@@ -20,7 +20,7 @@ public:
     [[nodiscard]] u_int64_t getEndIdx() const { return m_endIdx; }
     [[nodiscard]] u_int64_t getGunIdx() const { return m_gunIdx; }
     [[nodiscard]] QString getUuid() const { return m_uuid.toString(QUuid::WithoutBraces); }
-    ChapterType getChapterType() { return m_chapterType; }
+    [[nodiscard]] ChapterType getChapterType() const { return m_chapterType; }
 
     void SetName(std::string name);
     void setEndIdx(u_int64_t endIdx) { m_endIdx = endIdx; }
