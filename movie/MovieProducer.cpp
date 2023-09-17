@@ -3,6 +3,7 @@
 #include "Worker.h"
 #include "InstrOverlayMaker.h"
 #include "PolarOverlayMaker.h"
+#include "StartTimerOverlayMaker.h"
 
 MovieProducer::MovieProducer(const std::string &path, std::list<GoProClipInfo> &clipsList,
                              std::vector<InstrumentInput> &instrDataVector, std::list<RaceData *> &raceList,
@@ -51,6 +52,7 @@ void MovieProducer::produceChapter(Chapter &chapter, std::filesystem::path &fold
     int polar_ovl_width = 400;
     int height = goProclipFragments.front().height;
     int instrOvlHeight = 128;
+    int timerHeight = 128;
 
     auto ignoreCache = false;
     std::filesystem::path instrOverlayPath = folder / "instr_overlay";
@@ -59,6 +61,12 @@ void MovieProducer::produceChapter(Chapter &chapter, std::filesystem::path &fold
     std::filesystem::path polarOverlayPath = folder / "polar_overlay";
     PolarOverlayMaker polarOverlayMaker(m_rInstrDataVector, polarOverlayPath, polar_ovl_width,
                                         (int)chapter.getStartIdx(), (int)chapter.getEndIdx(), ignoreCache);
+
+
+    std::filesystem::path startTimerOverlayPath = folder / "timer_overlay";
+    StartTimerOverlayMaker startTimerOverlayMaker(startTimerOverlayPath, timerHeight, ignoreCache);
+
+    int timerX = goProclipFragments.front().width - startTimerOverlayMaker.getWidth();
 
     int count = 0;
     int prevProgress = -1;
@@ -70,11 +78,18 @@ void MovieProducer::produceChapter(Chapter &chapter, std::filesystem::path &fold
         sprintf(acFileName, INSTR_OVL_FILE_PAT, count);
         std::string instrOvlFileName = acFileName;
         instrOverlayMaker.addEpoch(instrOvlFileName, *instrData);
-        if ( chapter.getChapterType() != ChapterType::START){
-            sprintf(acFileName, POLAR_OVL_FILE_PAT, count);
-            std::string polarOvlFileName = acFileName;
-            polarOverlayMaker.addEpoch(polarOvlFileName, (int)chapter.getStartIdx() + count);
+
+        sprintf(acFileName, POLAR_OVL_FILE_PAT, count);
+        std::string polarOvlFileName = acFileName;
+        polarOverlayMaker.addEpoch(polarOvlFileName, (int)chapter.getStartIdx() + count);
+
+        if ( chapter.getChapterType() == ChapterType::START){
+            sprintf(acFileName, TIMER_OVL_FILE_PAT, count);
+            std::string timerOvlFileName = acFileName;
+            uint64_t gunUtcTimeMs = m_rInstrDataVector[chapter.getGunIdx()].utc.getUnixTimeMs();
+            startTimerOverlayMaker.addEpoch(timerOvlFileName, gunUtcTimeMs,  *instrData);
         }
+
         int progress = count * 100 / totalCount;
         if ( progress != prevProgress){
             m_rProgressListener.progress(chapter.getName() + "Overlay", progress);
@@ -90,6 +105,10 @@ void MovieProducer::produceChapter(Chapter &chapter, std::filesystem::path &fold
     ffmpeg.setBackgroundClip(&goProclipFragments);
 
     ffmpeg.addOverlayPngSequence(0, height - instrOvlHeight, fps, instrOverlayPath.native(), INSTR_OVL_FILE_PAT);
+
+    if ( chapter.getChapterType() == ChapterType::START){
+        ffmpeg.addOverlayPngSequence(timerX, 0, fps, startTimerOverlayPath.native(), TIMER_OVL_FILE_PAT);
+    }
     ffmpeg.addOverlayPngSequence(0, 0, fps, polarOverlayPath.native(), POLAR_OVL_FILE_PAT);
 
     std::filesystem::path outMoviePath = folder / "chapter.mp4";

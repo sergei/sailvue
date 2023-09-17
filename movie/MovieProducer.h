@@ -26,6 +26,7 @@ private:
 
     const char *INSTR_OVL_FILE_PAT = "instr_%05d.png";
     const char *POLAR_OVL_FILE_PAT = "polar_%05d.png";
+    const char *TIMER_OVL_FILE_PAT = "timer_%05d.png";
 
 };
 

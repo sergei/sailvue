@@ -1,0 +1,9 @@
+TODO launch ffmpeg and display progress bar
+TODO Add GUI to create the PGN sources list
+TODO Add UTC time, GPS position and github URL to instruments overlay
+TODO Limit the number of decimal places to 1 on instrument overlay
+TODO filter instrument data to avoid gaps in the data
+TODO add events auto detection
+TODO add polar table reading and interpolation
+TODO draw polar curve and VMG line on polar overlay
+TODO add score for tacks,  gybes and starts

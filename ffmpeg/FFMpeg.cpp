@@ -66,7 +66,9 @@ void FFMpeg::makeClip(const std::string &clipPath) {
     // make ffmpeg arguments
 
     std::string ffmpegArgs = s_ffmpeg + " -y ";
+    ffmpegArgs += " \\\n";
 
+    int clipIdx = 0;
     // Specify the main video stream
     for(const auto& src: *m_pClipFragments){
         if ( src.in != -1)
@@ -76,42 +78,71 @@ void FFMpeg::makeClip(const std::string &clipPath) {
             ffmpegArgs += " -to " +  std::to_string(src.out) + "ms ";
 
         ffmpegArgs += " -i \"" + src.fileName + "\"";
+        ffmpegArgs += " \\\n";
+        clipIdx++;
     }
-    ffmpegArgs += " \\\n";
+
+    int firstOverlayIdx = clipIdx;
 
     // List of overlay files
     for(const auto& overlay: m_pOverlays){
         ffmpegArgs += " -framerate " + std::to_string(overlay.fps) + " -i " + overlay.path + "/" + overlay.filePattern;
+        ffmpegArgs += " \\\n";
+        clipIdx++;
     }
 
-    ffmpegArgs += " \\\n";
 
     // Construct the filter_complex argument
     ffmpegArgs += " -filter_complex  ";
     ffmpegArgs += " \\\n";
+    ffmpegArgs += "\"";
 
 
-    int idx = 1;
-    std::string bkg = "[0:v]";
+    bool concatIsRequired = m_pClipFragments->size() > 1;
+
+    if ( concatIsRequired ){
+        // Concatenate the video streams
+        for(int i=0; i<firstOverlayIdx; i++){
+            ffmpegArgs += "[" + std::to_string(i) + "]";
+        }
+        ffmpegArgs += " concat=v=1:a=0 [concv];";
+        // Concatenate the audio streams
+        for(int i=0; i<firstOverlayIdx; i++){
+            ffmpegArgs += "[" + std::to_string(i) + "]";
+        }
+        ffmpegArgs += " concat=v=0:a=1 [conca];";
+    }
+
+    std::string bkg;
+    std::string audio;
+    if ( concatIsRequired ) {
+        bkg = "[concv]";  // Overlays go on top of concatenated clips (video)
+        audio = "[conca]";  //Output clip audio is  concatenated clips audio
+    }else{
+        bkg = "[0:v]";   // Overlays go on top of the first clip (video)
+        audio = "0:a";   // Output clip audio is the first clip audio
+    }
+
+    int idx = firstOverlayIdx;
     std::string ovl;
     std::string merged;
-    ffmpegArgs += "\"";
     for(const auto& overlay: m_pOverlays){
         ovl = "[" + std::to_string(idx) + "]";
         merged = "[out" + std::to_string(idx) + "]";
         ffmpegArgs += bkg; // Bottom video stream
         ffmpegArgs += ovl; // Overlay stream
-        ffmpegArgs += "overlay=";  // Command
+        ffmpegArgs += " overlay=";  // Command
         ffmpegArgs += std::to_string(overlay.x) + ":" + std::to_string(overlay.y);  // Command arguments
+        ffmpegArgs += " ";
         ffmpegArgs += merged;  // Output stream
-        ffmpegArgs += ","; // Separator
+        ffmpegArgs += "; "; // Separator
         bkg = merged;
         idx++;
     }
     ffmpegArgs += "\"";
 
     ffmpegArgs += " \\\n";
-    ffmpegArgs += " -map " + merged + " -map 0:a";
+    ffmpegArgs += " -map " + merged + " -map " + audio;
     ffmpegArgs += " \\\n";
     ffmpegArgs += " \"" + clipPath + "\"";
     std::cout <<  "[" << ffmpegArgs << "]" << std::endl;

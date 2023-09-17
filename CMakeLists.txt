@@ -67,6 +67,8 @@ qt_add_executable(sailvue WIN32 MACOSX_BUNDLE
         ffmpeg/FFMpeg.h
         movie/PolarOverlayMaker.cpp
         movie/PolarOverlayMaker.h
+        movie/StartTimerOverlayMaker.cpp
+        movie/StartTimerOverlayMaker.h
 )
 
 target_include_directories(sailvue PUBLIC
