@@ -7,7 +7,7 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 
-class ProgressListener : public IProgressListener {
+class EncodingProgressListener : public IProgressListener {
 public:
     void progress(const std::string& state, int progress) override {
         std::cout << state << " " << progress << std::endl;
@@ -24,7 +24,7 @@ static time_t strToTime(const std::string& str) {
 }
 
 void Test(const std::string& stYdvrDir, const std::string& stGoProDir, const std::string& stCacheDir, const std::string& stPgnSrcCsv, bool bSummaryOnly) {
-    ProgressListener progressListener;
+    EncodingProgressListener progressListener;
     YdvrReader ydvrReader(stYdvrDir, stCacheDir, stPgnSrcCsv, bSummaryOnly, progressListener);
     GoPro goPro(stGoProDir, stCacheDir, ydvrReader, progressListener);
 

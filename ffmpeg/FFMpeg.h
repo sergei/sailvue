@@ -87,6 +87,12 @@ struct OverlayPngSequence {
     const std::string &filePattern;
 };
 
+class FfmpegProgressListener {
+public:
+    virtual bool ffmpegProgress(uint64_t msEncoded) = 0;
+};
+
+
 class FFMpeg {
 public:
     static bool setBinDir(const std::string &binDir);
@@ -95,15 +101,23 @@ public:
     void setBackgroundClip(std::list<ClipFragment> *pClipFragments);
     void addOverlayPngSequence(int x, int y, int fps, const std::string &path, const std::string &filePattern);
 
-    void makeClip(const std::string &clipPath);
+    void makeClip(const std::string &clipPath, FfmpegProgressListener &progress);
+
+    static void joinChapters(std::list<std::string> &chaptersList, const std::basic_string<char> &moviePath,
+                      FfmpegProgressListener &progressListener);
 
 private:
     static std::string s_ffmpeg;
     static std::string s_ffprobe;
 
-
     std::list<ClipFragment> *m_pClipFragments;
     std::list<OverlayPngSequence> m_pOverlays;
+
+    std::string makeClipFfmpegArgs(const std::string &clipPath);
+    static std::string makeJoinChaptersFfmpegArgs(std::list<std::string> &chaptersList,const std::basic_string<char> &outPath);
+
+    static void executeFfmpeg( const std::string &ffmpegArgs, FfmpegProgressListener &progress) ;
+
 };
 
 

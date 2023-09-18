@@ -294,6 +294,8 @@ ApplicationWindow {
         id: fileProgressDialog
         anchors.centerIn: Overlay.overlay
         title: "Processing data"
+        modal: true
+        closePolicy : Dialog.NoAutoClose
         contentItem: ColumnLayout {
             Text {
                 id: progressText

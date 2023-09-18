@@ -19,27 +19,50 @@ MovieProducer::MovieProducer(const std::string &path, std::list<GoProClipInfo> &
 
 void MovieProducer::produce() {
     int raceCount = 0;
+    auto ignoreCache = false;
+
+    m_stopRequested = false;
     for(RaceData *race: m_RaceDataList){
         std::cout << "Producing race " << race->getName() << std::endl;
         std::filesystem::path raceFolder = std::filesystem::path(m_moviePath) / ("race" +  std::to_string(raceCount));
         std::filesystem::create_directories(raceFolder);
 
         int chapterCount = 0;
+        m_totalRaceDuration = 0;
+        std::list<std::string> chapterClips;
         for( Chapter *chapter: race->getChapters()){
             std::filesystem::path chapterFolder = raceFolder / ("chapter" +  std::to_string(chapterCount));
             std::filesystem::create_directories(chapterFolder);
-            produceChapter(*chapter, chapterFolder);
+            std::string chapterClipName = produceChapter(*chapter, chapterFolder, ignoreCache);
+            chapterClips.push_back(chapterClipName);
             chapterCount ++;
+            if ( m_stopRequested ){
+                return;
+            }
         }
+        if ( m_stopRequested ){
+            return;
+        }
+        makeRaceVideo(raceFolder, chapterClips);
         raceCount ++;
     }
 }
 
-void MovieProducer::produceChapter(Chapter &chapter, std::filesystem::path &folder) {
+std::string MovieProducer::produceChapter(Chapter &chapter, std::filesystem::path &folder, bool ignoreCache) {
     uint64_t startUtcMs = m_rInstrDataVector[chapter.getStartIdx()].utc.getUnixTimeMs();
     uint64_t stopUtcMs = m_rInstrDataVector[chapter.getEndIdx()].utc.getUnixTimeMs();
 
     std::cout << "Producing chapter " << chapter.getName() << " " << startUtcMs << ":" << stopUtcMs << std::endl;
+
+    std::filesystem::path outMoviePath = folder / "chapter.mp4";
+    uint64_t  clipDurationMs = stopUtcMs - startUtcMs;
+    m_totalRaceDuration += clipDurationMs;
+
+    // Check if the output file already exists
+    if ( std::filesystem::is_regular_file(outMoviePath) && !ignoreCache){
+        std::cout << "Chapter " << chapter.getName() << " already exists" << std::endl;
+        return outMoviePath.native();
+    }
 
     std::list<ClipFragment> goProclipFragments;
 
@@ -54,7 +77,6 @@ void MovieProducer::produceChapter(Chapter &chapter, std::filesystem::path &fold
     int instrOvlHeight = 128;
     int timerHeight = 128;
 
-    auto ignoreCache = false;
     std::filesystem::path instrOverlayPath = folder / "instr_overlay";
     InstrOverlayMaker instrOverlayMaker(instrOverlayPath, instr_ovl_width, instrOvlHeight, ignoreCache);
 
@@ -111,8 +133,11 @@ void MovieProducer::produceChapter(Chapter &chapter, std::filesystem::path &fold
     }
     ffmpeg.addOverlayPngSequence(0, 0, fps, polarOverlayPath.native(), POLAR_OVL_FILE_PAT);
 
-    std::filesystem::path outMoviePath = folder / "chapter.mp4";
-    ffmpeg.makeClip(outMoviePath.native());
+    EncodingProgressListener progressListener("Chapter " + chapter.getName(), clipDurationMs, m_rProgressListener);
+    ffmpeg.makeClip(outMoviePath.native(), progressListener);
+    m_stopRequested = progressListener.isStopRequested();
+
+    return outMoviePath.native();
 }
 
 void MovieProducer::findGoProClipFragments(std::list<ClipFragment> &clipFragments, uint64_t startUtcMs, uint64_t stopUtcMs) {
@@ -144,6 +169,33 @@ void MovieProducer::findGoProClipFragments(std::list<ClipFragment> &clipFragment
             }
             break;
         }
+    }
+}
+
+void MovieProducer::makeRaceVideo(const std::filesystem::path &raceFolder, std::list<std::string> &chaptersList) {
+
+    std::filesystem::path outMoviePath = raceFolder / "race.mp4";
+    EncodingProgressListener progressListener("Race " , m_totalRaceDuration, m_rProgressListener);
+    FFMpeg::joinChapters(chaptersList, outMoviePath.native(), progressListener);
+}
+
+
+bool EncodingProgressListener::ffmpegProgress(uint64_t msEncoded) {
+    int progress = int(msEncoded * 100 / m_totalDurationMs);
+    if ( m_prevPercent != progress){
+
+        uint64_t secEncoded = msEncoded / 1000;
+        uint64_t seconds = secEncoded / 60;
+        uint64_t minutes = secEncoded % 60;
+
+        std::ostringstream oss;
+        oss << std::setw(2) << std::setfill('0') << seconds << ":" << std::setw(2) << std::setfill('0') << minutes;
+
+        m_rProgressListener.progress( m_prefix + " " + oss.str() + " encoded", progress);
+        m_stopRequested = m_rProgressListener.stopRequested();
+        return m_stopRequested;
+    }else{
+        return false;
     }
 }
 

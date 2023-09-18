@@ -2,8 +2,11 @@
 #include <iostream>
 #include <sstream>
 #include <filesystem>
+#include <unistd.h>
+#include <csignal>
+#include <fstream>
 
- std::string FFMpeg::s_ffmpeg = "/dev/null";
+std::string FFMpeg::s_ffmpeg = "/dev/null";
  std::string FFMpeg::s_ffprobe = "/dev/null";
 
 bool FFMpeg::setBinDir(const std::string &binDir) {
@@ -61,11 +64,111 @@ void FFMpeg::setBackgroundClip(std::list<ClipFragment> *pClipFragments) {
     m_pOverlays.clear();
     m_pClipFragments = pClipFragments;
 }
+#define READ 0
+#define WRITE 1
 
-void FFMpeg::makeClip(const std::string &clipPath) {
+pid_t
+popen2(const char *command, int *infp, int *outfp)
+{
+    int p_stdin[2], p_stdout[2];
+    pid_t pid;
+
+    if (pipe(p_stdin) != 0 || pipe(p_stdout) != 0)
+        return -1;
+
+    pid = fork();
+
+    if (pid < 0)
+        return pid;
+    else if (pid == 0)
+    {
+        close(p_stdin[WRITE]);
+        dup2(p_stdin[READ], READ);
+        close(p_stdout[READ]);
+        dup2(p_stdout[WRITE], WRITE);
+
+        execl("/bin/sh", "sh", "-c", command, NULL);
+        perror("execl");
+        exit(1);
+    }
+
+    if (infp == nullptr)
+        close(p_stdin[WRITE]);
+    else
+        *infp = p_stdin[WRITE];
+
+    if (outfp == nullptr)
+        close(p_stdout[READ]);
+    else
+        *outfp = p_stdout[READ];
+
+    return pid;
+}
+void FFMpeg::makeClip(const std::string &clipPath, FfmpegProgressListener &progress) {
     // make ffmpeg arguments
+    std::string ffmpegArgs = makeClipFfmpegArgs(clipPath);
+    std::cout <<  "[" << ffmpegArgs << "]" << std::endl;
 
-    std::string ffmpegArgs = s_ffmpeg + " -y ";
+    // Execute ffmpeg
+    executeFfmpeg(ffmpegArgs, progress);
+
+    std::cout << "FFMpeg::makeClip: done " << std::endl;
+}
+
+void FFMpeg::executeFfmpeg(const std::string &ffmpegArgs, FfmpegProgressListener &progress) {
+    int outfp;
+    int pid = popen2((const char *)ffmpegArgs.c_str(), nullptr, &outfp);
+    if (pid == -1) {
+        throw std::runtime_error("popen2() failed!");
+    }
+    std::cout << "FFMpeg::makeClip: PID " <<  pid << std::endl;
+
+    FILE *outStream = fdopen(outfp, "r");
+
+    try {
+        std::array<char, 256> buffer{};
+
+        while(fgets(buffer.data(), sizeof(buffer), outStream) != nullptr) {
+            std::string  out = std::string(buffer.data());
+//            std::cout << out  << std::endl;
+            // Split in two strings separated by = sign
+            std::string::size_type pos = out.find('=');
+            if ( pos == std::string::npos){
+                continue;
+            }
+            // The first one is the keyword
+            std::string keyword = out.substr(0, pos);
+            std::string value = out.substr(pos+1);
+            value.pop_back(); // Remove the trailing \n
+            if ( keyword == "out_time_us" ){
+                // The second one is the value
+                // Convert to milliseconds
+                int64_t msEncoded = std::stoll(value) / 1000;
+                bool stopRequested = progress.ffmpegProgress(msEncoded);
+                if( stopRequested ){
+                    std::cout << "FFMpeg::makeClip: killing PID " <<  pid << std::endl;
+                    kill(pid, SIGINT);
+                    fclose(outStream);
+                    break;
+                }
+            } else if( keyword == "progress"  ){
+                if ( value == "end" ){
+                    std::cout << "FFMpeg::makeClip: reached the end " <<  pid << std::endl;
+                    int stat;
+                    fclose(outStream);
+                    waitpid(pid, &stat, 0);
+                    break;
+                }
+            }
+        }
+    } catch (...) {
+        fclose(outStream);
+        throw;
+    }
+}
+
+std::string FFMpeg::makeClipFfmpegArgs(const std::string &clipPath) {
+    std::string ffmpegArgs = s_ffmpeg + " -progress - -nostats -y ";
     ffmpegArgs += " \\\n";
 
     int clipIdx = 0;
@@ -91,12 +194,10 @@ void FFMpeg::makeClip(const std::string &clipPath) {
         clipIdx++;
     }
 
-
     // Construct the filter_complex argument
     ffmpegArgs += " -filter_complex  ";
     ffmpegArgs += " \\\n";
     ffmpegArgs += "\"";
-
 
     bool concatIsRequired = m_pClipFragments->size() > 1;
 
@@ -145,6 +246,40 @@ void FFMpeg::makeClip(const std::string &clipPath) {
     ffmpegArgs += " -map " + merged + " -map " + audio;
     ffmpegArgs += " \\\n";
     ffmpegArgs += " \"" + clipPath + "\"";
+    return ffmpegArgs;
+}
+
+std::string FFMpeg::makeJoinChaptersFfmpegArgs(std::list<std::string> &chaptersList, const std::basic_string<char> &outPath) {
+
+    // Create file containing the list of clips being merged
+    std::filesystem::path listPath = std::filesystem::temp_directory_path() / "list.txt";
+    std::ofstream listFile(listPath);
+    for( const auto& chapter: chaptersList) {
+        listFile << "file '" << chapter << "'" << std::endl;
+    }
+    listFile.close();
+
+    std::string ffmpegArgs = s_ffmpeg + " -progress - -nostats -y ";
+    ffmpegArgs += " \\\n";
+
+    ffmpegArgs += " -f concat -safe 0 -i \"" + listPath.string() + "\"";
+
+    ffmpegArgs += " -c copy \"" + outPath + "\"";
+
+    return ffmpegArgs;
+}
+
+
+void FFMpeg::joinChapters(std::list<std::string> &chaptersList, const std::basic_string<char> &moviePath,
+                          FfmpegProgressListener &progress) {
+    // make ffmpeg arguments
+    std::string ffmpegArgs = makeJoinChaptersFfmpegArgs(chaptersList, moviePath);
     std::cout <<  "[" << ffmpegArgs << "]" << std::endl;
 
+    // Execute ffmpeg
+    executeFfmpeg(ffmpegArgs, progress);
+
+    std::cout << "FFMpeg::makeClip: done " << std::endl;
 }
+
+
