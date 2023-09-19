@@ -2,6 +2,7 @@
 #include <QPainter>
 #include <QFont>
 #include <QFontMetrics>
+#include <QDateTime>
 #include "InstrOverlayMaker.h"
 
 void InfoCell::setSize(int width) {
@@ -70,19 +71,36 @@ InstrOverlayMaker::InstrOverlayMaker(std::filesystem::path &workDir, int width, 
 void InstrOverlayMaker::chooseTimeStampFont(int timeStampHeight) {
     QFont font = QFont(FONT_FAMILY_TIMESTAMP);
 
+    // Time stamp font must be no longer that cell wideth and no taller that 3/8 of cell height
+    int maxHeight = m_infoCell.getHeight() * 3 / 8;
     int fontPointSize;
-    for(int fs=10; fs <100; fs ++){
+    for(int fs=1; fs < 100; fs ++){
         fontPointSize = fs;
         font.setPointSize(fs);
         QFontMetrics fm(font);
-        QRect rect = fm.boundingRect("----");
-        if(rect.height() > timeStampHeight){
+        QRect rect = fm.boundingRect("2023-03-01 13:34:00 PDT");
+        if(rect.height() > maxHeight || rect.width() > m_infoCell.geWidth()){
             fontPointSize = fs - 1;
             break;
         }
     }
 
     m_timeStampFont = QFont(FONT_FAMILY_TIMESTAMP, fontPointSize);
+
+    // The copyright font must be no wider that cell width and no taller then 1/4 of cell height
+    maxHeight = m_infoCell.getHeight() * 2 / 8;
+    for(int fs=1; fs < 100; fs ++){
+        fontPointSize = fs;
+        font.setPointSize(fs);
+        QFontMetrics fm(font);
+        QRect rect = fm.boundingRect(COPYRIGHT_SAILVUE);
+        if( (rect.height() > maxHeight) || (rect.width() > m_infoCell.geWidth()) ){
+            fontPointSize = fs - 1;
+            break;
+        }
+    }
+
+    m_copyrightFont = QFont(FONT_FAMILY_TIMESTAMP, fontPointSize);
 }
 
 std::string InstrOverlayMaker::addEpoch(const std::string &fileName, InstrumentInput &instrData) {
@@ -100,9 +118,31 @@ std::string InstrOverlayMaker::addEpoch(const std::string &fileName, InstrumentI
     painter.setBrush(QColor(0x32, 0x32, 0x32, 0x80));
     painter.drawRect(0, 0, m_width, m_height);
 
-    int x = m_cellStep;
+    int x = 0;
+    int y = 0;
+    int pad = 5;
+    // Time stamp
+    QDateTime time = QDateTime::fromMSecsSinceEpoch(qint64(instrData.utc.getUnixTimeMs()));
+    std::string txt = time.toString("yyyy-MM-dd hh:mm:ss UTC").toStdString();
+    painter.setFont(m_timeStampFont);
+    painter.setPen(m_timeStampPen);
+    painter.drawText(QRect(x + pad, y + pad, m_cellStep, m_infoCell.getHeight() * 3 / 8), QString::fromStdString(txt));
 
-    std::string txt = formatSpeed(instrData.sow, instrData.utc);
+    // Coordinates
+    y = m_infoCell.getHeight() * 3 / 8;
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(5) << instrData.loc.getLat()
+    << " " << std::fixed << std::setprecision(5) << instrData.loc.getLon();
+    painter.drawText(QRect(x + pad, y + pad, m_cellStep, m_infoCell.getHeight() * 3 / 8), QString::fromStdString(oss.str()));
+
+    // Copyright
+    y = m_infoCell.getHeight() * 3 / 4;
+    painter.setFont(m_copyrightFont);
+    painter.setPen(m_copyrightPen);
+    painter.drawText(QRect(x + pad , y + pad, m_cellStep, m_infoCell.getHeight() * 1 / 4), COPYRIGHT_SAILVUE);
+
+    x+= m_cellStep;
+    txt = formatSpeed(instrData.sow, instrData.utc);
     m_infoCell.draw(painter, x, m_rectYoffset, "SPD", QString::fromStdString(txt));
 
     x+= m_cellStep;

@@ -9,20 +9,20 @@ static const char *const FONT_FAMILY_TIMESTAMP = "Courier";
 static const char *const FONT_FAMILY_VALUE = "Courier";
 static const char *const FONT_FAMILY_LABEL = "Courier";
 
+static const char *const COPYRIGHT_SAILVUE = "(c) github.com/sergei/sailvue";
+
 class InfoCell {
 public:
     void setSize(int width);
     void draw(QPainter &painter, int x, int y, const QString &label, const QString &value);
     [[nodiscard]] int getHeight() const {return m_height;};
+    [[nodiscard]] int geWidth() const {return m_width;};
+
 private:
     QFont m_valueFont;
     QFont m_labelFont;
     int m_height;
-public:
-
-private:
     int m_width;
-
     QPen m_labelPen = QPen(QColor(255, 255, 255, 200));
     QPen m_valuePen = QPen(QColor(255, 255, 255, 255));
 };
@@ -52,7 +52,10 @@ private:
     int m_rectXoffset = 0;
 
     QFont m_timeStampFont;
-    QPen m_timeStampPen = QPen(QColor(255, 255, 255, 255));
+    QPen m_timeStampPen = QPen(QColor(255, 255, 255, 128));
+
+    QFont m_copyrightFont;
+    QPen m_copyrightPen = QPen(QColor(255, 255, 255, 128));
 
 };
 
