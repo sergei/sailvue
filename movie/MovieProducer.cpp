@@ -1,3 +1,4 @@
+#include <fstream>
 #include "MovieProducer.h"
 #include "navcomputer/IProgressListener.h"
 #include "Worker.h"
@@ -27,10 +28,23 @@ void MovieProducer::produce() {
         std::filesystem::path raceFolder = std::filesystem::path(m_moviePath) / ("race" +  std::to_string(raceCount));
         std::filesystem::create_directories(raceFolder);
 
+        // Create description.txt file in that folder
+        std::filesystem::path descFileName = raceFolder / "description.txt";
+        std::ofstream df (descFileName, std::ios::out);
+
         int chapterCount = 0;
         m_totalRaceDuration = 0;
         std::list<std::string> chapterClips;
         for( Chapter *chapter: race->getChapters()){
+            // Add entry to the description file
+            auto sec = m_totalRaceDuration / 1000;
+            auto min = sec / 60;
+            sec = sec % 60;
+            std::ostringstream oss;
+            df <<  std::setw(2) << std::setfill('0') << min << ":" << std::setw(2) << std::setfill('0') << sec;
+            df << " " << chapter->getName();
+            df << std::endl;
+
             std::filesystem::path chapterFolder = raceFolder / ("chapter" +  std::to_string(chapterCount));
             std::filesystem::create_directories(chapterFolder);
             std::string chapterClipName = produceChapter(*chapter, chapterFolder, ignoreCache);
@@ -45,6 +59,7 @@ void MovieProducer::produce() {
         }
         makeRaceVideo(raceFolder, chapterClips);
         raceCount ++;
+        df.close();
     }
 }
 
