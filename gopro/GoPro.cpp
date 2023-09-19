@@ -206,8 +206,8 @@ void GoPro::readMp4File(const std::string &mp4FileName, std::list<InstrumentInpu
 //                printf("%s,%.5f,%.5f,%.1f,%.1f,%.1f\n", utc, lat, lon, alt, sog_ms, speed3d_ms);
                 InstrumentInput ii;
                 ii.utc = UtcTime::fromUnixTimeMs(m_ulClipEndUtcMs);
-                ii.loc = GeoLoc::fromDegrees(lat, lon);
-                ii.sog = Speed::fromMetersPerSecond(sog_ms);
+                ii.loc = GeoLoc::fromDegrees(lat, lon, m_ulClipEndUtcMs);
+                ii.sog = Speed::fromMetersPerSecond(sog_ms, m_ulClipEndUtcMs);
                 listInputs.push_back(ii);
             }else {
                 printf("%d,%f,%s,", index, in, "False");

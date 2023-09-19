@@ -101,19 +101,19 @@ std::string InstrOverlayMaker::addEpoch(const std::string &fileName, InstrumentI
     painter.drawRect(0, 0, m_width, m_height);
 
     int x = m_cellStep;
-    std::string txt = (std::string)instrData.sow;
+    std::string txt = instrData.sow.toString(instrData.utc.getUnixTimeMs());
     m_infoCell.draw(painter, x, m_rectYoffset, "SPD", QString::fromStdString(txt));
 
     x+= m_cellStep;
-    txt = (std::string)instrData.sog;
+    txt = instrData.sog.toString(instrData.utc.getUnixTimeMs());
     m_infoCell.draw(painter, x, m_rectYoffset, "SOW", QString::fromStdString(txt));
 
     x+= m_cellStep;
-    txt = (std::string)instrData.tws;
+    txt = instrData.tws.toString(instrData.utc.getUnixTimeMs());
     m_infoCell.draw(painter, x, m_rectYoffset, "TWS", QString::fromStdString(txt));
 
     x+= m_cellStep;
-    txt = (std::string)instrData.twa;
+    txt = instrData.twa.toString(instrData.utc.getUnixTimeMs());
     m_infoCell.draw(painter, x, m_rectYoffset, "TWA", QString::fromStdString(txt));
 
     std::cout << "Created " << pngName << std::endl;

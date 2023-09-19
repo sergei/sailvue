@@ -7,25 +7,25 @@
 class Speed : public Quantity {
 public:
     static Speed INVALID;
-    explicit Speed(): Quantity(false) {};
+    explicit Speed(): Quantity(false, 0) {};
 
-    static Speed fromMetersPerSecond(double metersPerSecond) {
-        return Speed(metersPerSecond  / 1852. * 3600.);
+    static Speed fromMetersPerSecond(double metersPerSecond,  uint64_t utcMs) {
+        return Speed(metersPerSecond  / 1852. * 3600., utcMs);
     }
-    static Speed fromKnots(double knots) {
-        return Speed(knots);
+    static Speed fromKnots(double knots, uint64_t utcMs) {
+        return Speed(knots, utcMs);
     }
     [[nodiscard]] double getKnots() const { return m_dKnots; }
-    explicit operator std::string() const {
+    [[nodiscard]] std::string toString(uint64_t utcMs) const {
         std::stringstream ss;
-        if( isValid())
+        if( isValid(utcMs))
             ss << std::setprecision(3) << m_dKnots;
         else
             ss << "";
         return ss.str();
     }
 private:
-    explicit Speed(double knots):Quantity(true){
+    explicit Speed(double knots,  uint64_t utcMs):Quantity(true, utcMs){
         m_dKnots = knots;
     };
     double m_dKnots=0;

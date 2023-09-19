@@ -104,7 +104,7 @@ void PolarOverlayMaker::setHistory(int startIdx, int endIdx) {
     for(int i=startIdx; i<endIdx; i++) {
         InstrumentInput &instrData = m_rInstrDataVector[i];
 
-        if (instrData.twa.isValid() && instrData.sow.isValid()) {
+        if (instrData.twa.isValid(instrData.utc.getUnixTimeMs()) && instrData.sow.isValid(instrData.utc.getUnixTimeMs())) {
             auto twaRad = float(instrData.twa.getDegrees() * M_PI / 180);
             auto sowKts = float(instrData.sow.getKnots());
             m_maxSpeedKts = (int)lround(std::max(float(m_maxSpeedKts), sowKts));

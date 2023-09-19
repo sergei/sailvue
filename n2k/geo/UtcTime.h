@@ -8,14 +8,16 @@
 class UtcTime : public Quantity {
 public:
     static UtcTime INVALID;
-    explicit UtcTime(): Quantity(false) {};
+    explicit UtcTime(): Quantity(false, 0) {};
+    // We ignore the time stamp when check validity of UTC time itself
+    [[nodiscard]] bool isValid(uint64_t ) const override { return m_bValid; }
 
     static UtcTime fromUnixTimeMs(uint64_t ms) {
         return UtcTime(ms);
     }
     explicit operator std::string() const {
         std::stringstream ss;
-        if( isValid())
+        if( isValid(m_uiUnixMilliSecs))
             ss << m_uiUnixMilliSecs;
         else
             ss << "";
@@ -26,7 +28,7 @@ public:
     }
 
 private:
-    explicit UtcTime(uint64_t ms):Quantity(true) {
+    explicit UtcTime(uint64_t ms):Quantity(true, ms) {
         m_uiUnixMilliSecs = ms;
     }
 

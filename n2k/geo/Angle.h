@@ -8,25 +8,25 @@
 class Angle : public Quantity {
 public:
     static Angle INVALID;
-    explicit Angle(): Quantity(false) {};
+    explicit Angle(): Quantity(false,0) {};
 
-    static Angle fromRadians(double radians) {
-        return Angle(radians * 180.0 / M_PI);
+    static Angle fromRadians(double radians, uint64_t utcMs) {
+        return Angle(radians * 180.0 / M_PI, utcMs);
     }
-    static Angle fromDegrees(double degrees) {
-        return Angle(degrees);
+    static Angle fromDegrees(double degrees, uint64_t utcMs) {
+        return Angle(degrees, utcMs);
     }
     [[nodiscard]] double getDegrees() const { return m_dDegrees; }
-    explicit operator std::string() const {
+    [[nodiscard]] std::string toString(uint64_t utcMs) const {
         std::stringstream ss;
-        if( isValid())
+        if( isValid(utcMs) )
             ss << std::setprecision(3) << m_dDegrees;
         else
             ss << "";
         return ss.str();
     }
 private:
-    explicit Angle(double degrees):Quantity(true){
+    explicit Angle(double degrees, uint64_t utcMs):Quantity(true, utcMs){
         if( degrees > 180 ) {
             m_dDegrees = degrees - 360;
         }else{

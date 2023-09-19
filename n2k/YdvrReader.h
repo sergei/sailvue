@@ -85,11 +85,14 @@ private:
     // Use this map to accept PGNs coming from this source only
     std::map<uint32_t, uint8_t> m_mapSrcForPgn;
 
-    // Time maintenance
+    // Time maintenance for given file
     uint64_t m_ulGpsFixUnixTimeMs = 0;  // Time of last GPS fix in Unix time (ms)
     uint64_t m_ulGpsFixLocalTimeMs = 0; // Time of last GPS fix in local time (ms)
     uint16_t m_usLastTsMs = 0;          // Last time stamp in ms
-    uint64_t m_ulUnrolledTsMs = 0;        // Unrolled local time (ms)
+    uint64_t m_ulUnrolledTsMs = 0;      // Unrolled local time (ms)
+
+
+    uint64_t m_ulLatestGpsTimeMs = 0;  // Time of last GPS fix in Unix time (ms) unlike m_ulGpsFixUnixTimeMs it is carried from file to file
 
     uint64_t m_ulStartGpsTimeMs = 0;
     uint64_t m_ulEndGpsTimeMs = 0;

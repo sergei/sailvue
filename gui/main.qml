@@ -103,7 +103,7 @@ ApplicationWindow {
         id: raceTreeModel
 
         // Reading data from files
-        onProgressStatus: {
+        onProgressStatus: function (state, progress) {
             progressBar.value = progress
             progressText.text = state
         }

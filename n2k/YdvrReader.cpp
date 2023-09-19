@@ -281,7 +281,7 @@ void YdvrReader::ProcessPgn(const RawMessage &msg, std::ofstream& cache)  {
     if (pgn->pgn ==  126996){
         // We process this PGN coming from any source
         processProductInformationPgn(msg.src, pgn, data, len);
-    }else {
+    } else {
         // Here we check if it's coming from approved source address
         if ( m_mapSrcForPgn[pgn->pgn] == msg.src )
         {
@@ -321,9 +321,9 @@ void YdvrReader::processCogSogPgn(const Pgn *pgn, const uint8_t *data, size_t le
     int64_t val;
     extractNumberByOrder(pgn, 4, data, len, &val);
     double rad = double(val) *  RES_RADIANS;
-    m_epoch.cog = rad < 7 ? Direction::fromRadians(rad) : Direction::INVALID;
+    m_epoch.cog = rad < 7 ? Direction::fromRadians(rad, m_ulLatestGpsTimeMs) : Direction::INVALID;
     extractNumberByOrder(pgn, 5, data, len, &val);
-    m_epoch.sog = val < 65532 ? Speed::fromMetersPerSecond(double(val) * RES_MPS) : Speed::INVALID;
+    m_epoch.sog = val < 65532 ? Speed::fromMetersPerSecond(double(val) * RES_MPS, m_ulLatestGpsTimeMs) : Speed::INVALID;
 }
 
 /// GNSS Position Data
@@ -341,18 +341,19 @@ void YdvrReader::processGpsFixPgn(const Pgn *pgn, const uint8_t *data, size_t le
         extractNumberByOrder(pgn, 3, data, len, &time);
 
         m_ulGpsFixUnixTimeMs = date * 86400 * 1000 + time / 10;
+        m_ulLatestGpsTimeMs = m_ulGpsFixUnixTimeMs;
         // Make it integer number of 200ms intervals
 
         m_ulGpsFixLocalTimeMs = m_ulUnrolledTsMs;
 
-        m_epoch.utc = UtcTime::fromUnixTimeMs(m_ulGpsFixUnixTimeMs);
+        m_epoch.utc = UtcTime::fromUnixTimeMs(m_ulLatestGpsTimeMs);
 
         int64_t val;
         extractNumberByOrder(pgn, 4, data, len, &val);
         double lat = double(val) * RES_LL_64;
         extractNumberByOrder(pgn, 5, data, len, &val);
         double lon = double(val) * RES_LL_64;
-        m_epoch.loc = GeoLoc::fromDegrees(lat, lon);
+        m_epoch.loc = GeoLoc::fromDegrees(lat, lon, m_ulLatestGpsTimeMs);
     }
 }
 
@@ -363,7 +364,7 @@ void YdvrReader::processPosRapidUpdate(const Pgn *pgn, const uint8_t *data, uint
     double lat = double(val) *  RES_LL_32;
     extractNumberByOrder(pgn, 2, data, len, &val);
     double lon = double(val) *  RES_LL_32;
-    m_epoch.loc = GeoLoc::fromDegrees(lat, lon);
+    m_epoch.loc = GeoLoc::fromDegrees(lat, lon, m_ulLatestGpsTimeMs);
 
     // Infer epoch time using the last GPS fix time and the local time
     // of the last received message
@@ -380,14 +381,14 @@ void YdvrReader::processVesselHeading(const Pgn *pgn, const uint8_t *data, uint8
     double hdg = double(val) *  RES_RADIANS;
     extractNumberByOrder(pgn, 5, data, len, &val);
     if ( val == 1 && hdg < 7) { // Magnetic
-        m_epoch.mag = Direction::fromRadians(hdg);
+        m_epoch.mag = Direction::fromRadians(hdg, m_ulLatestGpsTimeMs);
     }
 }
 
 void YdvrReader::processBoatSpeed(const Pgn *pgn, const uint8_t *data, uint8_t len) {
     int64_t val;
     extractNumberByOrder(pgn, 2, data, len, &val);
-    m_epoch.sow = val < 65532 ? Speed::fromMetersPerSecond(double(val) * RES_MPS) : Speed::INVALID;
+    m_epoch.sow = val < 65532 ? Speed::fromMetersPerSecond(double(val) * RES_MPS, m_ulLatestGpsTimeMs) : Speed::INVALID;
 
     extractNumberByOrder(pgn, 3, data, len, &val);
     extractNumberByOrder(pgn, 4, data, len, &val);
@@ -398,9 +399,9 @@ void YdvrReader::processBoatSpeed(const Pgn *pgn, const uint8_t *data, uint8_t l
 void YdvrReader::processWindData(const Pgn *pgn, const uint8_t *data, uint8_t len) {
     int64_t val;
     extractNumberByOrder(pgn, 2, data, len, &val);
-    Speed windSpeed = val < 65532 ? Speed::fromMetersPerSecond(double(val) * RES_MPS) : Speed::INVALID;
+    Speed windSpeed = val < 65532 ? Speed::fromMetersPerSecond(double(val) * RES_MPS, m_ulLatestGpsTimeMs) : Speed::INVALID;
     extractNumberByOrder(pgn, 3, data, len, &val);
-    Angle windAngle = val < 65532 ? Angle::fromRadians(double(val) * RES_RADIANS) : Angle::INVALID;
+    Angle windAngle = val < 65532 ? Angle::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs) : Angle::INVALID;
     extractNumberByOrder(pgn, 4, data, len, &val);
     if( val == 2 ){  // Apparent Wind (relative to the vessel centerline)
         m_epoch.awa = windAngle;
@@ -415,17 +416,17 @@ void YdvrReader::processWindData(const Pgn *pgn, const uint8_t *data, uint8_t le
 void YdvrReader::processRudder(const Pgn *pgn, const uint8_t *data, uint8_t len) {
     int64_t val;
     extractNumberByOrder(pgn, 5, data, len, &val);
-    m_epoch.rdr = val < 65532 ? Angle::fromRadians(double(val) * RES_RADIANS) : Angle::INVALID;
+    m_epoch.rdr = val < 65532 ? Angle::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs) : Angle::INVALID;
 }
 
 void YdvrReader::processAttitude(const Pgn *pgn, const uint8_t *data, uint8_t len) {
     int64_t val;
     extractNumberByOrder(pgn, 2, data, len, &val);
-    m_epoch.yaw = val < 65532 ? Angle::fromRadians(double(val) * RES_RADIANS) : Angle::INVALID;
+    m_epoch.yaw = val < 65532 ? Angle::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs) : Angle::INVALID;
     extractNumberByOrder(pgn, 3, data, len, &val);
-    m_epoch.pitch = val < 65532 ? Angle::fromRadians(double(val) * RES_RADIANS) : Angle::INVALID;
+    m_epoch.pitch = val < 65532 ? Angle::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs) : Angle::INVALID;
     extractNumberByOrder(pgn, 4, data, len, &val);
-    m_epoch.roll = val < 65532 ? Angle::fromRadians(double(val) * RES_RADIANS) : Angle::INVALID;
+    m_epoch.roll = val < 65532 ? Angle::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs) : Angle::INVALID;
 
 }
 
@@ -479,15 +480,13 @@ void YdvrReader::ResetEpoch() {
 }
 
 void YdvrReader::ProcessEpoch(std::ofstream &cache) {
-    if( m_epoch.utc.isValid() ){
+    if( m_epoch.utc.isValid(m_ulGpsFixUnixTimeMs) ){
         if ( m_ulStartGpsTimeMs == 0 )
             m_ulStartGpsTimeMs = m_ulGpsFixUnixTimeMs;
         m_ulEndGpsTimeMs = m_ulGpsFixUnixTimeMs;
         m_ulEpochCount++;
 
         cache << static_cast<std::string>(m_epoch) << std::endl;
-
-        ResetEpoch();
     }
 }
 

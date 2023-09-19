@@ -8,25 +8,25 @@
 class Direction : public Quantity {
 public:
     static Direction INVALID;
-    explicit Direction(): Quantity(false) {};
+    explicit Direction(): Quantity(false, 0) {};
 
-    static Direction fromRadians(double radians) {
-        return Direction(radians * 180.0 / M_PI);
+    static Direction fromRadians(double radians, uint64_t utcMs) {
+        return Direction(radians * 180.0 / M_PI, utcMs);
     }
-    static Direction fromDegrees(double degrees) {
-        return Direction(degrees);
+    static Direction fromDegrees(double degrees, uint64_t utcMs) {
+        return Direction(degrees, utcMs);
     }
     [[nodiscard]] double getDegrees() const { return m_dDegrees; }
-    explicit operator std::string() const {
+    [[nodiscard]] std::string toString( uint64_t utcMs) const {
         std::stringstream ss;
-        if( isValid())
+        if( isValid(utcMs))
             ss << std::setprecision(3) << m_dDegrees;
         else
             ss << "";
         return ss.str();
     }
 private:
-    explicit Direction(double degrees):Quantity(true){
+    explicit Direction(double degrees, uint64_t utcMs):Quantity(true, utcMs){
         if( degrees > 360 ) {
             m_dDegrees = degrees - 360;
         }else if( degrees < 0 ) {

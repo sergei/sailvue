@@ -28,19 +28,19 @@ public:
     explicit operator std::string() const {
         std::stringstream ss;
         ss << static_cast<std::string>(utc)
-              << ",loc," << static_cast<std::string>(loc)
-              << ",cog," << static_cast<std::string>(cog)
-              << ",sog," << static_cast<std::string>(sog)
-              << ",aws," << static_cast<std::string>(aws)
-              << ",awa," << static_cast<std::string>(awa)
-              << ",tws," << static_cast<std::string>(tws)
-              << ",twa," << static_cast<std::string>(twa)
-              << ",mag," << static_cast<std::string>(mag)
-              << ",sow," << static_cast<std::string>(sow)
-              << ",rdr," << static_cast<std::string>(rdr)
-              << ",yaw," << static_cast<std::string>(yaw)
-              << ",pitch," << static_cast<std::string>(pitch)
-              << ",roll," << static_cast<std::string>(roll)
+              << ",loc," << loc.toString(utc.getUnixTimeMs())
+              << ",cog," << cog.toString(utc.getUnixTimeMs())
+              << ",sog," << sog.toString(utc.getUnixTimeMs())
+              << ",aws," << aws.toString(utc.getUnixTimeMs())
+              << ",awa," << awa.toString(utc.getUnixTimeMs())
+              << ",tws," << tws.toString(utc.getUnixTimeMs())
+              << ",twa," << twa.toString(utc.getUnixTimeMs())
+              << ",mag," << mag.toString(utc.getUnixTimeMs())
+              << ",sow," << sow.toString(utc.getUnixTimeMs())
+              << ",rdr," << rdr.toString(utc.getUnixTimeMs())
+              << ",yaw," << yaw.toString(utc.getUnixTimeMs())
+              << ",pitch," << pitch.toString(utc.getUnixTimeMs())
+              << ",roll," << roll.toString(utc.getUnixTimeMs())
               ;
         return ss.str();
     }
@@ -65,31 +65,31 @@ public:
                 std::string lat, lon;
                 std::getline(ss, lat, ';');
                 std::getline(ss, lon );
-                ii.loc = GeoLoc::fromDegrees(std::stod(lat), std::stod(lon));
+                ii.loc = GeoLoc::fromDegrees(std::stod(lat), std::stod(lon), ulGpsTimeMs);
             } else if( item == "cog")
-                ii.cog = Direction::fromDegrees(std::stod(value));
+                ii.cog = Direction::fromDegrees(std::stod(value), ulGpsTimeMs);
             else if( item == "sog")
-                ii.sog = Speed::fromKnots(std::stod(value));
+                ii.sog = Speed::fromKnots(std::stod(value), ulGpsTimeMs);
             else if( item == "aws")
-                ii.aws = Speed::fromKnots(std::stod(value));
+                ii.aws = Speed::fromKnots(std::stod(value), ulGpsTimeMs);
             else if( item == "awa")
-                ii.awa = Angle::fromDegrees(std::stod(value));
+                ii.awa = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
             else if( item == "tws")
-                ii.tws = Speed::fromKnots(std::stod(value));
+                ii.tws = Speed::fromKnots(std::stod(value), ulGpsTimeMs);
             else if( item == "twa")
-                ii.twa = Angle::fromDegrees(std::stod(value));
+                ii.twa = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
             else if( item == "mag")
-                ii.mag = Direction::fromDegrees(std::stod(value));
+                ii.mag = Direction::fromDegrees(std::stod(value), ulGpsTimeMs);
             else if( item == "sow")
-                ii.sow = Speed::fromKnots(std::stod(value));
+                ii.sow = Speed::fromKnots(std::stod(value), ulGpsTimeMs);
             else if( item == "rdr")
-                ii.rdr = Angle::fromDegrees(std::stod(value));
+                ii.rdr = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
             else if( item == "yaw")
-                ii.yaw = Angle::fromDegrees(std::stod(value));
+                ii.yaw = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
             else if( item == "pitch")
-                ii.pitch = Angle::fromDegrees(std::stod(value));
+                ii.pitch = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
             else if( item == "roll")
-                ii.roll = Angle::fromDegrees(std::stod(value));
+                ii.roll = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
         }
 
         return ii;
