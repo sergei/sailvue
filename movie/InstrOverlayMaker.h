@@ -34,6 +34,8 @@ public:
     std::string addEpoch(const std::string &fileName, InstrumentInput &instrData);
 private:
     void chooseTimeStampFont(int timeStampHeight);
+    static std::string formatSpeed(const Speed& speed, const UtcTime& utc);
+    static std::string formatAngle(const Angle& angle, const UtcTime& utc);
 private:
     InfoCell m_infoCell;
     std::filesystem::path m_workDir;
@@ -51,6 +53,7 @@ private:
 
     QFont m_timeStampFont;
     QPen m_timeStampPen = QPen(QColor(255, 255, 255, 255));
+
 };
 
 

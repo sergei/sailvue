@@ -101,24 +101,43 @@ std::string InstrOverlayMaker::addEpoch(const std::string &fileName, InstrumentI
     painter.drawRect(0, 0, m_width, m_height);
 
     int x = m_cellStep;
-    std::string txt = instrData.sow.toString(instrData.utc.getUnixTimeMs());
+
+    std::string txt = formatSpeed(instrData.sow, instrData.utc);
     m_infoCell.draw(painter, x, m_rectYoffset, "SPD", QString::fromStdString(txt));
 
     x+= m_cellStep;
-    txt = instrData.sog.toString(instrData.utc.getUnixTimeMs());
+    txt = formatSpeed(instrData.sog, instrData.utc);
     m_infoCell.draw(painter, x, m_rectYoffset, "SOW", QString::fromStdString(txt));
 
     x+= m_cellStep;
-    txt = instrData.tws.toString(instrData.utc.getUnixTimeMs());
+    txt = formatSpeed(instrData.tws, instrData.utc);
     m_infoCell.draw(painter, x, m_rectYoffset, "TWS", QString::fromStdString(txt));
 
     x+= m_cellStep;
-    txt = instrData.twa.toString(instrData.utc.getUnixTimeMs());
+    txt = formatAngle(instrData.twa, instrData.utc);
     m_infoCell.draw(painter, x, m_rectYoffset, "TWA", QString::fromStdString(txt));
 
     std::cout << "Created " << pngName << std::endl;
     image.save(QString::fromStdString(pngName.string()), "PNG");
 
     return pngName.string();
+}
+
+std::string InstrOverlayMaker::formatSpeed(const Speed& speed, const UtcTime& utc) {
+    if( ! speed.isValid(utc.getUnixTimeMs()) )
+        return "--.-";
+
+    std::ostringstream oss;
+    oss << std::setw(4) << std::setfill(' ') << std::fixed << std::setprecision(1) << speed.getKnots();
+    return oss.str();
+}
+
+std::string InstrOverlayMaker::formatAngle(const Angle& angle, const UtcTime& utc) {
+    if( ! angle.isValid(utc.getUnixTimeMs()) )
+        return "---°";
+
+    std::ostringstream oss;
+    oss << std::setw(3) << std::setfill(' ') << std::fixed << std::setprecision(0) << abs(angle.getDegrees()) << "°";
+    return oss.str();
 }
 
