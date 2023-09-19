@@ -97,6 +97,7 @@ set(qml_resource_files
         "gui/ChapterEditor.qml"
         "gui/ChapterMapElement.qml"
         "gui/InputDataDialog.qml"
+        "gui/PGNSources.qml"
 )
 
 qt6_add_resources(sailvue "qml"
@@ -124,5 +125,7 @@ qt_add_qml_module(sailvue
         SOURCES gui/RaceTreeModel.cpp
         SOURCES gui/GoProMediaPlayer.h
         SOURCES gui/GoProMediaPlayer.cpp
+        SOURCES gui/PgnSrcTreeModel.h
+        SOURCES gui/PgnSrcTreeModel.cpp
 )
 

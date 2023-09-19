@@ -249,11 +249,22 @@ ApplicationWindow {
                 onTriggered: Qt.quit()
             }
         }
+        Menu {
+            title: qsTr("&Tools")
+            Action {
+                text: qsTr("&Options...")
+                onTriggered: pgnSourcesDialog.open()
+            }
+        }
     }
 
     InputDataDialog {
         id: filesDialog
         raceTreeModel: raceTreeModel
+    }
+
+    PGNSources {
+        id: pgnSourcesDialog
     }
 
     FileDialog {

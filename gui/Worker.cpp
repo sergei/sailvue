@@ -2,10 +2,12 @@
 #include <QCoreApplication>
 #include <QUrl>
 #include <QGeoPath>
+#include <qsettings.h>
 #include "Worker.h"
 #include "n2k/YdvrReader.h"
 #include "gopro/GoPro.h"
 #include "movie/MovieProducer.h"
+#include "PgnSrcTreeModel.h"
 
 void Worker::readData(const QString &goproDir, const QString &nmeaDir, const QString &polarFile, bool bIgnoreCache){
     std::cout << "goproDir " + goproDir.toStdString() << std::endl;
@@ -16,16 +18,25 @@ void Worker::readData(const QString &goproDir, const QString &nmeaDir, const QSt
     std::string stYdvrDir = QUrl(nmeaDir).toLocalFile().toStdString();
     std::string stGoProDir = QUrl(goproDir).toLocalFile().toStdString();
     std::string stCacheDir = "/tmp/sailvue";
-    std::string stPgnSrcCsv = "/Users/sergei/github/sailvue/data/pgn-src.csv";
     bool bSummaryOnly = false;
+    bool bMappingOnly = false;
 
+    QSettings settings;
+    QString pgnSrcCsvPath = settings.value(SETTINGS_KEY_PGN_CSV, "").toString();
+    std::string stPgnSrcCsv;
+    if ( !pgnSrcCsvPath.isEmpty() ){
+        stPgnSrcCsv = QUrl(pgnSrcCsvPath).toLocalFile().toStdString();
+    } else {
+        std::cerr << "No PGN sources file found" << std::endl;
+        return;
+    }
 
     if ( bIgnoreCache ){
         std::cout << "Deleting cached files" << std::endl;
         std::filesystem::remove_all(stCacheDir);
     }
 
-    YdvrReader ydvrReader(stYdvrDir, stCacheDir, stPgnSrcCsv, bSummaryOnly, *this);
+    YdvrReader ydvrReader(stYdvrDir, stCacheDir, stPgnSrcCsv, bSummaryOnly, bMappingOnly,  *this);
     GoPro goPro(stGoProDir, stCacheDir, ydvrReader, *this);
 
     // Create path containing points from all gopro clips

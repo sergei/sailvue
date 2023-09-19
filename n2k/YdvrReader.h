@@ -34,17 +34,31 @@ public:
     uint32_t m_ulEpochCount = 0;
 };
 
+const std::set<uint32_t> REQUIRED_PGNS({
+    129029, // GNSS Position Data
+    129025, // GNSS Position Rapid Update
+    129026, // COG & SOG Rapid Update
+    127250, // Vessel Heading
+    128259, // Boat Speed
+    130306, // Wind Data
+    127245, // Rudder
+    127257, // Attitude
+});
+
 class YdvrReader : public InstrDataReader {
 public:
     YdvrReader(const std::string& stYdvrDir, const std::string& stCacheDir, const std::string& stPgnSrcCsv,
-               bool bSummaryOnly, IProgressListener& rProgressListener);
+               bool bSummaryOnly, bool bMappingOnly, IProgressListener& rProgressListener);
     ~YdvrReader();
 
     void read(uint64_t ulStartUtcMs, uint64_t ulEndUtcMs, std::list<InstrumentInput> &listInputs) override;
 
+    void getPgnData(std::map<uint32_t, std::vector<std::string>> &mapPgnDevices,
+                    std::map<uint32_t, std::string> &mapPgnDescription);
+
 private:
-    void processYdvrDir(const std::string& stYdvrDir, const std::string& stCacheDir, bool bSummaryOnly);
-    void processDatFile(const std::string &ydvrFile, const std::string& stWorkDir,  const std::string& stSummaryDir, bool bSummaryOnly);
+    void processYdvrDir(const std::string& stYdvrDir, const std::string& stCacheDir, bool bSummaryOnly, bool bMappingOnly);
+    void processDatFile(const std::string &ydvrFile, const std::string& stWorkDir,  const std::string& stSummaryDir, bool bSummaryOnly, bool bMappingOnly);
     void readDatFile(const std::string &ydvrFile, const std::filesystem::path &stCacheFile,
                      const std::filesystem::path &stSummaryFile);
     static void canIdToN2k(uint32_t id, uint8_t &prio, uint32_t &pgn, uint8_t &src, uint8_t &dst);

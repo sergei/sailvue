@@ -3,6 +3,10 @@
 #include "geo/Angle.h"
 #include "geo/Speed.h"
 
+static void deCommas(std::string &s) {
+    std::replace( s.begin(), s.end(), ',', ';'); // replace all ',' to ';'
+}
+
 bool YdvrReader::m_sCanBoatInitialized = false;
 
 std::string trim(const std::string& str,
@@ -19,15 +23,17 @@ std::string trim(const std::string& str,
 }
 
 YdvrReader::YdvrReader(const std::string& stYdvrDir, const std::string& stCacheDir, const std::string& stPgnSrcCsv,
-                       bool bSummaryOnly, IProgressListener& rProgressListener)
+                       bool bSummaryOnly, bool bMappingOnly, IProgressListener& rProgressListener)
 : m_rProgressListener(rProgressListener)
 {
     if ( ! m_sCanBoatInitialized ){
         initCanBoat();  // Initialize canboat library
         m_sCanBoatInitialized = true;
     }
-    ReadPgnSrcTable(stPgnSrcCsv); // Decide on what devices to use to get each PGN
-    processYdvrDir(stYdvrDir, stCacheDir, bSummaryOnly);
+    if ( ! bMappingOnly ){ // We don't have this table
+        ReadPgnSrcTable(stPgnSrcCsv); // Decide on what devices to use to get each PGN
+    }
+    processYdvrDir(stYdvrDir, stCacheDir, bSummaryOnly, bMappingOnly);
 }
 
 YdvrReader::~YdvrReader() = default;
@@ -60,10 +66,9 @@ static bool CompareDatInfo(const DatFileInfo& a, const DatFileInfo& b) {
     return a.m_ulStartGpsTimeMs < b.m_ulStartGpsTimeMs;
 }
 
-void YdvrReader::processYdvrDir(const std::string& stYdvrDir, const std::string& stWorkDir, bool bSummaryOnly) {
+void YdvrReader::processYdvrDir(const std::string& stYdvrDir, const std::string& stWorkDir, bool bSummaryOnly, bool bMappingOnly) {
 
     // Read all .DAT files in the directory and subdirectories
-
     std::filesystem::path stCacheDir = std::filesystem::path(stWorkDir) / "ydvr" /"cache" ;
     std::filesystem::create_directories(stCacheDir);
     std::filesystem::path stSummaryDir = std::filesystem::path(stWorkDir) / "ydvr"/ "summary" ;
@@ -79,7 +84,7 @@ void YdvrReader::processYdvrDir(const std::string& stYdvrDir, const std::string&
     float fileNo = 0;
     for( const auto& file : files ) {
         if (file.path().extension() == ".DAT") {
-            processDatFile(file.path().string(), stCacheDir, stSummaryDir, bSummaryOnly);
+            processDatFile(file.path().string(), stCacheDir, stSummaryDir, bSummaryOnly, bMappingOnly);
             int progress = (int)round(fileNo / filesCount * 100.f);
             m_rProgressListener.progress(file.path().filename(), progress);
             if( m_rProgressListener.stopRequested() ) {
@@ -112,18 +117,18 @@ void YdvrReader::processYdvrDir(const std::string& stYdvrDir, const std::string&
     m_listDatFiles.sort(CompareDatInfo);
 }
 
-void YdvrReader::processDatFile(const std::string &ydvrFile, const std::string& stCacheDir, const std::string& stSummaryDir, bool bSummaryOnly){
+void YdvrReader::processDatFile(const std::string &ydvrFile, const std::string& stCacheDir, const std::string& stSummaryDir, bool bSummaryOnly, bool bMappingOnly){
     std::cout << ydvrFile << std::endl;
 
     std::string csvFileName = std::filesystem::path(ydvrFile).filename().string() + ".csv";
-    std::filesystem::path stCacheFile = std::filesystem::path(stCacheDir)  / csvFileName;
+    std::filesystem::path stCacheFile = bMappingOnly ? std::filesystem::path("/dev/null") : std::filesystem::path(stCacheDir)  / csvFileName;
     std::filesystem::path stSummaryFile = std::filesystem::path(stSummaryDir)  / csvFileName;
 
     auto haveCache = std::filesystem::exists(stCacheFile) && std::filesystem::is_regular_file(stCacheFile) ;
 
     auto haveSummary = std::filesystem::exists(stSummaryFile) && std::filesystem::is_regular_file(stSummaryFile) &&
                      std::filesystem::file_size(stSummaryFile) > 0;
-    if (haveCache && haveSummary) {
+    if (haveCache && haveSummary  && !bMappingOnly) {
         std::cout << "Reading cached file: " << stSummaryFile << std::endl;
         std::ifstream summary (stSummaryFile, std::ios::in);
         std::string line;
@@ -141,7 +146,6 @@ void YdvrReader::processDatFile(const std::string &ydvrFile, const std::string& 
             m_listDatFiles.push_back(DatFileInfo{ydvrFile, stCacheFile, m_ulStartGpsTimeMs, m_ulEndGpsTimeMs, m_ulEpochCount});
     } else {
         readDatFile(ydvrFile, stCacheFile, stSummaryFile);
-        std::cout << "Created cached file: " << stCacheFile << std::endl;
         if( m_ulEpochCount > 0 )
             m_listDatFiles.push_back(DatFileInfo{ydvrFile, stCacheFile, m_ulStartGpsTimeMs, m_ulEndGpsTimeMs, m_ulEpochCount});
     }
@@ -149,7 +153,7 @@ void YdvrReader::processDatFile(const std::string &ydvrFile, const std::string& 
 }
 
 void YdvrReader::readDatFile(const std::string &ydvrFile, const std::filesystem::path &stCacheFile,
-                             const std::filesystem::path &stSummaryFile ) {
+                             const std::filesystem::path &stSummaryFile) {
 
     std::ofstream cache (stCacheFile, std::ios::out);
     std::ifstream f (ydvrFile, std::ios::in | std::ios::binary);
@@ -458,6 +462,7 @@ void YdvrReader::processProductInformationPgn(uint8_t  src, const Pgn *pgn, cons
     std::string modelId(acModelId);
 
     std::string modelIdAndSerialCode = trim(modelId) + "-" + trim(serialCode);
+    deCommas(modelIdAndSerialCode);
     if (m_mapPgnsByDeviceModelAndSerialNo.find(modelIdAndSerialCode) == m_mapPgnsByDeviceModelAndSerialNo.end() ) {
         std::set<uint32_t> s;
         m_mapPgnsByDeviceModelAndSerialNo[modelIdAndSerialCode] = s;
@@ -506,15 +511,65 @@ void YdvrReader::ReadPgnSrcTable(const std::string &csvFileName) {
 
     std::ifstream f (csvFileName, std::ios::in);
     std::string line;
+
+    m_mapDeviceForPgn.clear();
+    std::cout  << "Reading PGN sources from " << csvFileName << std::endl;
     while (std::getline(f, line)) {
         std::istringstream iss(line);
-        std::string pgn;
-        std::string device;
-        std::getline(iss, pgn, ',');
-        std::getline(iss, device, ',');
-        std::string modelIdAndSerialCode = trim(device);
-        int pgnInt = std::stoi(pgn);
-        m_mapDeviceForPgn[pgnInt] = modelIdAndSerialCode;
+        std::string token;
+        std::vector<std::string> tokens;
+        while (std::getline(iss, token, ',')) {
+            tokens.push_back(token);
+        }
+        if ( tokens.size() > 3 ){
+            uint32_t pgn = std::stoul(tokens[0]);
+            std::string desc = tokens[1];
+            std::vector<std::string> srcs;
+            uint32_t srcIdx = std::stoul(tokens[2]);
+            for (int i = 3; i < tokens.size(); i++){
+                srcs.push_back(tokens[i]);
+            }
+            m_mapDeviceForPgn[pgn] = srcs[srcIdx];
+            std::cout  << pgn << " " << desc << " " << srcs[srcIdx] << std::endl;
+        }
     }
+
+}
+
+void YdvrReader::getPgnData(std::map<uint32_t, std::vector<std::string>> &mapPgnDevices,
+                            std::map<uint32_t, std::string> &mapPgnDescription) {
+
+    std::cout << "---------------------------------------" << std::endl;
+    std::cout << "DeviceName SerialNo, PGN, Description" << std::endl;
+    for (auto & mapIt : m_mapPgnsByDeviceModelAndSerialNo) {
+        for (auto setIt = mapIt.second.begin(); setIt != mapIt.second.end(); setIt++) {
+            int pgn = int(*setIt);
+
+            // Check if we need this PGN
+            if (REQUIRED_PGNS.find(pgn) == REQUIRED_PGNS.end() )
+                continue;
+
+            auto deviceName = mapIt.first;
+            std::cout << deviceName << "," << pgn ;
+
+            if (mapPgnDevices.find(pgn) == mapPgnDevices.end() ) {
+                auto *l = new  std::vector<std::string>();
+                mapPgnDevices[pgn] = *l;
+            }
+            mapPgnDevices[pgn].push_back(deviceName);
+
+            const Pgn *pPgn = searchForPgn(pgn);
+            if (pPgn != nullptr && pPgn->description != nullptr) {
+                std::string description(pPgn->description);
+                deCommas(description);
+                mapPgnDescription[pgn] = description;
+                std::cout << ",\"" << description << "\"";
+            }else{
+                mapPgnDescription[pgn] = "unknown";
+            }
+            std::cout << std::endl;
+        }
+    }
+    std::cout << "---------------------------------------" << std::endl;
 
 }

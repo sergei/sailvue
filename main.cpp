@@ -25,7 +25,7 @@ static time_t strToTime(const std::string& str) {
 
 void Test(const std::string& stYdvrDir, const std::string& stGoProDir, const std::string& stCacheDir, const std::string& stPgnSrcCsv, bool bSummaryOnly) {
     EncodingProgressListener progressListener;
-    YdvrReader ydvrReader(stYdvrDir, stCacheDir, stPgnSrcCsv, bSummaryOnly, progressListener);
+    YdvrReader ydvrReader(stYdvrDir, stCacheDir, stPgnSrcCsv, bSummaryOnly, false, progressListener);
     GoPro goPro(stGoProDir, stCacheDir, ydvrReader, progressListener);
 
     int clipCount = 0;
@@ -78,12 +78,17 @@ int main(int argc, char** argv) {
         exit(1);
     }
 
+    QCoreApplication::setOrganizationName("Santa Cruz Instruments");
+    QCoreApplication::setOrganizationDomain("www.santacruzinstruments.com");
+    QCoreApplication::setApplicationName("sailvue");
+
     QGuiApplication app(argc, argv);
     QQmlApplicationEngine engine;
     engine.load(QUrl(QStringLiteral("qrc:/gui/main.qml")));
 
     if (engine.rootObjects().isEmpty())
         return -1;
+
 
     return QGuiApplication::exec();
 

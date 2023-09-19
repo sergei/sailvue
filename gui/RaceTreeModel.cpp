@@ -102,6 +102,7 @@ RaceTreeModel::RaceTreeModel(QObject *parent)
     auto *worker = new Worker(m_GoProClipInfoList, m_InstrDataVector, m_RaceDataList);
     worker->moveToThread(&workerThread);
     connect(&workerThread, &QThread::finished, worker, &QObject::deleteLater);
+
     connect(this, &RaceTreeModel::readData, worker, &Worker::readData);
     connect(this, &RaceTreeModel::stop, worker, &Worker::stopWork);
     connect(worker, &Worker::ProgressStatus, this, &RaceTreeModel::handleProgress);
