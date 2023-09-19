@@ -110,7 +110,7 @@ void PolarOverlayMaker::setHistory(int startIdx, int endIdx) {
             m_maxSpeedKts = (int)lround(std::max(float(m_maxSpeedKts), sowKts));
             m_minSpeedKts = (int)lround(std::min(float(m_minSpeedKts), sowKts));
             twsSum += sowKts;
-            std::pair<float, float> xy = polToCart(sowKts, twaRad);
+            std::pair<float, float> xy = polToCart(sowKts, - twaRad);
             m_history.push_back(xy);
 
             if( twaRad > M_PI * 0.75  )
