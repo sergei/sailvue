@@ -69,6 +69,9 @@ qt_add_executable(sailvue WIN32 MACOSX_BUNDLE
         movie/PolarOverlayMaker.h
         movie/StartTimerOverlayMaker.cpp
         movie/StartTimerOverlayMaker.h
+        navcomputer/NavStatsEventsListener.h
+        navcomputer/NavStats.cpp
+        navcomputer/NavStats.h
 )
 
 target_include_directories(sailvue PUBLIC

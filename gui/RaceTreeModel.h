@@ -11,6 +11,7 @@
 #include "gopro/GoPro.h"
 #include "navcomputer/RaceData.h"
 #include "Project.h"
+#include "navcomputer/NavStatsEventsListener.h"
 
 class TreeItem
 {
@@ -124,6 +125,7 @@ public:
 
     Q_INVOKABLE void splitRace();
     Q_INVOKABLE void addChapter();
+    Q_INVOKABLE void makeEvents();
     Q_INVOKABLE void updateChapter(const QString &uuid, const QString &chapterName, uint64_t chapterType,
                                    uint64_t startIdx, uint64_t endIdx, uint64_t gunIdx);
     Q_INVOKABLE void updateRace(const QString &raceName);
@@ -199,6 +201,19 @@ private:
     uint64_t m_ulCurrentInstrDataIdx = 0;
 
     void deleteAllRaces();
+};
+
+class ChapterMaker : public NavStatsEventsListener {
+public:
+    explicit ChapterMaker(TreeItem *raceTreeItem);
+    void onTack(uint32_t fromIdx, uint32_t toIdx, bool isTack, double distLossMeters) override;
+    void onMarkRounding(uint32_t fromIdx, uint32_t toIdx, bool isWindward) override;
+private:
+    int m_tackCount = 0;
+    int m_gybeCount = 0;
+    int m_windwardMarkRoundingCount = 0;
+    int m_leewardMarkRoundingCount = 0;
+    TreeItem *m_pRaceTreeItem;
 };
 
 

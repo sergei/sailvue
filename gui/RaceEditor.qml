@@ -10,6 +10,7 @@ GridLayout {
     visible: false
 
     signal changed()
+    signal makeEvents()
 
     Label {
         text: "Race:"
@@ -17,7 +18,7 @@ GridLayout {
 
     TextEdit {
         id: race_name
-        Layout.columnSpan: 3
+        Layout.columnSpan: 2
         text: "Race name"
         color: "white"
     }
@@ -26,6 +27,13 @@ GridLayout {
         text: "Save race name"
         onClicked: {
             changed()
+        }
+    }
+
+    Button {
+        text: "Make events"
+        onClicked: {
+            makeEvents()
         }
     }
 

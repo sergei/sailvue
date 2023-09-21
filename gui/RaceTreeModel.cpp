@@ -1,6 +1,7 @@
 #include <iostream>
 #include "RaceTreeModel.h"
 #include "Worker.h"
+#include "navcomputer/NavStats.h"
 
 TreeItem::TreeItem(RaceData *pRaceData, Chapter *pChapter, TreeItem *parent)
         : m_pRaceData(pRaceData), m_pChapter(pChapter), m_parentItem(parent)
@@ -698,3 +699,66 @@ void RaceTreeModel::handleProduceFinished() {
     emit produceFinished();
 }
 
+void RaceTreeModel::makeEvents() {
+
+    if (!m_selectedTreeIdx.isValid())
+        return ;
+
+    // Find selected race
+    auto *item = static_cast<TreeItem*>(m_selectedTreeIdx.internalPointer());
+    if ( !item->isRace() ){
+        item = item->parentItem();
+    }
+
+    ChapterMaker chapterMaker(item);
+    NavStats navStats(chapterMaker);
+    emit layoutAboutToBeChanged();
+
+    for( uint64_t i = m_pCurrentRace->getStartIdx(); i < m_pCurrentRace->getEndIdx(); i++){
+        navStats.update(i, m_InstrDataVector[i]);
+    }
+
+    m_project.raceDataChanged();
+    emit isDirtyChanged();
+    emit layoutChanged();
+
+}
+
+ChapterMaker::ChapterMaker(TreeItem *raceTreeItem)
+:m_pRaceTreeItem(raceTreeItem)
+{
+
+}
+
+void ChapterMaker::onTack(uint32_t startIdx, uint32_t endIdx, bool isTack, double distLossMeters) {
+    RaceData *pRaceData = m_pRaceTreeItem->getRaceData();
+
+    if (startIdx < pRaceData->getStartIdx())
+        startIdx = pRaceData->getStartIdx();
+
+    if (endIdx > pRaceData->getEndIdx())
+        endIdx = pRaceData->getEndIdx();
+
+    std::string chapterName;
+    if ( isTack ){
+        m_tackCount++;
+        chapterName = "Tack " + std::to_string(m_tackCount);
+    }else{
+        chapterName = "Gybe " + std::to_string(m_tackCount);
+        m_gybeCount++;
+    }
+
+    std::cout << "insertChapter " << chapterName << " startIdx " << startIdx << " endIdx " << endIdx << std::endl;
+
+    auto *chapter = new Chapter(startIdx, endIdx);
+    chapter->SetName(chapterName);
+    pRaceData->insertChapter(chapter);
+
+    // Add data to the view model
+    auto *chapterTreeItem = new TreeItem(pRaceData, chapter, m_pRaceTreeItem);
+    m_pRaceTreeItem->insertChapterChild(chapterTreeItem);
+}
+
+void ChapterMaker::onMarkRounding(uint32_t startIdx, uint32_t endIdx, bool isWindward) {
+
+}

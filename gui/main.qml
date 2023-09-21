@@ -473,6 +473,11 @@ ApplicationWindow {
                     console.log("Race changed: " + raceName )
                     raceTreeModel.updateRace(raceName)
                 }
+
+                onMakeEvents: {
+                    console.log("Make events")
+                    raceTreeModel.makeEvents()
+                }
             }
 
     }
