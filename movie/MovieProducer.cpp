@@ -6,7 +6,7 @@
 #include "PolarOverlayMaker.h"
 #include "StartTimerOverlayMaker.h"
 
-MovieProducer::MovieProducer(const std::string &path, std::list<GoProClipInfo> &clipsList,
+MovieProducer::MovieProducer(const std::string &path, const std::string &polarPath, std::list<GoProClipInfo> &clipsList,
                              std::vector<InstrumentInput> &instrDataVector, std::list<RaceData *> &raceList,
                              IProgressListener &rProgressListener)
 :m_moviePath(path)
@@ -15,7 +15,7 @@ MovieProducer::MovieProducer(const std::string &path, std::list<GoProClipInfo> &
 ,m_RaceDataList(raceList)
 ,m_rProgressListener(rProgressListener)
 {
-
+    m_polars.loadPolar(polarPath);
 }
 
 void MovieProducer::produce() {
@@ -96,7 +96,7 @@ std::string MovieProducer::produceChapter(Chapter &chapter, std::filesystem::pat
     InstrOverlayMaker instrOverlayMaker(instrOverlayPath, instr_ovl_width, instrOvlHeight, ignoreCache);
 
     std::filesystem::path polarOverlayPath = folder / "polar_overlay";
-    PolarOverlayMaker polarOverlayMaker(m_rInstrDataVector, polarOverlayPath, polar_ovl_width,
+    PolarOverlayMaker polarOverlayMaker(m_polars, m_rInstrDataVector, polarOverlayPath, polar_ovl_width,
                                         (int)chapter.getStartIdx(), (int)chapter.getEndIdx(), ignoreCache);
 
 

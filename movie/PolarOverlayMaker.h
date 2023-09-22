@@ -5,10 +5,13 @@
 #include <filesystem>
 #include <QPainter>
 #include "navcomputer/InstrumentInput.h"
+#include "navcomputer/Polars.h"
 
 class PolarOverlayMaker {
 public:
-    PolarOverlayMaker(std::vector<InstrumentInput> &instrDataVector, std::filesystem::path &workDir, int width,
+    virtual ~PolarOverlayMaker();
+
+    PolarOverlayMaker(Polars &polars, std::vector<InstrumentInput> &instrDataVector, std::filesystem::path &workDir, int width,
                       int startIdx, int endIdx,
                       bool ignoreCache);
     void addEpoch(const std::string &fileName, int epochIdx);
@@ -40,6 +43,14 @@ private:
     std::vector<std::pair<float, float>> m_history;
 
     static std::pair<float, float> polToCart(float kts, float rad);
+    Polars &m_polars;
+
+    QImage *m_pBackgroundImage = nullptr;
+    QPoint m_origin;
+
+    QPoint drawGrid();
+
+    void drawPolarCurve(float tws);
 };
 
 

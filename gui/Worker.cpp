@@ -1,12 +1,11 @@
-#include <QThread>
+#include "movie/MovieProducer.h" // WTF Should be the first file otherwise the Eigen compilation fails
+
 #include <QCoreApplication>
 #include <QUrl>
-#include <QGeoPath>
 #include <qsettings.h>
 #include "Worker.h"
 #include "n2k/YdvrReader.h"
 #include "gopro/GoPro.h"
-#include "movie/MovieProducer.h"
 #include "PgnSrcTreeModel.h"
 
 void Worker::readData(const QString &goproDir, const QString &nmeaDir, const QString &polarFile, bool bIgnoreCache){
@@ -74,13 +73,15 @@ bool Worker::stopRequested() {
     return !b_keepRunning;
 }
 
-void Worker::produce(const QString &url) {
-    std::cout << "produce " << url.toStdString() << std::endl;
-    std::string path = QUrl(url).toLocalFile().toStdString();
+void Worker::produce(const QString &moviePathUrl, const QString &polarUrl) {
+    std::cout << "produce " << moviePathUrl.toStdString() << std::endl;
+    std::string moviePath = QUrl(moviePathUrl).toLocalFile().toStdString();
+    std::string polarPath = QUrl(polarUrl).toLocalFile().toStdString();
+
 
     emit produceStarted();
 
-    MovieProducer movieProducer(path, m_rGoProClipInfoList, m_rInstrDataVector, m_RaceDataList, *this);
+    MovieProducer movieProducer(moviePath, polarPath, m_rGoProClipInfoList, m_rInstrDataVector, m_RaceDataList, *this);
     movieProducer.produce();
 
     emit produceFinished();

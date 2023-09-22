@@ -296,7 +296,7 @@ ApplicationWindow {
         title: "Select folder for produced video"
         currentFolder: "file:///tmp"
         onAccepted: {
-            raceTreeModel.produce(selectedFolder)
+            raceTreeModel.produce(selectedFolder, raceTreeModel.polarPath)
         }
     }
 

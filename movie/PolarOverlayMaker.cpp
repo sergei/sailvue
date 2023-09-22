@@ -2,14 +2,20 @@
 #include <cmath>
 #include "PolarOverlayMaker.h"
 
-PolarOverlayMaker::PolarOverlayMaker(std::vector<InstrumentInput> &instrDataVector, std::filesystem::path &workDir,
+PolarOverlayMaker::PolarOverlayMaker(Polars &polars, std::vector<InstrumentInput> &instrDataVector, std::filesystem::path &workDir,
                                      int width, int startIdx, int endIdx, bool ignoreCache)
- :m_rInstrDataVector(instrDataVector),
+ :m_polars(polars), m_rInstrDataVector(instrDataVector),
  m_workDir(workDir), m_width(width), m_ignoreCache(ignoreCache), m_startIdx(startIdx)
  {
     std::filesystem::create_directories(m_workDir);
     m_height = width;
-     setHistory(startIdx, endIdx);
+    m_pBackgroundImage = new QImage(m_width, m_height, QImage::Format_ARGB32);
+    m_pBackgroundImage->fill(QColor(0, 0, 0, 0));
+    setHistory(startIdx, endIdx);
+ }
+
+PolarOverlayMaker::~PolarOverlayMaker() {
+    delete m_pBackgroundImage;
 }
 
 void PolarOverlayMaker::addEpoch(const std::string &fileName, int epochIdx) {
@@ -19,47 +25,13 @@ void PolarOverlayMaker::addEpoch(const std::string &fileName, int epochIdx) {
         return ;
     }
 
-    QImage image(m_width, m_height, QImage::Format_ARGB32);
-    image.fill(QColor(0, 0, 0, 0));
+    if ( m_pBackgroundImage == nullptr ){
+        std::cout << "PolarOverlayMaker::addEpoch() called after destructor" << std::endl;
+        return;
+    }
+
+    QImage image = m_pBackgroundImage->copy();
     QPainter painter(&image);
-
-
-    // Draw grid
-
-    int startAngle;
-    int endAngle;
-    int arcStart;
-    int arcEnd;
-    if ( m_isTack ) {
-        startAngle = -90;
-        endAngle = 100;
-        arcStart = 180;
-        arcEnd = 0;
-    }else{
-        startAngle = 90;
-        endAngle = 280;
-        arcStart = 0;
-        arcEnd = 180;
-    }
-
-    auto axisPen = QPen(m_polarGridColor);
-    axisPen.setWidth(2);
-    painter.setPen(axisPen);
-    // Speed circles
-    for( int speed = m_minSpeedKts; speed <= m_maxSpeedKts; speed += m_speedStep ){
-        QPoint ul = toScreen({-speed, speed});  // Top left
-        QPoint  lr = toScreen({speed, -speed});  // Bottom right
-        painter.drawArc(QRectF(ul, lr), arcStart * 16, (arcEnd - arcStart) * 16);
-    }
-
-    QPoint origin  = toScreen(polToCart(float(m_minSpeedKts), 0));
-
-    // Angle lines
-    for( int angle = startAngle; angle < endAngle; angle += 30 ){
-        auto rad = float(angle * M_PI / 180);
-        QPoint p = toScreen(polToCart(float(m_maxSpeedKts), rad));
-        painter.drawLine(origin, p);
-    }
 
     // Draw history
     auto armPen = QPen(Qt::red);
@@ -78,7 +50,7 @@ void PolarOverlayMaker::addEpoch(const std::string &fileName, int epochIdx) {
 
         if ( i == lastHistIdx ){
             painter.setPen(armPen);
-            painter.drawLine(origin, p) ;
+            painter.drawLine(m_origin, p) ;
             painter.drawEllipse(p, m_dotRadius, m_dotRadius);
         }else{
             auto historyPen = QPen(historyColor);
@@ -135,6 +107,13 @@ void PolarOverlayMaker::setHistory(int startIdx, int endIdx) {
     }else{
         m_y0 = m_height - 2 * m_yPad;
     }
+
+    // Draw grid
+    m_origin = drawGrid();
+
+    // Draw polar curve
+    drawPolarCurve(meanTws);
+
 }
 
 std::pair<float, float> PolarOverlayMaker::polToCart(float rho, float thetaRad) {
@@ -152,3 +131,88 @@ QPoint PolarOverlayMaker::toScreen(const std::pair<float, float> &xy) const {
 
     return {screenX, screenY};
 }
+
+QPoint PolarOverlayMaker::drawGrid() {
+    QPainter painter(m_pBackgroundImage);
+
+    int startAngle;
+    int endAngle;
+    int arcStart;
+    int arcEnd;
+    if ( m_isTack ) {
+        startAngle = -90;
+        endAngle = 100;
+        arcStart = 180;
+        arcEnd = 0;
+    }else{
+        startAngle = 90;
+        endAngle = 280;
+        arcStart = 0;
+        arcEnd = 180;
+    }
+
+    auto axisPen = QPen(m_polarGridColor);
+    axisPen.setWidth(2);
+    painter.setPen(axisPen);
+    // Speed circles
+    for( int speed = m_minSpeedKts; speed <= m_maxSpeedKts; speed += m_speedStep ){
+        QPoint ul = toScreen({-speed, speed});  // Top left
+        QPoint  lr = toScreen({speed, -speed});  // Bottom right
+        painter.drawArc(QRectF(ul, lr), arcStart * 16, (arcEnd - arcStart) * 16);
+    }
+
+    QPoint origin  = toScreen(polToCart(float(m_minSpeedKts), 0));
+
+    // Angle lines
+    for( int angle = startAngle; angle < endAngle; angle += 30 ){
+        auto rad = float(angle * M_PI / 180);
+        QPoint p = toScreen(polToCart(float(m_maxSpeedKts), rad));
+        painter.drawLine(origin, p);
+    }
+
+    return origin;
+}
+
+void PolarOverlayMaker::drawPolarCurve(float tws) {
+    QPainter painter(m_pBackgroundImage);
+
+
+    auto curvePen = QPen(Qt::blue);
+    curvePen.setWidth(6);
+    painter.setPen(curvePen);
+
+    QPoint prevPt;
+    bool isFirst = true;
+    if ( m_isTack ){
+        for(int twaDeg = -90; twaDeg <= 90; twaDeg += 1 ){
+            if (abs(twaDeg) < m_polars.getMinTwa()){  // Skip the no sail zone
+                isFirst = true;
+                continue;
+            }
+            auto twaRad = float(twaDeg * M_PI / 180);
+            auto spd = m_polars.getSpeed(twaDeg, tws);
+            QPoint p = toScreen(polToCart(float(spd), - twaRad));
+            if( !isFirst ){
+                painter.drawLine(prevPt, p);
+            }
+            prevPt = p;
+            isFirst = false;
+        }
+    }else{
+        for(int twaDeg = 90; twaDeg <= 270; twaDeg += 1 ){
+            if (abs(twaDeg) > m_polars.getMaxTwa()){  // Skip the no sail zone
+                isFirst = true;
+                continue;
+            }
+            auto twaRad = float(twaDeg * M_PI / 180);
+            auto spd = m_polars.getSpeed(twaDeg, tws);
+            QPoint p = toScreen(polToCart(float(spd), - twaRad));
+            if( !isFirst ){
+                painter.drawLine(prevPt, p);
+            }
+            prevPt = p;
+            isFirst = false;
+        }
+    }
+}
+

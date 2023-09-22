@@ -1,4 +1,3 @@
-TODO add polar table reading and interpolation
-TODO draw polar curve and VMG line on polar overlay
 TODO speedup YDVR reading
 TODO add score for tacks, gybes and starts
+TODO Add NMEA0183 support

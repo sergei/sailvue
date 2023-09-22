@@ -10,3 +10,6 @@
 [submodule "gopro/gpmf-parser"]
 	path = gopro/gpmf-parser
 	url = https://github.com/gopro/gpmf-parser.git
+[submodule "libInterpolate"]
+	path = libInterpolate
+	url = https://github.com/CD3/libInterpolate.git

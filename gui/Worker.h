@@ -27,7 +27,7 @@ public:
 public slots:
     void readData(const QString &goproDir, const QString &nmeaDir, const QString &polarFile, bool bIgnoreCache);
     void stopWork() ;
-    void produce(const QString &path);
+    void produce(const QString &moviePathUrl, const QString &polarUrl);
 signals:
     void ProgressStatus(const QString &state, int progress);
     void pathAvailable();

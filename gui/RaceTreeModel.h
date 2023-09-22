@@ -176,7 +176,7 @@ signals:
     void raceUnSelected();
 
     // Production related signals
-    void produce(const QString &produceFolder);
+    void produce(const QString &produceFolder, const QString &polarFile);
     void produceStarted();
     void produceFinished();
 

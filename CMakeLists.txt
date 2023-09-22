@@ -18,6 +18,12 @@ find_package(Qt6 COMPONENTS Positioning)
 find_package(Qt6 COMPONENTS Location)
 find_package(Qt6 REQUIRED COMPONENTS Multimedia)
 
+
+find_package(Boost )   # Required for  libInterpolate
+if(Boost_FOUND)
+        include_directories(${Boost_INCLUDE_DIRS})
+endif()
+
 qt_add_executable(sailvue WIN32 MACOSX_BUNDLE
         main.cpp
         InstrDataReader.h
@@ -72,6 +78,8 @@ qt_add_executable(sailvue WIN32 MACOSX_BUNDLE
         navcomputer/NavStatsEventsListener.h
         navcomputer/NavStats.cpp
         navcomputer/NavStats.h
+        navcomputer/Polars.cpp
+        navcomputer/Polars.h
 )
 
 target_include_directories(sailvue PUBLIC
@@ -81,6 +89,7 @@ target_include_directories(sailvue PUBLIC
         gopro/gpmf-parser
         gopro/gpmf-parser/demo
         gui
+        libInterpolate/src
         )
 
 target_link_libraries(sailvue PUBLIC
@@ -92,6 +101,9 @@ target_link_libraries(sailvue PUBLIC
         Qt::Quick
         Qt6::Multimedia
 )
+
+enable_testing ()
+add_subdirectory (test)
 
 # Resources:
 set(qml_resource_files

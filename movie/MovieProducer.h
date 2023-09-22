@@ -1,6 +1,8 @@
 #ifndef SAILVUE_MOVIEPRODUCER_H
 #define SAILVUE_MOVIEPRODUCER_H
 
+#include "navcomputer/Polars.h"
+
 #include <list>
 
 #include "navcomputer/IProgressListener.h"
@@ -29,7 +31,7 @@ private:
 
 class MovieProducer  {
 public:
-    MovieProducer(const std::string &path, std::list<GoProClipInfo> &clipsList,
+    MovieProducer(const std::string &path, const std::string &polarPath, std::list<GoProClipInfo> &clipsList,
                   std::vector<InstrumentInput> &instrDataVector,
                   std::list<RaceData *> &raceList, IProgressListener &rProgressListener);
 
@@ -52,6 +54,7 @@ private:
     const char *POLAR_OVL_FILE_PAT = "polar_%05d.png";
     const char *TIMER_OVL_FILE_PAT = "timer_%05d.png";
 
+    Polars m_polars;
 };
 
 
