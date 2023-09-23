@@ -50,9 +50,10 @@ private:
     void findGoProClipFragments(std::list<ClipFragment> &clipFragments, uint64_t startUtcMs, uint64_t stopUtcMs);
     void makeRaceVideo(const std::filesystem::path &raceFolder, std::list<std::string> &chaptersList);
 
-    const char *INSTR_OVL_FILE_PAT = "instr_%05d.png";
-    const char *POLAR_OVL_FILE_PAT = "polar_%05d.png";
-    const char *TIMER_OVL_FILE_PAT = "timer_%05d.png";
+    const char *INSTR_OVL_FILE_PAT  = "instr_%05d.png";
+    const char *POLAR_OVL_FILE_PAT  = "polar_%05d.png";
+    const char *TARGET_OVL_FILE_PAT = "target_%05d.png";
+    const char *TIMER_OVL_FILE_PAT  = "timer_%05d.png";
 
     Polars m_polars;
 };

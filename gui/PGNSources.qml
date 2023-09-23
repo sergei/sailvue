@@ -6,11 +6,11 @@ import QtQuick.Layouts
 import sails
 import QtQuick.Controls.Fusion
 
-Dialog {
+Item {
     id: dialog
 
     Component.onCompleted: {
-        dialog.standardButton(Dialog.Ok).enabled = false;
+        okButton.enabled = false;
     }
 
     PgnSrcTreeModel {
@@ -27,24 +27,11 @@ Dialog {
         }
 
         onIsDirtyChanged: function () {
-            dialog.standardButton(Dialog.Ok).enabled = pgnSrcTreeModel.isDirty;
+            okButton.enabled = pgnSrcTreeModel.isDirty;
         }
     }
 
-
-    title: "Specify input data location"
     anchors.centerIn: Overlay.overlay
-
-    standardButtons: Dialog.Ok | Dialog.Cancel
-
-    onAccepted: {
-        console.log("OK clicked")
-        pgnSrcTreeModel.saveData()
-    }
-
-    onRejected: {
-        console.log("Cancel clicked")
-    }
 
     // Files Selection
     GridLayout {
@@ -87,7 +74,15 @@ Dialog {
                 }
             }
         }
+
+        Button {
+            id: okButton
+            text: "Save PGN sources CSV file"
+            onClicked: pgnSrcTreeModel.saveData()
+        }
+
     }
+
 
     FolderDialog {
         id: nmeaFolderDialog

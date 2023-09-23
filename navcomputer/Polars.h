@@ -14,15 +14,17 @@ public:
     [[nodiscard]] double getMaxTwa() const { return m_maxTwa; }
 
 private:
+    void loadPolarCsv(const std::string &path);
+    void loadPolarPol(const std::string &path);
     double getVmg(double twa, double tws);
+private:
     _2D::BilinearInterpolator<double> m_speedInterp;
     _2D::BilinearInterpolator<double> m_vmgInterp;
     double m_minTwa;
     double m_maxTwa;
-
-private:
     double m_minTws;
     double m_maxTws;
+    bool m_isTransposed = false;
 };
 
 

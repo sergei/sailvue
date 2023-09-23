@@ -1,1 +1,5 @@
+FIXME The label says UTC but computer local time is used to show the time
 FIXME There is no progress dialog when new project is being generated
+FIXME Don't start production if there is no chapters in the race
+FIXME Handle cases when no polar file was selected
+FIXME the chapter map track from previous race sometimes are not removed from the map

@@ -1,3 +1,7 @@
-TODO speedup YDVR reading
+TODO limit polar history display to 30 seconds
+TODO add performance overlay to show the percenatge of speed vs target speed
+TODO make performance type of the clips with timelapsed view
 TODO add score for tacks, gybes and starts
+TODO remove fisheye from the video
+TODO speedup YDVR reading
 TODO Add NMEA0183 support

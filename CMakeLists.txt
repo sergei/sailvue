@@ -54,13 +54,6 @@ qt_add_executable(sailvue WIN32 MACOSX_BUNDLE
         gopro/gpmf-parser/GPMF_parser.c
         gopro/gpmf-parser/demo/GPMF_mp4reader.c
 
-        navcomputer/InstrumentInput.h
-        navcomputer/IProgressListener.h
-        navcomputer/RaceData.cpp
-        navcomputer/RaceData.h
-        navcomputer/Chapter.cpp
-        navcomputer/Chapter.h
-
         gui/Worker.cpp
         gui/Worker.h
         gui/Project.cpp
@@ -69,17 +62,29 @@ qt_add_executable(sailvue WIN32 MACOSX_BUNDLE
         movie/MovieProducer.h
         movie/InstrOverlayMaker.cpp
         movie/InstrOverlayMaker.h
-        ffmpeg/FFMpeg.cpp
-        ffmpeg/FFMpeg.h
         movie/PolarOverlayMaker.cpp
         movie/PolarOverlayMaker.h
         movie/StartTimerOverlayMaker.cpp
         movie/StartTimerOverlayMaker.h
+        movie/TargetsOverlayMaker.cpp
+        movie/TargetsOverlayMaker.h
+
+        ffmpeg/FFMpeg.cpp
+        ffmpeg/FFMpeg.h
+
+        navcomputer/InstrumentInput.h
+        navcomputer/IProgressListener.h
+        navcomputer/RaceData.cpp
+        navcomputer/RaceData.h
+        navcomputer/Chapter.cpp
+        navcomputer/Chapter.h
         navcomputer/NavStatsEventsListener.h
         navcomputer/NavStats.cpp
         navcomputer/NavStats.h
         navcomputer/Polars.cpp
         navcomputer/Polars.h
+        gui/Settings.cpp
+        gui/Settings.h
 )
 
 target_include_directories(sailvue PUBLIC
@@ -113,6 +118,7 @@ set(qml_resource_files
         "gui/ChapterMapElement.qml"
         "gui/InputDataDialog.qml"
         "gui/PGNSources.qml"
+        "gui/Options.qml"
 )
 
 qt6_add_resources(sailvue "qml"

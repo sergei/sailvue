@@ -485,14 +485,16 @@ void RaceTreeModel::splitRace() {
             // Determine new race start and end idx
             uint64_t newRaceStartIdx = m_ulCurrentInstrDataIdx;
             uint64_t newRaceEndIdx = m_InstrDataVector.size() - 1;
+            std::cout << "newRaceStartIdx " << newRaceStartIdx << " newRaceEndIdx " << newRaceEndIdx << std::endl;
 
             // Check if there is a race after that and adjust newRaceEndIdx if necessary
 
             int nextRaceIdx = i+1;
             if ( nextRaceIdx < rootItem->childCount() ){
                 TreeItem *nextRaceTreeItem = rootItem->child(nextRaceIdx);
-                RaceData *nextRace = prevRaceTreeItem->getRaceData();
+                RaceData *nextRace = nextRaceTreeItem->getRaceData();
                 newRaceEndIdx = nextRace->getStartIdx() - 1;
+                std::cout << "after adjustment newRaceStartIdx " << newRaceStartIdx << " newRaceEndIdx " << newRaceEndIdx << std::endl;
             }
 
             // Move chapters from old race to the new race if necessary
@@ -711,7 +713,7 @@ void RaceTreeModel::makeEvents() {
     }
 
     ChapterMaker chapterMaker(item);
-    NavStats navStats(chapterMaker);
+    NavStats navStats(m_InstrDataVector, chapterMaker);
     emit layoutAboutToBeChanged();
 
     for( uint64_t i = m_pCurrentRace->getStartIdx(); i < m_pCurrentRace->getEndIdx(); i++){

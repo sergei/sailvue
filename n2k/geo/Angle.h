@@ -17,6 +17,9 @@ public:
         return Angle(degrees, utcMs);
     }
     [[nodiscard]] double getDegrees() const { return m_dDegrees; }
+    [[nodiscard]] double getRadians() const { return m_dDegrees * M_PI / 180.0; }
+
+
     [[nodiscard]] std::string toString(uint64_t utcMs) const {
         std::stringstream ss;
         if( isValid(utcMs) )
@@ -25,6 +28,7 @@ public:
             ss << "";
         return ss.str();
     }
+
 private:
     explicit Angle(double degrees, uint64_t utcMs):Quantity(true, utcMs){
         if( degrees > 180 ) {

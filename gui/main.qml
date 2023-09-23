@@ -16,7 +16,7 @@ ApplicationWindow {
     title: raceTreeModel.projectName + (raceTreeModel.isDirty ? "*" : "")
 
     width: mainGrid.implicitWidth + 40
-    height: mainGrid.implicitHeight + 40
+    height: mainGrid.implicitHeight + 40 + 200
 
     property var fullMapPath  // Path for entire project
     property var chapterMapElements: {'aa': 'bb'}  // Initialize it with some nonsense, otherwise we get an assignment error
@@ -253,7 +253,7 @@ ApplicationWindow {
             title: qsTr("&Tools")
             Action {
                 text: qsTr("&Options...")
-                onTriggered: pgnSourcesDialog.open()
+                onTriggered: options.open()
             }
         }
     }
@@ -263,8 +263,8 @@ ApplicationWindow {
         raceTreeModel: raceTreeModel
     }
 
-    PGNSources {
-        id: pgnSourcesDialog
+    Options {
+        id: options
     }
 
     FileDialog {

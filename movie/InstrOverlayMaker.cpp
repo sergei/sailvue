@@ -143,11 +143,11 @@ std::string InstrOverlayMaker::addEpoch(const std::string &fileName, InstrumentI
 
     x+= m_cellStep;
     txt = formatSpeed(instrData.sow, instrData.utc);
-    m_infoCell.draw(painter, x, m_rectYoffset, "SPD", QString::fromStdString(txt));
+    m_infoCell.draw(painter, x, m_rectYoffset, "SOW", QString::fromStdString(txt));
 
     x+= m_cellStep;
     txt = formatSpeed(instrData.sog, instrData.utc);
-    m_infoCell.draw(painter, x, m_rectYoffset, "SOW", QString::fromStdString(txt));
+    m_infoCell.draw(painter, x, m_rectYoffset, "SOG", QString::fromStdString(txt));
 
     x+= m_cellStep;
     txt = formatSpeed(instrData.tws, instrData.utc);
@@ -157,9 +157,7 @@ std::string InstrOverlayMaker::addEpoch(const std::string &fileName, InstrumentI
     txt = formatAngle(instrData.twa, instrData.utc);
     m_infoCell.draw(painter, x, m_rectYoffset, "TWA", QString::fromStdString(txt));
 
-    std::cout << "Created " << pngName << std::endl;
     image.save(QString::fromStdString(pngName.string()), "PNG");
-
     return pngName.string();
 }
 

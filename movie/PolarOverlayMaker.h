@@ -23,16 +23,21 @@ private:
     std::filesystem::path m_workDir;
     const int m_width;
     const bool m_ignoreCache;
-    const int m_dotRadius = 15;
+    const int m_dotRadius = 10;
     const int m_xPad = m_dotRadius;
     const int m_yPad = m_dotRadius;
     const QColor m_polarGridColor = QColor(255, 255, 255, 127);
 
     int m_height;
-    bool m_isTack = true;
     int m_maxSpeedKts = 0;
     int m_minSpeedKts = 100;
     const int m_speedStep = 2;
+
+    double m_minTwa = 20;
+    double m_maxTwa = -1;
+    bool m_showTopHalf = false;
+    bool m_showBottomHalf = false;
+
     int m_y0;
 
     float m_xScale;
@@ -46,6 +51,7 @@ private:
     Polars &m_polars;
 
     QImage *m_pBackgroundImage = nullptr;
+    QImage *m_PolarCurveImage = nullptr;
     QPoint m_origin;
 
     QPoint drawGrid();

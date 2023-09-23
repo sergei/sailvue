@@ -7,8 +7,6 @@
 #include <utility>
 #include "navcomputer/IProgressListener.h"
 
-static const char *const SETTINGS_KEY_PGN_CSV = "pgnSrcCsvPath";
-
 class PgnTreeItem
 {
 public:

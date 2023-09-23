@@ -1,12 +1,25 @@
 #include <iostream>
 #include <fstream>
+#include <boost/algorithm/string.hpp>
 #include "Polars.h"
 
 void Polars::loadPolar(const std::string &path) {
+    // Check the extension of the file. If it's .csv load CVS file otherwise load POL file
+    std::string ext = boost::algorithm::to_lower_copy(path.substr(path.find_last_of('.') + 1));
+    if ( ext == "csv"){
+        loadPolarCsv(path);
+    }else if ( ext == "pol"){
+        loadPolarPol(path);
+    }else{
+        std::cout << "Unknown polar file extension: " << ext << std::endl;
+    }
+}
+
+void Polars::loadPolarCsv(const std::string &path) {
     std::ifstream f(path, std::ios::in);
     std::string line;
 
-    std::cout << "Reading polars file " << path << std::endl;
+    std::cout << "Reading CSV formatted polars file " << path << std::endl;
 
     std::vector<double> twaVector;
     std::vector<double> twsVector;
@@ -70,14 +83,75 @@ void Polars::loadPolar(const std::string &path) {
     std::cout << "Done reading polars file " << path << std::endl;
 }
 
+void Polars::loadPolarPol(const std::string &path) {
+    std::ifstream f(path, std::ios::in);
+    std::string line;
+
+    std::cout << "Reading POL formatted polars file " << path << std::endl;
+
+    std::vector<double> tws;    // 1, 1, 1, 2, 2, 2, 3, 3, 3
+    std::vector<double> twa;    // 1, 2, 3, 1, 2, 3, 1, 2, 3
+    std::vector<double> spd;    // boat speed
+
+    // Since TWA is not uniformly spaced let's make it y and TWS x
+    m_isTransposed = true;
+
+    while (std::getline(f, line)) {
+        // If starts with #, skip
+        if (line[0] == '#') {
+            continue;
+        }
+        std::istringstream iss(line);
+        std::string token;
+        std::vector<std::string> tokens;
+        bool firstColumn = true;
+        double tws_value; // TWS
+        while (std::getline(iss, token, '\t')) {
+            if ( firstColumn) {
+                tws_value = std::stod(token);
+            }else {
+                double twa_value = std::stod(token);
+                std::getline(iss, token, '\t');
+                double speed_value = std::stod(token);
+                tws.push_back(tws_value);
+                twa.push_back(twa_value);
+                spd.push_back(speed_value);
+            }
+            firstColumn = false;
+        }
+   }
+
+    // Create speed interpolator
+    m_speedInterp.setData(tws, twa, spd);
+
+    // Create vmg interpolator
+    std::vector<double> vmgVector;
+    for( int i = 0; i < spd.size(); i++)
+    {
+        vmgVector.push_back(spd[i] * cos(twa[i] * M_PI / 180.0));
+//        std::cout << "twa: " << twa[i] << " tws: " << tws[i] << " spd: " << spd[i] << " vmg: " << vmgVector[i] << std::endl;
+    }
+    m_vmgInterp.setData(tws, twa, vmgVector);
+
+    // Get rails
+    m_minTwa = twa.front();
+    m_maxTwa = twa.back();
+    m_minTws = tws.front();
+    m_maxTws = tws.back();
+
+    std::cout << "Done reading polars file " << path << std::endl;
+}
+
 double Polars::getSpeed(double twa, double tws) {
     twa = abs(twa);
     twa = std::min(std::max(twa, m_minTwa), m_maxTwa);
     tws = std::min(std::max(tws, m_minTws), m_maxTws);
 
-    double val = m_speedInterp(twa, tws);
-
-    return val;
+    if ( m_isTransposed){
+        return m_speedInterp(tws, twa);
+    }else {
+        return m_speedInterp(twa, tws);
+    }
 }
 
 double Polars::getVmg(double twa, double tws) {
@@ -85,9 +159,11 @@ double Polars::getVmg(double twa, double tws) {
     twa = std::min(std::max(twa, m_minTwa), m_maxTwa);
     tws = std::min(std::max(tws, m_minTws), m_maxTws);
 
-    double val = m_vmgInterp(twa, tws);
-
-    return val;
+    if ( m_isTransposed){
+        return m_vmgInterp(tws, twa);
+    }else {
+        return m_vmgInterp(twa, tws);
+    }
 }
 
 std::pair<double, double>  Polars::getTargets(double tws, bool isUpwind){
@@ -117,4 +193,5 @@ std::pair<double, double>  Polars::getTargets(double tws, bool isUpwind){
         return std::make_pair(targetTwa, minVmg);
     }
 }
+
 

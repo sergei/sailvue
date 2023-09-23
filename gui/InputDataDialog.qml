@@ -46,16 +46,6 @@ Dialog {
             onClicked: nmeaFolderDialog.open()
         }
 
-        Label {
-            id: polarFileLabel
-            text: raceTreeModel.polarPath
-        }
-
-        Button {
-            text: "Select Polar file"
-            onClicked: polarFileDialog.open()
-        }
-
         CheckBox {
             id: ignoreCachedData
             checked: false
@@ -80,16 +70,6 @@ Dialog {
         currentFolder: raceTreeModel.nmeaPath
         onAccepted: {
             raceTreeModel.nmeaPath = selectedFolder
-        }
-    }
-
-    FileDialog {
-        id: polarFileDialog
-        visible: false
-        title: "Select polar file"
-        currentFolder: raceTreeModel.polarPath
-        onAccepted: {
-            raceTreeModel.polarPath = currentFile
         }
     }
 

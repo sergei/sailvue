@@ -37,8 +37,8 @@ std::pair<double, double> SlidingWindow::sumHalves(int splitIdx) const {
     return {sumBefore, sumAfter};
 }
 
-NavStats::NavStats(NavStatsEventsListener &listener)
-        : m_listener(listener)
+NavStats::NavStats(std::vector<InstrumentInput> &rInstrDataVector, NavStatsEventsListener &listener)
+        : m_InstrDataVector(rInstrDataVector), m_listener(listener)
 {
 
 }
@@ -83,7 +83,25 @@ void NavStats::update(uint64_t epochIdx, InstrumentInput &ii) {
         std::pair<double, double> halves = m_turnsStbdPort.sumHalves();
         if ( abs(halves.first) > TURN_THR2 && abs(halves.second) > TURN_THR2 ) {
             bool isTack = abs(twa) < 90;
-            m_listener.onTack(epochIdx - WIN_LEN, epochIdx, isTack, 0);
+            
+            // Determine the clip start and end inices so it lasts 15 seconds before event and 45 seconds after
+            int eventIdx = int(epochIdx - HALF_WIN);
+            auto eventUtcMs = m_InstrDataVector[eventIdx].utc.getUnixTimeMs();
+            int startIdx;
+            for(startIdx = eventIdx; startIdx > 0; startIdx--) {
+                if (m_InstrDataVector[startIdx].utc.getUnixTimeMs() < eventUtcMs - CHAPTER_HEAD_LEN_MS) {
+                    break;
+                }
+            }
+            
+            int endIdx;
+            for( endIdx = eventIdx; endIdx < m_InstrDataVector.size(); endIdx++) {
+                if (m_InstrDataVector[endIdx].utc.getUnixTimeMs() > eventUtcMs +  CHAPTER_TAIL_LEN_MS) {
+                    break;
+                }
+            }
+            
+            m_listener.onTack(startIdx, endIdx, isTack, 0);
             reset();
         }
     }

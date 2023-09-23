@@ -10,6 +10,9 @@ static const int HALF_WIN = WIN_LEN / 2;
 static const int TURN_THR1 = WIN_LEN / 10;  // Threshold to detect roundings and tacks
 static const int TURN_THR2 = WIN_LEN / 4;   // Threshold to detect roundings and tacks
 
+static const int CHAPTER_HEAD_LEN_MS = 15000;
+static const int CHAPTER_TAIL_LEN_MS = 45000;
+
 class SlidingWindow {
 public:
     explicit SlidingWindow(uint32_t size);
@@ -30,13 +33,14 @@ private:
 
 class NavStats {
 public:
-    explicit NavStats(NavStatsEventsListener &listener);
+    explicit NavStats(std::vector<InstrumentInput> &rInstrDataVector, NavStatsEventsListener &listener);
     void update(uint64_t epochIdx, InstrumentInput &ii);
     void reset();
 private:
     NavStatsEventsListener &m_listener;
     SlidingWindow m_turnsUpDown{WIN_LEN};
     SlidingWindow m_turnsStbdPort{WIN_LEN};
+    std::vector<InstrumentInput> &m_InstrDataVector;
 };
 
 #endif //SAILVUE_NAVSTATS_H

@@ -7,6 +7,7 @@
 #include "n2k/YdvrReader.h"
 #include "gopro/GoPro.h"
 #include "PgnSrcTreeModel.h"
+#include "Settings.h"
 
 void Worker::readData(const QString &goproDir, const QString &nmeaDir, const QString &polarFile, bool bIgnoreCache){
     std::cout << "goproDir " + goproDir.toStdString() << std::endl;

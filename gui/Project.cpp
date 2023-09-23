@@ -8,6 +8,20 @@
 Project::Project(std::list<RaceData *> &mRaceDataList)
 :m_RaceDataList(mRaceDataList) {
 
+    QSettings settings;
+    QString polarFile = settings.value(SETTINGS_KEY_POLAR_FILE, "").toString();
+    if (polarFile != "" ){
+        setPolarPath(polarFile);
+    }
+
+}
+
+// Polar path is not part of the project anymore but a global setting
+void Project::setPolarPath(const QString &path) {
+    m_polarPath = path;
+    QSettings settings;
+    settings.setValue(SETTINGS_KEY_POLAR_FILE, path);
+    std::cout << "set polar path to " << path.toStdString() << std::endl;
 }
 
 void Project::fromJson(const QJsonObject &json){
@@ -18,10 +32,6 @@ void Project::fromJson(const QJsonObject &json){
 
     if(  QJsonValue v = json["nmeaPath"]; v.isString()){
         setNmeaPath(v.toString());
-    }
-
-    if(  QJsonValue v = json["polarPath"]; v.isString()){
-        setPolarPath(v.toString());
     }
 
     if(  QJsonValue v = json["races"]; v.isArray()){
@@ -55,15 +65,12 @@ void Project::fromJson(const QJsonObject &json){
             m_RaceDataList.push_back(raceData);
         }
     }
-
-
 }
 
 QJsonObject Project::toJson() const {
     QJsonObject json;
     json["goproPath"] = goproPath();
     json["nmeaPath"] = nmeaPath();
-    json["polarPath"] = polarPath();
 
     QJsonArray racesArray;
 

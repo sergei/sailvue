@@ -11,6 +11,8 @@ PolarOverlayMaker::PolarOverlayMaker(Polars &polars, std::vector<InstrumentInput
     m_height = width;
     m_pBackgroundImage = new QImage(m_width, m_height, QImage::Format_ARGB32);
     m_pBackgroundImage->fill(QColor(0, 0, 0, 0));
+     m_PolarCurveImage = new QImage(m_width, m_height, QImage::Format_ARGB32);
+    m_PolarCurveImage->fill(QColor(0, 0, 0, 0));
     setHistory(startIdx, endIdx);
  }
 
@@ -34,7 +36,7 @@ void PolarOverlayMaker::addEpoch(const std::string &fileName, int epochIdx) {
     QPainter painter(&image);
 
     // Draw history
-    auto armPen = QPen(Qt::red);
+    auto armPen = QPen(Qt::green);
     armPen.setWidth(4);
 
     int lastHistIdx = epochIdx - m_startIdx;
@@ -59,9 +61,10 @@ void PolarOverlayMaker::addEpoch(const std::string &fileName, int epochIdx) {
         }
     }
 
-    image.save(QString::fromStdString(pngName.string()), "PNG");
+    // Copy polar curve on top of history
+    painter.drawImage(0, 0, *m_PolarCurveImage);
 
-    std::cout << "Created " << pngName << std::endl;
+    image.save(QString::fromStdString(pngName.string()), "PNG");
 }
 
 void PolarOverlayMaker::setHistory(int startIdx, int endIdx) {
@@ -72,22 +75,21 @@ void PolarOverlayMaker::setHistory(int startIdx, int endIdx) {
     m_maxSpeedKts = 0;
     m_minSpeedKts = 100;
 
-    m_isTack = true;
     for(int i=startIdx; i<endIdx; i++) {
         InstrumentInput &instrData = m_rInstrDataVector[i];
 
         if (instrData.twa.isValid(instrData.utc.getUnixTimeMs()) && instrData.sow.isValid(instrData.utc.getUnixTimeMs())) {
+
+            m_minTwa = std::min(m_minTwa, abs(instrData.twa.getDegrees()));
+            m_maxTwa = std::max(m_maxTwa, abs(instrData.twa.getDegrees()));
+
             auto twaRad = float(instrData.twa.getDegrees() * M_PI / 180);
             auto sowKts = float(instrData.sow.getKnots());
             m_maxSpeedKts = (int)lround(std::max(float(m_maxSpeedKts), sowKts));
             m_minSpeedKts = (int)lround(std::min(float(m_minSpeedKts), sowKts));
-            twsSum += sowKts;
+            twsSum += (float)instrData.tws.getKnots();
             std::pair<float, float> xy = polToCart(sowKts, - twaRad);
             m_history.push_back(xy);
-
-            if( twaRad > M_PI * 0.75  )
-                m_isTack = false;
-
         } else {
             std::pair<float, float> xy = {nanf(""), nanf("")};
             m_history.push_back(xy);
@@ -96,17 +98,28 @@ void PolarOverlayMaker::setHistory(int startIdx, int endIdx) {
 
     float meanTws = twsSum / float(endIdx - startIdx);
     m_minSpeedKts = 0;
+    m_maxSpeedKts = ( m_maxSpeedKts / m_speedStep ) * m_speedStep;
     m_maxSpeedKts += m_speedStep;
 
+    // Determine scale and origin
     m_xScale = float( m_width - m_xPad * 2) / float( 2 * (m_maxSpeedKts - m_minSpeedKts) );
     m_yScale = m_xScale;
-
-    m_height = int( m_yScale * float(m_maxSpeedKts - m_minSpeedKts) + float(m_yPad) * 2);
-    if ( m_isTack ){
+    if ( m_maxTwa <= 90 ){        // Top half only
         m_y0 = 0;
-    }else{
+        m_height = int( m_yScale * float(m_maxSpeedKts - m_minSpeedKts) + float(m_yPad) * 2);
+        m_showTopHalf = true;
+    }else if ( m_minTwa >= 90 ){  // Bottom half only
         m_y0 = m_height - 2 * m_yPad;
+        m_height = int( m_yScale * float(m_maxSpeedKts - m_minSpeedKts) + float(m_yPad) * 2);
+        m_showBottomHalf = true;
+    }else {  // Full circle
+        m_xScale /= 2;
+        m_yScale /= 2;
+        m_y0 = m_height / 2 - m_yPad;
+        m_showTopHalf = true;
+        m_showBottomHalf = true;
     }
+
 
     // Draw grid
     m_origin = drawGrid();
@@ -139,16 +152,21 @@ QPoint PolarOverlayMaker::drawGrid() {
     int endAngle;
     int arcStart;
     int arcEnd;
-    if ( m_isTack ) {
+    if ( m_maxTwa <= 90 ) { // Top half only
         startAngle = -90;
         endAngle = 100;
         arcStart = 180;
         arcEnd = 0;
-    }else{
+    }else if ( m_minTwa >= 90 ){  // Bottom half only
         startAngle = 90;
         endAngle = 280;
         arcStart = 0;
         arcEnd = 180;
+    }else {  // Full circle
+        startAngle = 0;
+        endAngle = 360;
+        arcStart = 0;
+        arcEnd = 359;
     }
 
     auto axisPen = QPen(m_polarGridColor);
@@ -174,8 +192,7 @@ QPoint PolarOverlayMaker::drawGrid() {
 }
 
 void PolarOverlayMaker::drawPolarCurve(float tws) {
-    QPainter painter(m_pBackgroundImage);
-
+    QPainter painter(m_PolarCurveImage);
 
     auto curvePen = QPen(Qt::blue);
     curvePen.setWidth(6);
@@ -183,36 +200,34 @@ void PolarOverlayMaker::drawPolarCurve(float tws) {
 
     QPoint prevPt;
     bool isFirst = true;
-    if ( m_isTack ){
-        for(int twaDeg = -90; twaDeg <= 90; twaDeg += 1 ){
-            if (abs(twaDeg) < m_polars.getMinTwa()){  // Skip the no sail zone
-                isFirst = true;
-                continue;
-            }
-            auto twaRad = float(twaDeg * M_PI / 180);
-            auto spd = m_polars.getSpeed(twaDeg, tws);
-            QPoint p = toScreen(polToCart(float(spd), - twaRad));
-            if( !isFirst ){
-                painter.drawLine(prevPt, p);
-            }
-            prevPt = p;
-            isFirst = false;
+
+    for(int twa = -90; twa <= 270; twa += 1 ){
+        int twaDeg = twa > 180 ? twa - 360 : twa;
+
+        if (abs(twaDeg) < m_polars.getMinTwa() || abs(twaDeg) > m_polars.getMaxTwa()){  // Skip the no sail zone
+            isFirst = true;
+            continue;
         }
-    }else{
-        for(int twaDeg = 90; twaDeg <= 270; twaDeg += 1 ){
-            if (abs(twaDeg) > m_polars.getMaxTwa()){  // Skip the no sail zone
-                isFirst = true;
-                continue;
-            }
-            auto twaRad = float(twaDeg * M_PI / 180);
-            auto spd = m_polars.getSpeed(twaDeg, tws);
-            QPoint p = toScreen(polToCart(float(spd), - twaRad));
-            if( !isFirst ){
-                painter.drawLine(prevPt, p);
-            }
-            prevPt = p;
-            isFirst = false;
+
+        if (abs(twaDeg) <= 90 && !m_showTopHalf ){  // Stay within zoom level
+            isFirst = true;
+            continue;
         }
+
+        if (abs(twaDeg) >= 90 && !m_showBottomHalf ){  // Stay within zoom level
+            isFirst = true;
+            continue;
+        }
+
+        auto twaRad = float(twaDeg * M_PI / 180);
+        auto spd = m_polars.getSpeed(twaDeg, tws);
+        QPoint p = toScreen(polToCart(float(spd), - twaRad));
+        if( !isFirst ){
+            painter.drawLine(prevPt, p);
+        }
+        prevPt = p;
+        isFirst = false;
     }
+
 }
 

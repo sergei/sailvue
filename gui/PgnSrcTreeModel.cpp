@@ -1,5 +1,6 @@
 #include "n2k/YdvrReader.h"
 #include "PgnSrcTreeModel.h"
+#include "Settings.h"
 
 PgnTreeItem *PgnTreeItem::child(int row) const {
     if (row < 0 || row >= m_childItems.size())
@@ -232,6 +233,10 @@ void PgnSrcTreeModel::loadData(const QString &pgnSrcCsvPath) {
     }
     pgnsSrcsFileStream.close();
     setPgnSrcCsvPath(pgnSrcCsvPath);
+
+    QSettings settings;
+    settings.setValue(SETTINGS_KEY_PGN_CSV, m_pgnSrcCsvPath);
+
     createModel();
 }
 
@@ -248,6 +253,8 @@ void PgnListWorker::readData(const QString &nmeaDir, const QString &pgnSrcCsvPat
     YdvrReader ydvrReader(stYdvrDir, stCacheDir, "", bSummaryOnly, bMappingOnly, *this);
 
     // Get data
+    m_mapPgnDevices.clear();
+    m_mapPgnDescription.clear();
     ydvrReader.getPgnData(m_mapPgnDevices, m_mapPgnDescription);
 
     // Store data to CSV file

@@ -52,7 +52,6 @@ void StartTimerOverlayMaker::addEpoch(const std::string &fileName, uint64_t gunU
     painter.drawText(0, m_height, QString::fromStdString(oss.str()));
 
     image.save(QString::fromStdString(pngName.string()), "PNG");
-    std::cout << "Created " << pngName << std::endl;
 }
 
 

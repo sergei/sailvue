@@ -4,7 +4,9 @@
 
 #include <iostream>
 #include <qqml.h>
+#include <QSettings>
 #include "navcomputer/RaceData.h"
+#include "Settings.h"
 
 class Project {
 public:
@@ -27,11 +29,7 @@ public:
         std::cout << "set nmea path to " << path.toStdString() << std::endl;
     }
 
-    void setPolarPath(const QString &path){
-        m_polarPath = path;
-        m_isDirty = true;
-        std::cout << "set polar path to " << path.toStdString() << std::endl;
-    }
+    void setPolarPath(const QString &path);
 
     [[nodiscard]] QString projectName() const{
         return m_projectName;
