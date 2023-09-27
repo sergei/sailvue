@@ -6,6 +6,7 @@
 #include "PolarOverlayMaker.h"
 #include "StartTimerOverlayMaker.h"
 #include "TargetsOverlayMaker.h"
+#include "utils/Caffeine.h"
 
 MovieProducer::MovieProducer(const std::string &path, const std::string &polarPath, std::list<GoProClipInfo> &clipsList,
                              std::vector<InstrumentInput> &instrDataVector, std::list<RaceData *> &raceList,
@@ -22,6 +23,8 @@ MovieProducer::MovieProducer(const std::string &path, const std::string &polarPa
 void MovieProducer::produce() {
     int raceCount = 0;
     auto ignoreCache = false;
+
+    Caffeine caffeine;  // Prevent Mac from going to sleep while this variable is in scope
 
     m_stopRequested = false;
     for(RaceData *race: m_RaceDataList){

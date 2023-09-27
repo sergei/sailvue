@@ -85,6 +85,8 @@ qt_add_executable(sailvue WIN32 MACOSX_BUNDLE
         navcomputer/Polars.h
         gui/Settings.cpp
         gui/Settings.h
+        utils/Caffeine.cpp
+        utils/Caffeine.h
 )
 
 target_include_directories(sailvue PUBLIC
