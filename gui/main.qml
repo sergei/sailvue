@@ -169,19 +169,22 @@ ApplicationWindow {
 
         onChapterSelected : function (uuid, chapterName, chapterType, startIdx, endIdx, gunIdx) {
             chapterEditor.visible = true
-            console.log("Visble: " + chapterEditor.visible)
             chapterEditor.setSelected(uuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
 
             selectedChapterMarkers.visible = true
             selectedChapterStartMarker.coordinate = win.fullMapPath[startIdx]
             selectedChapterEndMarker.coordinate = win.fullMapPath[endIdx]
 
-            mediaplayer.seekTo(startIdx)
-            raceTreeModel.seekToRacePathIdx(startIdx)
+            if ( chapterType !== 3 ) {
+                mediaplayer.seekTo(startIdx)
+                raceTreeModel.seekToRacePathIdx(gunIdx)
+            } else{
+                mediaplayer.seekTo(startIdx)
+                raceTreeModel.seekToRacePathIdx(gunIdx)
+            }
         }
 
         onChapterUnSelected : function (uuid) {
-            console.log("onChapterUnSelected")
             hideChapterEditor(uuid)
         }
 

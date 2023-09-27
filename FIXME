@@ -1,4 +1,3 @@
-FIXME The label says UTC but computer local time is used to show the time
 FIXME There is no progress dialog when new project is being generated
 FIXME don't use relative path to ffmpeg executable at startup
 

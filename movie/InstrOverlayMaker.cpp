@@ -123,7 +123,8 @@ std::string InstrOverlayMaker::addEpoch(const std::string &fileName, InstrumentI
     int pad = 5;
     // Time stamp
     QDateTime time = QDateTime::fromMSecsSinceEpoch(qint64(instrData.utc.getUnixTimeMs()));
-    std::string txt = time.toString("yyyy-MM-dd hh:mm:ss UTC").toStdString();
+    QString tz = time.timeZoneAbbreviation();
+    std::string txt = (time.toString("yyyy-MM-dd hh:mm:ss ") + " " + tz).toStdString();
     painter.setFont(m_timeStampFont);
     painter.setPen(m_timeStampPen);
     painter.drawText(QRect(x + pad, y + pad, m_cellStep, m_infoCell.getHeight() * 3 / 8), QString::fromStdString(txt));
