@@ -39,15 +39,28 @@ void PolarOverlayMaker::addEpoch(const std::string &fileName, int epochIdx) {
     auto armPen = QPen(Qt::green);
     armPen.setWidth(4);
 
+    // Show no more than HIST_DISPLAY_LEN_MS of history
     int lastHistIdx = epochIdx - m_startIdx;
-    for (int i=0; i <= lastHistIdx; i++){
-        int a = int(255 * (1 - 1. * (lastHistIdx - i) / (lastHistIdx + 1)));
+    int firstHistoryIdx;
+    uint64_t epochUtcMs = m_rInstrDataVector[epochIdx].utc.getUnixTimeMs();
+    for( firstHistoryIdx = lastHistIdx; firstHistoryIdx >= 0; firstHistoryIdx--){
+        uint64_t histUtcMs = m_rInstrDataVector[firstHistoryIdx + m_startIdx].utc.getUnixTimeMs();
+        if ( epochUtcMs - histUtcMs > HIST_DISPLAY_LEN_MS ){
+            break;
+        }
+    }
+
+    int shownHistoryLen = lastHistIdx - firstHistoryIdx;
+    int minAlpha = 64;
+    for (int i=firstHistoryIdx; i <= lastHistIdx; i++){
+        double r = double(i - firstHistoryIdx) / shownHistoryLen; // 0 to 1
+        int alpha = minAlpha + int((255 - minAlpha)  * r);
 
         if ( isnan(m_history[i].first) || isnan(m_history[i].second))
             continue;
 
         QPoint p = toScreen(m_history[i]);
-        auto historyColor = QColor(255, 0, 0, a);
+        auto historyColor = QColor(255, 0, 0, alpha);
         painter.setBrush(historyColor);
 
         if ( i == lastHistIdx ){
@@ -113,8 +126,6 @@ void PolarOverlayMaker::setHistory(int startIdx, int endIdx) {
         m_height = int( m_yScale * float(m_maxSpeedKts - m_minSpeedKts) + float(m_yPad) * 2);
         m_showBottomHalf = true;
     }else {  // Full circle
-        m_xScale /= 2;
-        m_yScale /= 2;
         m_y0 = m_height / 2 - m_yPad;
         m_showTopHalf = true;
         m_showBottomHalf = true;

@@ -7,6 +7,8 @@
 #include "navcomputer/InstrumentInput.h"
 #include "navcomputer/Polars.h"
 
+static const int HIST_DISPLAY_LEN_MS = 1000 * 30;
+
 class PolarOverlayMaker {
 public:
     virtual ~PolarOverlayMaker();
