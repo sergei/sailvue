@@ -82,7 +82,7 @@ public:
 struct OverlayPngSequence {
     int x;
     int y;
-    int fps;
+    float fps;
     const std::string &path;
     const std::string &filePattern;
 };
@@ -98,8 +98,8 @@ public:
     static bool setBinDir(const std::string &binDir);
     static std::tuple<int , int > getVideoResolution(const std::string &mp4name);
 
-    void setBackgroundClip(std::list<ClipFragment> *pClipFragments);
-    void addOverlayPngSequence(int x, int y, int fps, const std::string &path, const std::string &filePattern);
+    void setBackgroundClip(std::list<ClipFragment> *pClipFragments, bool changeDuration, float durationScale);
+    void addOverlayPngSequence(int x, int y, float fps, const std::string &path, const std::string &filePattern);
 
     void makeClip(const std::string &clipPath, FfmpegProgressListener &progress);
 
@@ -112,6 +112,8 @@ private:
 
     std::list<ClipFragment> *m_pClipFragments;
     std::list<OverlayPngSequence> m_pOverlays;
+    bool m_changeDuration = false;
+    float m_durationScale = 1;
 
     std::string makeClipFfmpegArgs(const std::string &clipPath);
     static std::string makeJoinChaptersFfmpegArgs(std::list<std::string> &chaptersList,const std::basic_string<char> &outPath);

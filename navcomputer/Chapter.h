@@ -6,6 +6,8 @@
 #include <QUuid>
 #include "InstrumentInput.h"
 
+static const int MIN_PERF_CHAPTER_DURATION = 1 * 60 * 1000; //
+
 enum ChapterType{
     BOAT_HANDLING,
     SPEED_PERFORMANCE,

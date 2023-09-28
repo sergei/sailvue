@@ -56,13 +56,15 @@ std::tuple<int, int> FFMpeg::getVideoResolution(const std::string &mp4name) {
     return {-1, -1};
 }
 
-void FFMpeg::addOverlayPngSequence(int x, int y, int fps, const std::string &path, const std::string &filePattern) {
+void FFMpeg::addOverlayPngSequence(int x, int y, float fps, const std::string &path, const std::string &filePattern) {
     m_pOverlays.push_back({x, y, fps, path, filePattern});
 }
 
-void FFMpeg::setBackgroundClip(std::list<ClipFragment> *pClipFragments) {
+void FFMpeg::setBackgroundClip(std::list<ClipFragment> *pClipFragments, bool changeDuration, float durationScale) {
     m_pOverlays.clear();
     m_pClipFragments = pClipFragments;
+    m_changeDuration = changeDuration;
+    m_durationScale = durationScale;
 }
 #define READ 0
 #define WRITE 1
@@ -207,11 +209,14 @@ std::string FFMpeg::makeClipFfmpegArgs(const std::string &clipPath) {
             ffmpegArgs += "[" + std::to_string(i) + "]";
         }
         ffmpegArgs += " concat=v=1:a=0 [concv];";
+
         // Concatenate the audio streams
-        for(int i=0; i<firstOverlayIdx; i++){
-            ffmpegArgs += "[" + std::to_string(i) + "]";
+        if ( !m_changeDuration ) {  // If duration is changed, don't copy the audio
+            for (int i = 0; i < firstOverlayIdx; i++) {
+                ffmpegArgs += "[" + std::to_string(i) + "]";
+            }
+            ffmpegArgs += " concat=v=0:a=1 [conca];";
         }
-        ffmpegArgs += " concat=v=0:a=1 [conca];";
     }
 
     std::string bkg;
@@ -223,6 +228,13 @@ std::string FFMpeg::makeClipFfmpegArgs(const std::string &clipPath) {
         bkg = "[0:v]";   // Overlays go on top of the first clip (video)
         audio = "0:a";   // Output clip audio is the first clip audio
     }
+
+
+    if ( m_changeDuration ){
+        ffmpegArgs += bkg + "setpts=" + std::to_string(m_durationScale) + "*PTS [ovl];";
+        bkg = "[ovl]";
+    }
+
 
     int idx = firstOverlayIdx;
     std::string ovl;
@@ -243,7 +255,10 @@ std::string FFMpeg::makeClipFfmpegArgs(const std::string &clipPath) {
     ffmpegArgs += "\"";
 
     ffmpegArgs += " \\\n";
-    ffmpegArgs += " -map " + merged + " -map " + audio;
+    ffmpegArgs += " -map " + merged;
+    if ( !m_changeDuration ){  // If duration is changed, don't copy the audio
+        ffmpegArgs += " -map " + audio;
+    }
     ffmpegArgs += " \\\n";
     ffmpegArgs += " \"" + clipPath + "\"";
     return ffmpegArgs;
