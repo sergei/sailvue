@@ -40,7 +40,19 @@ void MovieProducer::produce() {
         // Augment charter list with performance chapters
         std::list<Chapter *> augmentedChapterList;
         insertPerformanceChapters(race->getChapters(), augmentedChapterList);
-        
+
+
+        int movieWidth = m_rGoProClipInfoList.front().getWidth();
+
+        int target_ovl_width = movieWidth;
+        int target_ovl_height = 128;
+
+        int startIdx = (int)augmentedChapterList.front()->getStartIdx();
+        int endIdx = (int)augmentedChapterList.back()->getEndIdx();
+        TargetsOverlayMaker targetsOverlayMaker(m_polars, m_rInstrDataVector,
+                                                target_ovl_width, target_ovl_height,
+                                                startIdx, endIdx, ignoreCache);
+
         int chapterCount = 0;
         m_totalRaceDuration = 0;
         m_timeDeltaFromTarget = 0;
@@ -57,7 +69,8 @@ void MovieProducer::produce() {
 
             std::filesystem::path chapterFolder = raceFolder / ("chapter" +  std::to_string(chapterCount));
             std::filesystem::create_directories(chapterFolder);
-            std::string chapterClipName = produceChapter(*chapter, chapterFolder, ignoreCache);
+            std::string chapterClipName = produceChapter(targetsOverlayMaker, *chapter, chapterFolder,
+                                                         movieWidth, target_ovl_height, ignoreCache);
             chapterClips.push_back(chapterClipName);
             chapterCount ++;
             if ( m_stopRequested ){
@@ -73,7 +86,8 @@ void MovieProducer::produce() {
     }
 }
 
-std::string MovieProducer::produceChapter(Chapter &chapter, std::filesystem::path &folder, bool ignoreCache) {
+std::string MovieProducer::produceChapter(TargetsOverlayMaker &targetsOverlayMaker, Chapter &chapter,
+                                          std::filesystem::path &folder, int movieWidth, int target_ovl_height,  bool ignoreCache) {
     uint64_t startUtcMs = m_rInstrDataVector[chapter.getStartIdx()].utc.getUnixTimeMs();
     uint64_t stopUtcMs = m_rInstrDataVector[chapter.getEndIdx()].utc.getUnixTimeMs();
 
@@ -96,17 +110,16 @@ std::string MovieProducer::produceChapter(Chapter &chapter, std::filesystem::pat
 
     // Create chapter overlay clip
 
-    int instr_ovl_width = goProclipFragments.front().width;
+    int instr_ovl_width = movieWidth;
     int polar_ovl_width = 400;
     int height = goProclipFragments.front().height;
     int instrOvlHeight = 128;
     int timerHeight = 128;
 
-    int target_ovl_width = goProclipFragments.front().width;
-    int target_ovl_height = 128;
-
     int perf_ovl_width = 200;
     int perf_ovl_height = 200;
+    int perfPadX = 20;
+    int perfPadY = 20;
 
     std::filesystem::path instrOverlayPath = folder / "instr_overlay";
     InstrOverlayMaker instrOverlayMaker(instrOverlayPath, instr_ovl_width, instrOvlHeight, ignoreCache);
@@ -121,10 +134,7 @@ std::string MovieProducer::produceChapter(Chapter &chapter, std::filesystem::pat
 
 
     std::filesystem::path targetsOverlayPath = folder / "targets_overlay";
-    TargetsOverlayMaker targetsOverlayMaker(m_polars, m_rInstrDataVector, targetsOverlayPath,
-                                            target_ovl_width, target_ovl_height,
-                                            (int)chapter.getStartIdx(), (int)chapter.getEndIdx(), ignoreCache);
-
+    targetsOverlayMaker.addChapter(targetsOverlayPath, (int)chapter.getStartIdx(), (int)chapter.getEndIdx());
 
     std::filesystem::path performanceOverlayPath = folder / "perf_overlay";
     PerformanceOverlayMaker performanceOverlayMaker(m_polars, m_rInstrDataVector, performanceOverlayPath,
@@ -199,7 +209,7 @@ std::string MovieProducer::produceChapter(Chapter &chapter, std::filesystem::pat
     if ( chapter.getChapterType() == ChapterType::START){ // Add start timer overlay
         ffmpeg.addOverlayPngSequence(timerX, 0, overlaysFps, startTimerOverlayPath.native(), TIMER_OVL_FILE_PAT);
     }else{ // Add performance overlay
-        ffmpeg.addOverlayPngSequence(0, height - instrOvlHeight - target_ovl_height - perf_ovl_height, overlaysFps, performanceOverlayPath.native(), PERF_OVL_FILE_PAT);
+        ffmpeg.addOverlayPngSequence(perfPadX, height - instrOvlHeight - target_ovl_height - perf_ovl_height - perfPadY, overlaysFps, performanceOverlayPath.native(), PERF_OVL_FILE_PAT);
     }
 
     // Add polar overlay

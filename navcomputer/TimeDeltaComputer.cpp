@@ -34,7 +34,7 @@ TimeDeltaComputer::TimeDeltaComputer(Polars &polars, std::vector<InstrumentInput
 
 }
 
-int64_t TimeDeltaComputer::getDeltaMs(u_int64_t idx) {
+int64_t TimeDeltaComputer::getAccDeltaMs(u_int64_t idx) {
 
     auto instr = m_rInstrDataVector[idx];
     if(m_prevTimeStamp == 0 ){

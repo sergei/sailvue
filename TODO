@@ -1,6 +1,6 @@
-TODO make performance type of the clips with time lapsed view
 TODO add mark roundings auto chapters
-TODO add score for tacks, gybes and starts
 TODO remove fisheye from the video
+TODO draw all overlays on the single image to speedup the ffmpeg
 TODO speedup YDVR reading
+TODO score for starts
 TODO Add NMEA0183 support

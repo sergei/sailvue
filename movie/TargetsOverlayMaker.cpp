@@ -1,22 +1,52 @@
 #include "TargetsOverlayMaker.h"
 
 TargetsOverlayMaker::TargetsOverlayMaker(Polars &polars, std::vector<InstrumentInput> &instrDataVector,
-                                         std::filesystem::path &workDir, int width, int height, int startIdx,
+                                         int width, int height, int startIdx,
                                          int endIdx, bool ignoreCache)
- :m_rInstrDataVector(instrDataVector), m_workDir(workDir), m_polars(polars)
+ :m_rInstrDataVector(instrDataVector),m_polars(polars)
  ,m_width(width), m_height(height), m_ignoreCache(ignoreCache)
  ,m_speedStrip("SPD", 0, 0, m_width, m_height/2-10, startIdx, endIdx, 90 , 0, 200)
  ,m_vmgStrip("VMG", 0, m_height/2 + 5, m_width, m_height/2-10, startIdx, endIdx, 90 , 0, 200)
  {
-    std::filesystem::create_directories(m_workDir);
     m_pBackgroundImage = new QImage(m_width, m_height, QImage::Format_ARGB32);
     m_pBackgroundImage->fill(QColor(0, 0, 0, 0));
+    m_pHighLightImage = new QImage(m_width, m_height, QImage::Format_ARGB32);
+    m_pHighLightImage->fill(QColor(0, 0, 0, 0));
     makeBaseImage(startIdx, endIdx);
 }
 
 TargetsOverlayMaker::~TargetsOverlayMaker() {
     delete m_pBackgroundImage;
+    delete m_pHighLightImage;
 }
+
+void TargetsOverlayMaker::addChapter(std::filesystem::path workDir, int startIdx, int endIdx) {
+    m_workDir = workDir;
+    std::filesystem::create_directories(m_workDir);
+    m_speedStrip.setChapter(startIdx, endIdx);
+    m_vmgStrip.setChapter(startIdx, endIdx);
+}
+
+void TargetsOverlayMaker::addEpoch(const std::string &fileName, int epochIdx) {
+    std::filesystem::path pngName = std::filesystem::path(m_workDir) / fileName;
+
+    if ( std::filesystem::is_regular_file(pngName) && !m_ignoreCache){
+        return ;
+    }
+    if ( m_pBackgroundImage == nullptr ){
+        std::cout << "PolarOverlayMaker::addEpoch() called after destructor" << std::endl;
+        return;
+    }
+
+    QImage image = m_pBackgroundImage->copy();
+    QPainter painter(&image);
+
+    m_speedStrip.drawCurrent(painter, epochIdx);
+    m_vmgStrip.drawCurrent(painter, epochIdx);
+
+    image.save(QString::fromStdString(pngName.string()), "PNG");
+}
+
 
 void TargetsOverlayMaker::makeBaseImage(int startIdx, int endIdx){
     QPainter painter(m_pBackgroundImage);
@@ -75,26 +105,6 @@ Strip::Strip(const std::string &label, int x, int y, int width, int height, int 
     m_tickPen.setWidth(6);
 }
 
-void TargetsOverlayMaker::addEpoch(const std::string &fileName, int epochIdx) {
-    std::filesystem::path pngName = std::filesystem::path(m_workDir) / fileName;
-
-    if ( std::filesystem::is_regular_file(pngName) && !m_ignoreCache){
-        return ;
-    }
-    if ( m_pBackgroundImage == nullptr ){
-        std::cout << "PolarOverlayMaker::addEpoch() called after destructor" << std::endl;
-        return;
-    }
-
-    QImage image = m_pBackgroundImage->copy();
-    QPainter painter(&image);
-
-    m_speedStrip.drawCurrent(painter, epochIdx);
-    m_vmgStrip.drawCurrent(painter, epochIdx);
-
-    image.save(QString::fromStdString(pngName.string()), "PNG");
-}
-
 void Strip::addSample(double value, bool isValid) {
     if( isValid ) {
         value = std::min(value, m_ceiling);
@@ -149,10 +159,29 @@ void Strip::drawCurrent(QPainter &painter, int idx) {
     QPoint to = toScreen(idx, m_minValue);
     painter.setPen(m_tickPen);
     painter.drawLine(from, to);
+
+    // Shade out of chapter area
+    painter.setPen(m_outOfChapterPen);
+    painter.setBrush(m_outOfChapterBrush);
+    QPoint ul = toScreen(m_startIdx, m_maxValue);
+    QPoint lr = toScreen(m_chapterStartIdx, m_minValue);
+    QRect rect(ul, lr);
+    painter.drawRect(rect);
+    ul = toScreen(m_chapterEndIdx, m_maxValue);
+    lr = toScreen(m_endIdx, m_minValue);
+    rect = QRect(ul, lr);
+    painter.drawRect(rect);
+
 }
 
 QPoint Strip::toScreen(int idx, double y) const {
     int sx = m_x0 + m_labelWidth + int((idx - m_startIdx) * m_xScale);
     int sy = m_y0 + int( (m_maxValue - y) * m_yScale);
     return {sx, sy};
+}
+
+void Strip::setChapter(int startIdx, int endIdx) {
+    m_chapterStartIdx = startIdx;
+    m_chapterEndIdx = endIdx;
+
 }

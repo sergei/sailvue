@@ -14,6 +14,8 @@ public:
     void drawBackground(QPainter &painter);
     void drawCurrent(QPainter &painter, int idx);
 
+    void setChapter(int startIdx, int endIdx);
+
 private:
     [[nodiscard]] QPoint toScreen(int idx, double y) const;
 private:
@@ -32,6 +34,8 @@ private:
     double m_yScale=0;
     double m_maxValue = -100000;
     double m_minValue = 100000;
+    int m_chapterStartIdx = 0;
+    int m_chapterEndIdx = 0;
 
     std::vector<double> m_values;
     QFont m_labelFont;
@@ -40,12 +44,16 @@ private:
     QPen m_goodPen = QPen(QColor(0, 255, 0, 220));
     QPen m_badPen = QPen(QColor(255, 0, 0, 220));
     QPen m_tickPen = QPen(QColor(255, 255, 255, 255));
+
+    QBrush m_outOfChapterBrush = QBrush(QColor(0, 0, 0, 128));
+    QPen m_outOfChapterPen = QPen(QColor(0, 0, 0, 0));
 };
 
 class TargetsOverlayMaker {
 public:
-    TargetsOverlayMaker(Polars &polars, std::vector<InstrumentInput> &instrDataVector, std::filesystem::path &workDir, int width, int height,
+    TargetsOverlayMaker(Polars &polars, std::vector<InstrumentInput> &instrDataVector, int width, int height,
                         int startIdx, int endIdx, bool ignoreCache);
+    void addChapter(std::filesystem::path workDir, int startIdx, int endIdx);
     void addEpoch(const std::string &fileName, int epochIdx);
     virtual ~TargetsOverlayMaker();
 
@@ -60,6 +68,7 @@ private:
     bool m_ignoreCache;
 
     QImage *m_pBackgroundImage = nullptr;
+    QImage *m_pHighLightImage = nullptr;
 
     Strip m_speedStrip;
     Strip m_vmgStrip;

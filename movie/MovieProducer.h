@@ -9,6 +9,7 @@
 #include "navcomputer/IProgressListener.h"
 #include "Worker.h"
 #include "ffmpeg/FFMpeg.h"
+#include "TargetsOverlayMaker.h"
 
 class EncodingProgressListener : public FfmpegProgressListener{
 public:
@@ -39,7 +40,8 @@ public:
     void produce();
 
 private:
-    std::string produceChapter(Chapter &chapter, std::filesystem::path &folder, bool ignoreCache);
+    std::string produceChapter(TargetsOverlayMaker &targetsOverlayMaker, Chapter &chapter, std::filesystem::path &folder,
+                               int width, int target_ovl_height, bool ignoreCache);
     void findGoProClipFragments(std::list<ClipFragment> &clipFragments, uint64_t startUtcMs, uint64_t stopUtcMs);
     void makeRaceVideo(const std::filesystem::path &raceFolder, std::list<std::string> &chaptersList);
     void insertPerformanceChapters(std::list<Chapter *> &originalList, std::list<Chapter *> &augmentedList);

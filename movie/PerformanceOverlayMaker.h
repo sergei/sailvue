@@ -15,7 +15,7 @@ public:
     PerformanceOverlayMaker(Polars &polars, std::vector<InstrumentInput> &instrDataVector, std::filesystem::path &workDir,
                             int64_t timeDeltaBefore, int width, int height, int startIdx, int endIdx, bool ignoreCache);
     void addEpoch(const std::string &fileName, int epochIdx);
-    [[nodiscard]] int64_t getTimeDeltaThisLeg() const { return m_timeDeltaThisLeg; }
+    [[nodiscard]] int64_t getTimeDeltaThisLeg() const { return m_timeDeltaThisLegMs; }
 
 private:
     static QString formatTime(int64_t ms);
@@ -24,8 +24,8 @@ private:
     const int m_width;
     const int m_height;
     const bool m_ignoreCache;
-    int64_t m_timeDeltaBefore;
-    int64_t m_timeDeltaThisLeg=0;
+    int64_t m_timeDeltaBeforeMs;
+    int64_t m_timeDeltaThisLegMs=0;
 
 private:
     TimeDeltaComputer m_timeDeltaComputer;

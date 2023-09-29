@@ -14,7 +14,7 @@ enum LegType{
 class TimeDeltaComputer {
 public:
     explicit TimeDeltaComputer(Polars &polars, std::vector<InstrumentInput> &rInstrDataVector, u_int64_t startIdx, u_int64_t endIdx);
-    int64_t getDeltaMs(u_int64_t idx);  // Positive if we are ahead
+    int64_t getAccDeltaMs(u_int64_t idx);  // Positive if we are ahead
 private:
     Polars &m_polars;
     std::vector<InstrumentInput> &m_rInstrDataVector;

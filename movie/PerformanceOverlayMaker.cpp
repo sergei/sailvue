@@ -3,8 +3,8 @@
 PerformanceOverlayMaker::PerformanceOverlayMaker(Polars &polars, std::vector<InstrumentInput> &instrDataVector,
                                                  std::filesystem::path &workDir, int64_t timeDeltaBefore, int width, int height,
                                                  int startIdx, int endIdx, bool ignoreCache)
- :m_workDir(workDir), m_width(width), m_height(height), m_ignoreCache(ignoreCache), m_timeDeltaBefore(timeDeltaBefore),
- m_timeDeltaComputer(polars, instrDataVector, startIdx, endIdx)
+ : m_workDir(workDir), m_width(width), m_height(height), m_ignoreCache(ignoreCache), m_timeDeltaBeforeMs(timeDeltaBefore),
+   m_timeDeltaComputer(polars, instrDataVector, startIdx, endIdx)
 {
     std::filesystem::create_directories(m_workDir);
 
@@ -29,8 +29,8 @@ PerformanceOverlayMaker::PerformanceOverlayMaker(Polars &polars, std::vector<Ins
 
 void PerformanceOverlayMaker::addEpoch(const std::string &fileName, int epochIdx) {
 
-    int64_t deltaMs = m_timeDeltaComputer.getDeltaMs(epochIdx);
-    m_timeDeltaThisLeg += deltaMs;
+    int64_t deltaMs = m_timeDeltaComputer.getAccDeltaMs(epochIdx);
+    m_timeDeltaThisLegMs = deltaMs;
 
     std::filesystem::path pngName = std::filesystem::path(m_workDir) / fileName;
     if ( std::filesystem::is_regular_file(pngName) && !m_ignoreCache){
@@ -50,7 +50,7 @@ void PerformanceOverlayMaker::addEpoch(const std::string &fileName, int epochIdx
     painter.setPen(m_timePen);
     painter.drawText(0, m_height / 2,  formatTime(deltaMs) );
     painter.setFont(m_totalTimeFont);
-    painter.drawText(0, m_height ,  formatTime(deltaMs + m_timeDeltaBefore) );
+    painter.drawText(0, m_height ,  formatTime(deltaMs + m_timeDeltaBeforeMs) );
 
     image.save(QString::fromStdString(pngName.string()), "PNG");
 }
