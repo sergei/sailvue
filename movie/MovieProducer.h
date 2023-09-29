@@ -37,9 +37,25 @@ public:
                   std::list<RaceData *> &raceList, IProgressListener &rProgressListener);
 
     void produce();
+
 private:
+    std::string produceChapter(Chapter &chapter, std::filesystem::path &folder, bool ignoreCache);
+    void findGoProClipFragments(std::list<ClipFragment> &clipFragments, uint64_t startUtcMs, uint64_t stopUtcMs);
+    void makeRaceVideo(const std::filesystem::path &raceFolder, std::list<std::string> &chaptersList);
+    void insertPerformanceChapters(std::list<Chapter *> &originalList, std::list<Chapter *> &augmentedList);
+    [[nodiscard]] Chapter *makePerformanceChapter(u_int64_t startIdx, u_int64_t endIdx) const;
+
+private:
+    const char *INSTR_OVL_FILE_PAT  = "instr_%05d.png";
+    const char *POLAR_OVL_FILE_PAT  = "polar_%05d.png";
+    const char *TARGET_OVL_FILE_PAT = "target_%05d.png";
+    const char *TIMER_OVL_FILE_PAT  = "timer_%05d.png";
+    const char *PERF_OVL_FILE_PAT  = "perf_%05d.png";
+
+
     bool m_stopRequested = false;
     uint64_t m_totalRaceDuration = 0;
+    int64_t m_timeDeltaFromTarget = 0;
 
     const std::string &m_moviePath;
     IProgressListener& m_rProgressListener;
@@ -47,19 +63,7 @@ private:
     std::vector<InstrumentInput> &m_rInstrDataVector;
     std::list<RaceData *> &m_RaceDataList;
 
-    std::string produceChapter(Chapter &chapter, std::filesystem::path &folder, bool ignoreCache);
-    void findGoProClipFragments(std::list<ClipFragment> &clipFragments, uint64_t startUtcMs, uint64_t stopUtcMs);
-    void makeRaceVideo(const std::filesystem::path &raceFolder, std::list<std::string> &chaptersList);
-    void insertPerformanceChapters(std::list<Chapter *> &originalList, std::list<Chapter *> &augmentedList);
-
-    const char *INSTR_OVL_FILE_PAT  = "instr_%05d.png";
-    const char *POLAR_OVL_FILE_PAT  = "polar_%05d.png";
-    const char *TARGET_OVL_FILE_PAT = "target_%05d.png";
-    const char *TIMER_OVL_FILE_PAT  = "timer_%05d.png";
-
     Polars m_polars;
-
-    Chapter *makePerformanceChapter(u_int64_t startIdx, u_int64_t endIdx) const;
 };
 
 

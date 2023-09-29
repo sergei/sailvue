@@ -7,6 +7,7 @@
 #include "StartTimerOverlayMaker.h"
 #include "TargetsOverlayMaker.h"
 #include "utils/Caffeine.h"
+#include "PerformanceOverlayMaker.h"
 
 MovieProducer::MovieProducer(const std::string &path, const std::string &polarPath, std::list<GoProClipInfo> &clipsList,
                              std::vector<InstrumentInput> &instrDataVector, std::list<RaceData *> &raceList,
@@ -42,6 +43,7 @@ void MovieProducer::produce() {
         
         int chapterCount = 0;
         m_totalRaceDuration = 0;
+        m_timeDeltaFromTarget = 0;
         std::list<std::string> chapterClips;
         for( Chapter *chapter: augmentedChapterList){
             // Add entry to the description file
@@ -103,6 +105,9 @@ std::string MovieProducer::produceChapter(Chapter &chapter, std::filesystem::pat
     int target_ovl_width = goProclipFragments.front().width;
     int target_ovl_height = 128;
 
+    int perf_ovl_width = 200;
+    int perf_ovl_height = 200;
+
     std::filesystem::path instrOverlayPath = folder / "instr_overlay";
     InstrOverlayMaker instrOverlayMaker(instrOverlayPath, instr_ovl_width, instrOvlHeight, ignoreCache);
 
@@ -118,6 +123,12 @@ std::string MovieProducer::produceChapter(Chapter &chapter, std::filesystem::pat
     std::filesystem::path targetsOverlayPath = folder / "targets_overlay";
     TargetsOverlayMaker targetsOverlayMaker(m_polars, m_rInstrDataVector, targetsOverlayPath,
                                             target_ovl_width, target_ovl_height,
+                                            (int)chapter.getStartIdx(), (int)chapter.getEndIdx(), ignoreCache);
+
+
+    std::filesystem::path performanceOverlayPath = folder / "perf_overlay";
+    PerformanceOverlayMaker performanceOverlayMaker(m_polars, m_rInstrDataVector, performanceOverlayPath,
+                                                    m_timeDeltaFromTarget, perf_ovl_width, perf_ovl_height,
                                             (int)chapter.getStartIdx(), (int)chapter.getEndIdx(), ignoreCache);
 
 
@@ -142,11 +153,15 @@ std::string MovieProducer::produceChapter(Chapter &chapter, std::filesystem::pat
         std::string targetOvlFileName = acFileName;
         targetsOverlayMaker.addEpoch(targetOvlFileName, (int)chapter.getStartIdx() + count);
 
-        if ( chapter.getChapterType() == ChapterType::START){
+        if ( chapter.getChapterType() == ChapterType::START ){
             sprintf(acFileName, TIMER_OVL_FILE_PAT, count);
             std::string timerOvlFileName = acFileName;
             uint64_t gunUtcTimeMs = m_rInstrDataVector[chapter.getGunIdx()].utc.getUnixTimeMs();
             startTimerOverlayMaker.addEpoch(timerOvlFileName, gunUtcTimeMs,  *instrData);
+        } else {
+            sprintf(acFileName, PERF_OVL_FILE_PAT, count);
+            std::string perfOvlFileName = acFileName;
+            performanceOverlayMaker.addEpoch(perfOvlFileName, (int)chapter.getStartIdx() + count);
         }
 
         int progress = count * 100 / totalCount;
@@ -156,6 +171,8 @@ std::string MovieProducer::produceChapter(Chapter &chapter, std::filesystem::pat
         }
         count ++;
     }
+
+    m_timeDeltaFromTarget += performanceOverlayMaker.getTimeDeltaThisLeg();
 
     auto duration = float(stopUtcMs - startUtcMs) / 1000;
     float presentationDuration;
@@ -179,9 +196,10 @@ std::string MovieProducer::produceChapter(Chapter &chapter, std::filesystem::pat
     // Add targets overlay
     ffmpeg.addOverlayPngSequence(0, height - instrOvlHeight - target_ovl_height, overlaysFps, targetsOverlayPath.native(), TARGET_OVL_FILE_PAT);
 
-    // Add timer overlay
-    if ( chapter.getChapterType() == ChapterType::START){
+    if ( chapter.getChapterType() == ChapterType::START){ // Add start timer overlay
         ffmpeg.addOverlayPngSequence(timerX, 0, overlaysFps, startTimerOverlayPath.native(), TIMER_OVL_FILE_PAT);
+    }else{ // Add performance overlay
+        ffmpeg.addOverlayPngSequence(0, height - instrOvlHeight - target_ovl_height - perf_ovl_height, overlaysFps, performanceOverlayPath.native(), PERF_OVL_FILE_PAT);
     }
 
     // Add polar overlay
