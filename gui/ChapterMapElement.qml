@@ -6,6 +6,8 @@ import QtLocation
 MapItemGroup {
 
     property alias path: chapterPathLine.path
+    property alias evt_coord: eventMarker.coordinate
+    property alias evt_visible: eventMarker.visible
 
     onPathChanged: {
         let path = chapterPathLine.path
@@ -27,6 +29,21 @@ MapItemGroup {
             height: 12
             color: "red"
             radius: 6
+        }
+    }
+
+    MapQuickItem {
+        id: eventMarker
+        visible: false
+        anchorPoint.x: endImage.width / 2
+        anchorPoint.y: endImage.height / 2
+
+        sourceItem: Rectangle {
+            id: eventImage
+            width: 10
+            height: 10
+            color: "green"
+            radius: 5
         }
     }
 

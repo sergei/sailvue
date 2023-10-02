@@ -175,7 +175,7 @@ ApplicationWindow {
             selectedChapterStartMarker.coordinate = win.fullMapPath[startIdx]
             selectedChapterEndMarker.coordinate = win.fullMapPath[endIdx]
 
-            if ( chapterType !== 3 ) {
+            if ( chapterType !== ChapterTypes.START ) {
                 mediaplayer.seekTo(startIdx)
                 raceTreeModel.seekToRacePathIdx(gunIdx)
             } else{
@@ -188,11 +188,19 @@ ApplicationWindow {
             hideChapterEditor(uuid)
         }
 
-        onChapterAdded : function (uuid, chapterName, chapterType, startIdx, endIdx) {
+        onChapterAdded : function (uuid, chapterName, chapterType, startIdx, endIdx, gunIdx) {
             let co = Qt.createComponent('ChapterMapElement.qml')
             if (co.status === Component.Ready) {
                 let chapterMapElement = co.createObject(win)
                 chapterMapElement.path = win.fullMapPath.slice(startIdx, endIdx)
+
+                if ( chapterType === ChapterTypes.START || chapterType === ChapterTypes.MARK_ROUNDING ) {
+                    chapterMapElement.evt_visible = true
+                    chapterMapElement.evt_coord = win.fullMapPath[gunIdx]
+                } else {
+                    chapterMapElement.evt_visible = false
+                }
+
                 win.chapterMapElements[uuid] = chapterMapElement
                 mapView.map.addMapItemGroup(chapterMapElement)
             } else {

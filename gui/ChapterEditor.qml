@@ -3,6 +3,7 @@ import QtQuick.Dialogs
 import QtQuick.Controls
 import QtQuick.Window
 import QtQuick.Layouts
+import sails
 
 GridLayout {
 
@@ -24,11 +25,20 @@ GridLayout {
     signal gunSet()
 
     function changeGunCtrlVisibility(chapterTypeIdx) {
-        if (chapterTypeIdx === 2) {
+        if (chapterTypeIdx === ChapterTypes.START || chapterTypeIdx === ChapterTypes.MARK_ROUNDING) {
             // Show gun controls
             gun_label.visible = true
             gun_idx.visible = true
             gun_set.visible = true
+
+            if (chapterTypeIdx === ChapterTypes.START){
+                gun_label.text = "Gun at"
+                gun_set.text = "Set gun"
+            }else if (chapterTypeIdx === ChapterTypes.MARK_ROUNDING){
+                gun_label.text = "Mark at"
+                gun_set.text = "Set mark"
+            }
+
         } else {
             // Hide gun controls
             gun_label.visible = false
@@ -103,7 +113,7 @@ GridLayout {
 
     ComboBox {
         id: chapter_type
-        model: ["Boat Handling", "Performance", "Start"]
+        model: ["Tack/Gybe", "Performance", "Start", "Mark rounding"]
         onActivated: function (index) {
             console.log("Chapter type changed to " + index)
             parent.chapterType = index

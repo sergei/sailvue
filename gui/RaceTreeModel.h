@@ -126,7 +126,7 @@ public:
     Q_INVOKABLE void splitRace();
     Q_INVOKABLE void addChapter();
     Q_INVOKABLE void makeEvents();
-    Q_INVOKABLE void updateChapter(const QString &uuid, const QString &chapterName, uint64_t chapterType,
+    Q_INVOKABLE void updateChapter(const QString &uuid, const QString &chapterName, ChapterTypes::ChapterType chapterType,
                                    uint64_t startIdx, uint64_t endIdx, uint64_t gunIdx);
     Q_INVOKABLE void updateRace(const QString &raceName);
     Q_INVOKABLE void deleteSelected();
@@ -167,9 +167,9 @@ signals:
     void loadFinished();
     void racePathIdxChanged(uint64_t racePathIdx);
 
-    void chapterSelected(QString uuid, QString chapterName, uint64_t chapterType, uint64_t startIdx, uint64_t endIdx, uint64_t gunIdx);
+    void chapterSelected(QString uuid, QString chapterName, ChapterTypes::ChapterType chapterType, uint64_t startIdx, uint64_t endIdx, uint64_t gunIdx);
     void chapterUnSelected(QString uuid);
-    void chapterAdded(QString uuid, QString chapterName, uint64_t chapterType, uint64_t startIdx, uint64_t endIdx);
+    void chapterAdded(QString uuid, QString chapterName, ChapterTypes::ChapterType chapterType, uint64_t startIdx, uint64_t endIdx, uint64_t gunIdx);
     void chapterDeleted(QString uuid);
 
     void raceSelected(QString raceName, uint64_t startIdx, uint64_t endIdx);
@@ -207,12 +207,8 @@ class ChapterMaker : public NavStatsEventsListener {
 public:
     explicit ChapterMaker(TreeItem *raceTreeItem);
     void onTack(uint32_t fromIdx, uint32_t toIdx, bool isTack, double distLossMeters) override;
-    void onMarkRounding(uint32_t fromIdx, uint32_t toIdx, bool isWindward) override;
+    void onMarkRounding(uint32_t eventIdx, uint32_t fromIdx, uint32_t toIdx, bool isWindward) override;
 private:
-    int m_tackCount = 0;
-    int m_gybeCount = 0;
-    int m_windwardMarkRoundingCount = 0;
-    int m_leewardMarkRoundingCount = 0;
     TreeItem *m_pRaceTreeItem;
 };
 

@@ -154,5 +154,6 @@ qt_add_qml_module(sailvue
         SOURCES gui/GoProMediaPlayer.cpp
         SOURCES gui/PgnSrcTreeModel.h
         SOURCES gui/PgnSrcTreeModel.cpp
+        SOURCES gui/ChapterTypes.h
 )
 

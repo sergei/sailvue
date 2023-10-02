@@ -1,3 +1,4 @@
+#include <iostream>
 #include "NavStats.h"
 
 SlidingWindow::SlidingWindow(uint32_t size)
@@ -8,6 +9,7 @@ SlidingWindow::SlidingWindow(uint32_t size)
 
 void SlidingWindow::clear() {
     m_values.clear();
+    m_sum = 0;
 }
 
 void SlidingWindow::add(double value) {
@@ -18,7 +20,11 @@ void SlidingWindow::add(double value) {
         m_values.erase(m_values.begin());
     }
     m_values.push_back(value);
-    m_sum += value - oldVal;
+    m_sum -= oldVal;
+    m_sum += value;
+    if ( m_sum > m_maxLen){
+        std::cout << "SlidingWindow::add: m_sum > m_maxLen" << std::endl;
+    }
 }
 
 std::pair<double, double> SlidingWindow::sumHalves(int splitIdx) const {
@@ -76,34 +82,62 @@ void NavStats::update(uint64_t epochIdx, InstrumentInput &ii) {
     m_turnsStbdPort.add(stbdPort);
 
     // Analyze sliding windows
+    // Suspected mark rounding
+    if( m_turnsUpDown.isFull() && abs(m_turnsUpDown.getSum()) < TURN_THR1){
+        std::pair<double, double> halves = m_turnsUpDown.sumHalves();
+        if ( abs(halves.first) > TURN_THR1 && abs(halves.second) > TURN_THR2 ) {
+            bool isWindward = halves.second < 0;
+
+            int eventIdx = int(epochIdx - HALF_WIN);
+            int startIdx = findStartIdx(eventIdx, MARK_HEAD_LEN_MS);
+            int endIdx = findEndIdx(eventIdx, MARK_TAIL_LEN_MS);
+
+            m_listener.onMarkRounding(eventIdx, startIdx, endIdx, isWindward);
+            reset();
+        }
+    }
 
     // Suspected tack or gybe
     double sum = abs(m_turnsStbdPort.getSum());
     if ( m_turnsStbdPort.isFull() && sum < TURN_THR1) {
         std::pair<double, double> halves = m_turnsStbdPort.sumHalves();
-        if ( abs(halves.first) > TURN_THR2 && abs(halves.second) > TURN_THR2 ) {
-            bool isTack = abs(twa) < 90;
-            
-            // Determine the clip start and end inices so it lasts 15 seconds before event and 45 seconds after
-            int eventIdx = int(epochIdx - HALF_WIN);
-            auto eventUtcMs = m_InstrDataVector[eventIdx].utc.getUnixTimeMs();
-            int startIdx;
-            for(startIdx = eventIdx; startIdx > 0; startIdx--) {
-                if (m_InstrDataVector[startIdx].utc.getUnixTimeMs() < eventUtcMs - CHAPTER_HEAD_LEN_MS) {
-                    break;
-                }
+        if ( abs(halves.first) > TURN_THR1 && abs(halves.second) > TURN_THR2 ) {
+
+            // Check if we are still sailing up or downwind
+            std::pair<double, double> upDownHalves = m_turnsUpDown.sumHalves();
+            if ( upDownHalves.first * upDownHalves.second > 0 ){
+                bool isTack = abs(twa) < 90;
+
+                int eventIdx = int(epochIdx - HALF_WIN);
+                int startIdx = findStartIdx(eventIdx, TACK_HEAD_LEN_MS);
+                int endIdx = findEndIdx(eventIdx, TACK_TAIL_LEN_MS);
+
+                m_listener.onTack(startIdx, endIdx, isTack, 0);
+                reset();
             }
-            
-            int endIdx;
-            for( endIdx = eventIdx; endIdx < m_InstrDataVector.size(); endIdx++) {
-                if (m_InstrDataVector[endIdx].utc.getUnixTimeMs() > eventUtcMs +  CHAPTER_TAIL_LEN_MS) {
-                    break;
-                }
-            }
-            
-            m_listener.onTack(startIdx, endIdx, isTack, 0);
-            reset();
         }
     }
+}
+
+int NavStats::findStartIdx(int eventIdx, int durationMs) {
+    uint64_t eventUtcMs= m_InstrDataVector[eventIdx].utc.getUnixTimeMs();
+    int startIdx;
+    for(startIdx = eventIdx; startIdx > 0; startIdx--) {
+        if (m_InstrDataVector[startIdx].utc.getUnixTimeMs() < eventUtcMs - durationMs) {
+            break;
+        }
+    }
+    return startIdx;
+}
+
+int NavStats::findEndIdx(int eventIdx, int durationMs) {
+    uint64_t eventUtcMs= m_InstrDataVector[eventIdx].utc.getUnixTimeMs();
+    int endIdx;
+    for( endIdx = eventIdx; endIdx < m_InstrDataVector.size(); endIdx++) {
+        if (m_InstrDataVector[endIdx].utc.getUnixTimeMs() > eventUtcMs + durationMs) {
+            break;
+        }
+    }
+    return endIdx;
 }
 

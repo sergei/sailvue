@@ -163,7 +163,7 @@ std::string MovieProducer::produceChapter(TargetsOverlayMaker &targetsOverlayMak
         std::string targetOvlFileName = acFileName;
         targetsOverlayMaker.addEpoch(targetOvlFileName, (int)chapter.getStartIdx() + count);
 
-        if ( chapter.getChapterType() == ChapterType::START ){
+        if ( chapter.getChapterType() == ChapterTypes::ChapterType::START ){
             sprintf(acFileName, TIMER_OVL_FILE_PAT, count);
             std::string timerOvlFileName = acFileName;
             uint64_t gunUtcTimeMs = m_rInstrDataVector[chapter.getGunIdx()].utc.getUnixTimeMs();
@@ -187,7 +187,7 @@ std::string MovieProducer::produceChapter(TargetsOverlayMaker &targetsOverlayMak
     auto duration = float(stopUtcMs - startUtcMs) / 1000;
     float presentationDuration;
     bool changeDuration = false;
-    if( chapter.getChapterType() == ChapterType::SPEED_PERFORMANCE) {
+    if( chapter.getChapterType() == ChapterTypes::ChapterType::SPEED_PERFORMANCE) {
         presentationDuration = 60;
         changeDuration = true;
     }else{
@@ -206,7 +206,7 @@ std::string MovieProducer::produceChapter(TargetsOverlayMaker &targetsOverlayMak
     // Add targets overlay
     ffmpeg.addOverlayPngSequence(0, height - instrOvlHeight - target_ovl_height, overlaysFps, targetsOverlayPath.native(), TARGET_OVL_FILE_PAT);
 
-    if ( chapter.getChapterType() == ChapterType::START){ // Add start timer overlay
+    if ( chapter.getChapterType() == ChapterTypes::ChapterType::START){ // Add start timer overlay
         ffmpeg.addOverlayPngSequence(timerX, 0, overlaysFps, startTimerOverlayPath.native(), TIMER_OVL_FILE_PAT);
     }else{ // Add performance overlay
         ffmpeg.addOverlayPngSequence(perfPadX, height - instrOvlHeight - target_ovl_height - perf_ovl_height - perfPadY, overlaysFps, performanceOverlayPath.native(), PERF_OVL_FILE_PAT);
@@ -287,7 +287,7 @@ Chapter *MovieProducer::makePerformanceChapter(u_int64_t startIdx, u_int64_t end
     // Don't make too short chapters
     if (durationMs > MIN_PERF_CHAPTER_DURATION) {
         auto *chapter = new Chapter(startIdx, endIdx);
-        chapter->setChapterType(SPEED_PERFORMANCE);
+        chapter->setChapterType(ChapterTypes::SPEED_PERFORMANCE);
 
         // Now let's come up with the name
         double minTwa = 200;

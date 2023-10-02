@@ -307,7 +307,8 @@ void RaceTreeModel::showRaceData() {
             raceTreeItem->appendChild(chapterTreeItem);
 
             emit chapterAdded(chapter->getUuid(),QString::fromStdString(chapter->getName()),
-                              chapter->getChapterType(),chapter->getStartIdx(),chapter->getEndIdx());
+                              chapter->getChapterType(),chapter->getStartIdx(),chapter->getEndIdx(),
+                              chapter->getGunIdx());
         }
     }
 
@@ -407,8 +408,8 @@ void RaceTreeModel::addChapter() {
 
             m_project.raceDataChanged();
             emit isDirtyChanged();
-            emit chapterAdded(chapter->getUuid(), QString::fromStdString(chapter->getName()), 0,
-                                 chapter->getStartIdx(),  chapter->getEndIdx());
+            emit chapterAdded(chapter->getUuid(), QString::fromStdString(chapter->getName()), chapter->getChapterType(),
+                                 chapter->getStartIdx(),  chapter->getEndIdx(), chapter->getGunIdx());
             emit layoutChanged();
 
             return;
@@ -429,7 +430,7 @@ void RaceTreeModel::updateRace(const QString &raceName){
     emit layoutChanged();
 }
 
-void RaceTreeModel::updateChapter(const QString &uuid, const QString &chapterName, uint64_t chapterType, uint64_t startIdx,
+void RaceTreeModel::updateChapter(const QString &uuid, const QString &chapterName, ChapterTypes::ChapterType chapterType, uint64_t startIdx,
                                   uint64_t endIdx, uint64_t gunIdx) {
     std::cout << "updateChapter " << uuid.toStdString() << " " << chapterName.toStdString() << " " << chapterType << " " << startIdx << " " << endIdx << " " << gunIdx << std::endl;
 
@@ -443,7 +444,7 @@ void RaceTreeModel::updateChapter(const QString &uuid, const QString &chapterNam
         emit layoutAboutToBeChanged();
 
         chapter->SetName(chapterName.toStdString());
-        chapter->setChapterType(ChapterType(chapterType));
+        chapter->setChapterType(ChapterTypes::ChapterType(chapterType));
         chapter->setStartIdx(startIdx);
         chapter->setEndIdx(endIdx);
         chapter->SetGunIdx(gunIdx);
@@ -627,7 +628,8 @@ void RaceTreeModel::currentChanged(QModelIndex current, QModelIndex previous) {
         // All chapter map elements are removed from the map now, so we need to add them back
         for( Chapter *chapter: m_pCurrentRace->getChapters() ){
             emit chapterAdded(chapter->getUuid(),QString::fromStdString(chapter->getName()),
-                              chapter->getChapterType(),chapter->getStartIdx(),chapter->getEndIdx());
+                              chapter->getChapterType(),chapter->getStartIdx(),chapter->getEndIdx(),
+                              chapter->getGunIdx());
         }
 
         Chapter *chapter = getSelectedChapter();
@@ -640,7 +642,8 @@ void RaceTreeModel::currentChanged(QModelIndex current, QModelIndex previous) {
         // All chapter map elements are removed from the map now, so we need to add them back
         for( Chapter *chapter: m_pCurrentRace->getChapters() ){
             emit chapterAdded(chapter->getUuid(),QString::fromStdString(chapter->getName()),
-                              chapter->getChapterType(),chapter->getStartIdx(),chapter->getEndIdx());
+                              chapter->getChapterType(),chapter->getStartIdx(),chapter->getEndIdx(),
+                              chapter->getGunIdx());
         }
     }
 
@@ -743,17 +746,16 @@ void ChapterMaker::onTack(uint32_t startIdx, uint32_t endIdx, bool isTack, doubl
 
     std::string chapterName;
     if ( isTack ){
-        m_tackCount++;
-        chapterName = "Tack " + std::to_string(m_tackCount);
+        chapterName = "Tack";
     }else{
-        chapterName = "Gybe " + std::to_string(m_tackCount);
-        m_gybeCount++;
+        chapterName = "Gybe";
     }
 
     std::cout << "insertChapter " << chapterName << " startIdx " << startIdx << " endIdx " << endIdx << std::endl;
 
     auto *chapter = new Chapter(startIdx, endIdx);
     chapter->SetName(chapterName);
+    chapter->setChapterType(ChapterTypes::ChapterType::TACK_GYBE);
     pRaceData->insertChapter(chapter);
 
     // Add data to the view model
@@ -761,6 +763,32 @@ void ChapterMaker::onTack(uint32_t startIdx, uint32_t endIdx, bool isTack, doubl
     m_pRaceTreeItem->insertChapterChild(chapterTreeItem);
 }
 
-void ChapterMaker::onMarkRounding(uint32_t startIdx, uint32_t endIdx, bool isWindward) {
+void ChapterMaker::onMarkRounding(uint32_t eventIdx, uint32_t startIdx, uint32_t endIdx, bool isWindward) {
 
+    RaceData *pRaceData = m_pRaceTreeItem->getRaceData();
+
+    if (startIdx < pRaceData->getStartIdx())
+        startIdx = pRaceData->getStartIdx();
+
+    if (endIdx > pRaceData->getEndIdx())
+        endIdx = pRaceData->getEndIdx();
+
+    std::string chapterName;
+    if ( isWindward ){
+        chapterName = "Windward mark";
+    }else{
+        chapterName = "Leeward mark";
+    }
+
+    std::cout << "insertChapter " << chapterName << " startIdx " << startIdx << " endIdx " << endIdx << std::endl;
+
+    auto *chapter = new Chapter(startIdx, endIdx);
+    chapter->SetName(chapterName);
+    chapter->setChapterType(ChapterTypes::ChapterType::MARK_ROUNDING);
+    chapter->SetGunIdx(eventIdx);
+    pRaceData->insertChapter(chapter);
+
+    // Add data to the view model
+    auto *chapterTreeItem = new TreeItem(pRaceData, chapter, m_pRaceTreeItem);
+    m_pRaceTreeItem->insertChapterChild(chapterTreeItem);
 }

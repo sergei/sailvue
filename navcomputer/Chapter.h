@@ -5,14 +5,9 @@
 #include <list>
 #include <QUuid>
 #include "InstrumentInput.h"
+#include "ChapterTypes.h"
 
 static const int MIN_PERF_CHAPTER_DURATION = 1 * 60 * 1000; //
-
-enum ChapterType{
-    BOAT_HANDLING,
-    SPEED_PERFORMANCE,
-    START,
-};
 
 class Chapter {
 public:
@@ -22,13 +17,13 @@ public:
     [[nodiscard]] u_int64_t getEndIdx() const { return m_endIdx; }
     [[nodiscard]] u_int64_t getGunIdx() const { return m_gunIdx; }
     [[nodiscard]] QString getUuid() const { return m_uuid.toString(QUuid::WithoutBraces); }
-    [[nodiscard]] ChapterType getChapterType() const { return m_chapterType; }
+    [[nodiscard]] ChapterTypes::ChapterType getChapterType() const { return m_chapterType; }
 
     void SetName(std::string name);
     void setEndIdx(u_int64_t endIdx) { m_endIdx = endIdx; }
     void setStartIdx(u_int64_t startIdx) { m_startIdx = startIdx; }
     void SetGunIdx(u_int64_t gunIdx) { m_gunIdx = gunIdx; }
-    void setChapterType(ChapterType chapterType) { m_chapterType = chapterType; }
+    void setChapterType(ChapterTypes::ChapterType chapterType) { m_chapterType = chapterType; }
 
 private:
     QUuid m_uuid;
@@ -36,7 +31,7 @@ private:
     u_int64_t m_startIdx=0;
     u_int64_t m_endIdx=0;
     u_int64_t m_gunIdx=0;
-    ChapterType m_chapterType = BOAT_HANDLING;
+    ChapterTypes::ChapterType m_chapterType = ChapterTypes::TACK_GYBE;
 };
 
 

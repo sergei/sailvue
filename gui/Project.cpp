@@ -57,7 +57,7 @@ void Project::fromJson(const QJsonObject &json){
                         int chapterGunIdx = vg.toInt();
                         chapter->SetGunIdx(chapterGunIdx);
                     }
-                    chapter->setChapterType(ChapterType(chapterType));
+                    chapter->setChapterType(ChapterTypes::ChapterType(chapterType));
 
                     raceData->insertChapter(chapter);
                 }

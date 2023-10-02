@@ -1,6 +1,9 @@
-TODO add mark roundings auto chapters
+TODO do all chapter data processing prior to overlay PNGs creation
+TODO export race data to CSV, KMZ
+TODO for mark roundings use the separate before and after mark scoring
+TODO if the leg is a fetch use VMC instead of VMG
 TODO remove fisheye from the video
-TODO draw all overlays on the single image to speedup the ffmpeg
 TODO speedup YDVR reading
+TODO draw all overlays on the single image to speedup the ffmpeg
 TODO score for starts
 TODO Add NMEA0183 support
