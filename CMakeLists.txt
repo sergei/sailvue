@@ -91,6 +91,7 @@ qt_add_executable(sailvue WIN32 MACOSX_BUNDLE
         navcomputer/TimeDeltaComputer.h
         movie/PerformanceOverlayMaker.cpp
         movie/PerformanceOverlayMaker.h
+        gui/ChapterMaker.cpp
 )
 
 target_include_directories(sailvue PUBLIC

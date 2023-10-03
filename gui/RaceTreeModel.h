@@ -125,7 +125,8 @@ public:
 
     Q_INVOKABLE void splitRace();
     Q_INVOKABLE void addChapter();
-    Q_INVOKABLE void makeEvents();
+    Q_INVOKABLE void detectManeuvers();
+    Q_INVOKABLE void makeAnalytics();
     Q_INVOKABLE void updateChapter(const QString &uuid, const QString &chapterName, ChapterTypes::ChapterType chapterType,
                                    uint64_t startIdx, uint64_t endIdx, uint64_t gunIdx);
     Q_INVOKABLE void updateRace(const QString &raceName);
@@ -201,15 +202,6 @@ private:
     uint64_t m_ulCurrentInstrDataIdx = 0;
 
     void deleteAllRaces();
-};
-
-class ChapterMaker : public NavStatsEventsListener {
-public:
-    explicit ChapterMaker(TreeItem *raceTreeItem);
-    void onTack(uint32_t fromIdx, uint32_t toIdx, bool isTack, double distLossMeters) override;
-    void onMarkRounding(uint32_t eventIdx, uint32_t fromIdx, uint32_t toIdx, bool isWindward) override;
-private:
-    TreeItem *m_pRaceTreeItem;
 };
 
 

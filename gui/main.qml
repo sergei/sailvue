@@ -479,18 +479,16 @@ ApplicationWindow {
             RaceEditor {
                 id: raceEditor
                 Layout.columnSpan: 5
-
                 onChanged: {
-                    console.log("Race changed: " + raceName )
                     raceTreeModel.updateRace(raceName)
                 }
-
-                onMakeEvents: {
-                    console.log("Make events")
-                    raceTreeModel.makeEvents()
+                onDetectManeuvers: {
+                    raceTreeModel.detectManeuvers()
+                }
+                onMakeAnalytics: {
+                    raceTreeModel.makeAnalytics()
                 }
             }
-
     }
 
         // Video and instruments view

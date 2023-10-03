@@ -2,6 +2,7 @@
 #include "RaceTreeModel.h"
 #include "Worker.h"
 #include "navcomputer/NavStats.h"
+#include "ChapterMaker.h"
 
 TreeItem::TreeItem(RaceData *pRaceData, Chapter *pChapter, TreeItem *parent)
         : m_pRaceData(pRaceData), m_pChapter(pChapter), m_parentItem(parent)
@@ -704,7 +705,7 @@ void RaceTreeModel::handleProduceFinished() {
     emit produceFinished();
 }
 
-void RaceTreeModel::makeEvents() {
+void RaceTreeModel::detectManeuvers() {
 
     if (!m_selectedTreeIdx.isValid())
         return ;
@@ -715,7 +716,7 @@ void RaceTreeModel::makeEvents() {
         item = item->parentItem();
     }
 
-    ChapterMaker chapterMaker(item);
+    ChapterMaker chapterMaker(item, m_InstrDataVector);
     NavStats navStats(m_InstrDataVector, chapterMaker);
     emit layoutAboutToBeChanged();
 
@@ -726,69 +727,46 @@ void RaceTreeModel::makeEvents() {
     m_project.raceDataChanged();
     emit isDirtyChanged();
     emit layoutChanged();
-
 }
 
-ChapterMaker::ChapterMaker(TreeItem *raceTreeItem)
-:m_pRaceTreeItem(raceTreeItem)
-{
+void RaceTreeModel::makeAnalytics() {
+    if (!m_selectedTreeIdx.isValid())
+        return ;
 
-}
-
-void ChapterMaker::onTack(uint32_t startIdx, uint32_t endIdx, bool isTack, double distLossMeters) {
-    RaceData *pRaceData = m_pRaceTreeItem->getRaceData();
-
-    if (startIdx < pRaceData->getStartIdx())
-        startIdx = pRaceData->getStartIdx();
-
-    if (endIdx > pRaceData->getEndIdx())
-        endIdx = pRaceData->getEndIdx();
-
-    std::string chapterName;
-    if ( isTack ){
-        chapterName = "Tack";
-    }else{
-        chapterName = "Gybe";
+    // Find selected race
+    auto *raceTreeItem = static_cast<TreeItem*>(m_selectedTreeIdx.internalPointer());
+    if ( !raceTreeItem->isRace() ){
+        raceTreeItem = raceTreeItem->parentItem();
     }
 
-    std::cout << "insertChapter " << chapterName << " startIdx " << startIdx << " endIdx " << endIdx << std::endl;
+    RaceData *pRaceData = raceTreeItem->getRaceData();
 
-    auto *chapter = new Chapter(startIdx, endIdx);
-    chapter->SetName(chapterName);
-    chapter->setChapterType(ChapterTypes::ChapterType::TACK_GYBE);
-    pRaceData->insertChapter(chapter);
+    // Insert performance chapters
+    emit layoutAboutToBeChanged();
 
-    // Add data to the view model
-    auto *chapterTreeItem = new TreeItem(pRaceData, chapter, m_pRaceTreeItem);
-    m_pRaceTreeItem->insertChapterChild(chapterTreeItem);
-}
+    auto originalList = pRaceData->getChapters();
+    ChapterMaker chapterMaker(raceTreeItem, m_InstrDataVector);
 
-void ChapterMaker::onMarkRounding(uint32_t eventIdx, uint32_t startIdx, uint32_t endIdx, bool isWindward) {
+    for(auto it = originalList.begin(); it != originalList.end(); it++) {
+        auto nextIt = it;
+        nextIt++;
+        if (nextIt != originalList.end()) {
+            auto *chapter = chapterMaker.makePerformanceChapter(*it, *nextIt);
+            if ( chapter != nullptr) {
+                pRaceData->insertChapter(chapter);
 
-    RaceData *pRaceData = m_pRaceTreeItem->getRaceData();
+                // Add data to the view model
+                auto *chapterTreeItem = new TreeItem(pRaceData, chapter, raceTreeItem);
+                raceTreeItem->insertChapterChild(chapterTreeItem);
 
-    if (startIdx < pRaceData->getStartIdx())
-        startIdx = pRaceData->getStartIdx();
-
-    if (endIdx > pRaceData->getEndIdx())
-        endIdx = pRaceData->getEndIdx();
-
-    std::string chapterName;
-    if ( isWindward ){
-        chapterName = "Windward mark";
-    }else{
-        chapterName = "Leeward mark";
+                m_project.raceDataChanged();
+                emit isDirtyChanged();
+                emit chapterAdded(chapter->getUuid(), QString::fromStdString(chapter->getName()), chapter->getChapterType(),
+                                  chapter->getStartIdx(),  chapter->getEndIdx(), chapter->getGunIdx());
+            }
+        }
     }
 
-    std::cout << "insertChapter " << chapterName << " startIdx " << startIdx << " endIdx " << endIdx << std::endl;
-
-    auto *chapter = new Chapter(startIdx, endIdx);
-    chapter->SetName(chapterName);
-    chapter->setChapterType(ChapterTypes::ChapterType::MARK_ROUNDING);
-    chapter->SetGunIdx(eventIdx);
-    pRaceData->insertChapter(chapter);
-
-    // Add data to the view model
-    auto *chapterTreeItem = new TreeItem(pRaceData, chapter, m_pRaceTreeItem);
-    m_pRaceTreeItem->insertChapterChild(chapterTreeItem);
+    emit layoutChanged();
 }
+

@@ -5,12 +5,13 @@ import QtQuick.Window
 import QtQuick.Layouts
 
 GridLayout {
-    columns: 5
+    columns: 6
     property alias raceName : race_name.text
     visible: false
 
     signal changed()
-    signal makeEvents()
+    signal makeAnalytics()
+    signal detectManeuvers()
 
     Label {
         text: "Race:"
@@ -31,9 +32,16 @@ GridLayout {
     }
 
     Button {
-        text: "Make events"
+        text: "Detect maneuvers"
         onClicked: {
-            makeEvents()
+            detectManeuvers()
+        }
+    }
+
+    Button {
+        text: "Make analytics"
+        onClicked: {
+            makeAnalytics()
         }
     }
 
