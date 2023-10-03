@@ -99,12 +99,9 @@ Chapter *ChapterMaker::makePerformanceChapter(Chapter *pPrevChapter, Chapter *pN
         bool downWind = abs(minTwa) > 100;
 
         std::string name;
+        bool fetch = isFetch(pPrevChapter, pNextChapter);
 
-        // Determine if it's a fetch ( no tack or gybe before or after)
-        bool isFetch = pPrevChapter->getChapterType() != ChapterTypes::ChapterType::TACK_GYBE &&
-                       pNextChapter->getChapterType() != ChapterTypes::ChapterType::TACK_GYBE;
-
-        if ( isFetch ){
+        if ( fetch ){
             name = std::string(downWind ? "downwind" : "upwind") + " fetch";
         }else{
             name = std::string(starBoard ? "Starboard " : "Port ")
@@ -117,4 +114,11 @@ Chapter *ChapterMaker::makePerformanceChapter(Chapter *pPrevChapter, Chapter *pN
     }else{
         return nullptr;
     }
+}
+
+bool ChapterMaker::isFetch(const Chapter *pPrevChapter,
+                           const Chapter *pNextChapter)  {// Determine if it's a fetch ( no tack or gybe before or after)
+    bool isFetch = pPrevChapter->getChapterType() != ChapterTypes::TACK_GYBE &&
+                   pNextChapter->getChapterType() != ChapterTypes::TACK_GYBE;
+    return isFetch;
 }

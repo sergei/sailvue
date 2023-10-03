@@ -1,8 +1,10 @@
 #include <iostream>
+#include <fstream>
 #include "RaceTreeModel.h"
 #include "Worker.h"
 #include "navcomputer/NavStats.h"
 #include "ChapterMaker.h"
+#include "navcomputer/TimeDeltaComputer.h"
 
 TreeItem::TreeItem(RaceData *pRaceData, Chapter *pChapter, TreeItem *parent)
         : m_pRaceData(pRaceData), m_pChapter(pChapter), m_parentItem(parent)
@@ -101,7 +103,7 @@ RaceTreeModel::RaceTreeModel(QObject *parent)
  m_project(m_RaceDataList) {
     rootItem = new TreeItem();
 
-    auto *worker = new Worker(m_GoProClipInfoList, m_InstrDataVector, m_RaceDataList);
+    auto *worker = new Worker(m_GoProClipInfoList, m_InstrDataVector, m_PerformanceVector, m_RaceDataList);
     worker->moveToThread(&workerThread);
     connect(&workerThread, &QThread::finished, worker, &QObject::deleteLater);
 
@@ -114,6 +116,7 @@ RaceTreeModel::RaceTreeModel(QObject *parent)
     connect(worker, &Worker::produceStarted, this, &RaceTreeModel::handleProduceStarted);
     connect(worker, &Worker::produceFinished, this, &RaceTreeModel::handleProduceFinished);
 
+    connect(this, &RaceTreeModel::exportStats, worker, &Worker::exportStats);
 
     workerThread.start();
 }
@@ -769,4 +772,3 @@ void RaceTreeModel::makeAnalytics() {
 
     emit layoutChanged();
 }
-

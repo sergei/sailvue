@@ -12,6 +12,7 @@
 #include "navcomputer/RaceData.h"
 #include "Project.h"
 #include "navcomputer/NavStatsEventsListener.h"
+#include "navcomputer/Performance.h"
 
 class TreeItem
 {
@@ -181,6 +182,8 @@ signals:
     void produceStarted();
     void produceFinished();
 
+    void exportStats(const QString &polarUrl, const QString &path);
+
 #pragma clang diagnostic pop
 
 private:
@@ -194,6 +197,8 @@ private:
 
     std::list<GoProClipInfo> m_GoProClipInfoList;
     std::vector<InstrumentInput> m_InstrDataVector;
+    std::vector<Performance> m_PerformanceVector;
+
     std::list<RaceData *> m_RaceDataList;
 
     QModelIndex m_selectedTreeIdx = QModelIndex();
@@ -202,6 +207,7 @@ private:
     uint64_t m_ulCurrentInstrDataIdx = 0;
 
     void deleteAllRaces();
+    void computeStats();
 };
 
 

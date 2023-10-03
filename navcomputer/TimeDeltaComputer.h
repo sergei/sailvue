@@ -3,22 +3,25 @@
 
 #include "InstrumentInput.h"
 #include "Polars.h"
+#include "Performance.h"
 
 enum LegType{
     LEG_TYPE_UNKNOWN,
     LEG_TYPE_UPWIND,
     LEG_TYPE_DOWNWIND,
-    LEG_TYPE_REACH
 };
 
 class TimeDeltaComputer {
 public:
-    explicit TimeDeltaComputer(Polars &polars, std::vector<InstrumentInput> &rInstrDataVector, u_int64_t startIdx, u_int64_t endIdx);
-    int64_t getAccDeltaMs(u_int64_t idx);  // Positive if we are ahead
+    TimeDeltaComputer(Polars &polars, std::vector<InstrumentInput> &instrData);
+    void startLeg();
+    void updatePerformance(uint64_t idx, Performance &performance, bool isFetch);
+
 private:
     Polars &m_polars;
     std::vector<InstrumentInput> &m_rInstrDataVector;
     LegType m_legType = LEG_TYPE_UNKNOWN;
+    double m_accumulateDistToTargetMeters = 0;  // Positive if we are ahead
     double m_accumulateTimeToTarget = 0;  // Positive if we are ahead
     u_int64_t m_prevTimeStamp = 0;
 };

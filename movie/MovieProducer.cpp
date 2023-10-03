@@ -10,11 +10,14 @@
 #include "PerformanceOverlayMaker.h"
 
 MovieProducer::MovieProducer(const std::string &path, const std::string &polarPath, std::list<GoProClipInfo> &clipsList,
-                             std::vector<InstrumentInput> &instrDataVector, std::list<RaceData *> &raceList,
+                             std::vector<InstrumentInput> &instrDataVector,
+                             std::vector<Performance> &performanceVector,
+                             std::list<RaceData *> &raceList,
                              IProgressListener &rProgressListener)
 :m_moviePath(path)
 ,m_rGoProClipInfoList(clipsList)
 ,m_rInstrDataVector(instrDataVector)
+,m_rPerformanceVector(performanceVector)
 ,m_RaceDataList(raceList)
 ,m_rProgressListener(rProgressListener)
 {
@@ -137,9 +140,9 @@ std::string MovieProducer::produceChapter(TargetsOverlayMaker &targetsOverlayMak
     targetsOverlayMaker.addChapter(targetsOverlayPath, (int)chapter.getStartIdx(), (int)chapter.getEndIdx());
 
     std::filesystem::path performanceOverlayPath = folder / "perf_overlay";
-    PerformanceOverlayMaker performanceOverlayMaker(m_polars, m_rInstrDataVector, performanceOverlayPath,
-                                                    m_timeDeltaFromTarget, perf_ovl_width, perf_ovl_height,
-                                            (int)chapter.getStartIdx(), (int)chapter.getEndIdx(), ignoreCache);
+    PerformanceOverlayMaker performanceOverlayMaker(m_polars, m_rInstrDataVector, m_rPerformanceVector,
+                                                    performanceOverlayPath,
+                                                    m_timeDeltaFromTarget, perf_ovl_width, perf_ovl_height, ignoreCache);
 
 
     int timerX = goProclipFragments.front().width - startTimerOverlayMaker.getWidth();

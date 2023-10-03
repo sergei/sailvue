@@ -8,6 +8,7 @@
 #include "gopro/GoPro.h"
 #include "PgnSrcTreeModel.h"
 #include "Settings.h"
+#include "navcomputer/TimeDeltaComputer.h"
 
 void Worker::readData(const QString &goproDir, const QString &nmeaDir, const QString &polarFile, bool bIgnoreCache){
     std::cout << "goproDir " + goproDir.toStdString() << std::endl;
@@ -53,6 +54,10 @@ void Worker::readData(const QString &goproDir, const QString &nmeaDir, const QSt
         }
     }
 
+    // Make performance vector the same size as the instr data vector
+    m_rPerformanceVector.clear();
+    m_rPerformanceVector.resize(m_rInstrDataVector.size());
+
     std::cout << "clipCount " << clipCount << std::endl;
     std::cout << "pointsCount " << pointsCount << std::endl;
 
@@ -82,8 +87,74 @@ void Worker::produce(const QString &moviePathUrl, const QString &polarUrl) {
 
     emit produceStarted();
 
-    MovieProducer movieProducer(moviePath, polarPath, m_rGoProClipInfoList, m_rInstrDataVector, m_RaceDataList, *this);
+    computeStats(polarUrl);
+
+    MovieProducer movieProducer(moviePath, polarPath, m_rGoProClipInfoList, m_rInstrDataVector, m_rPerformanceVector,
+                                m_RaceDataList, *this);
+
     movieProducer.produce();
 
     emit produceFinished();
+}
+
+
+void Worker::computeStats(const QString &polarUrl){
+    Polars polars;
+    polars.loadPolar(QUrl(polarUrl).toLocalFile().toStdString());
+
+    m_rPerformanceVector.clear();
+    m_rPerformanceVector.resize(m_rInstrDataVector.size());
+
+    int raceIdx = 0;
+    for ( RaceData *race: m_RaceDataList) {
+        TimeDeltaComputer timeDeltaComputer(polars, m_rInstrDataVector);
+
+        int chapterIdx = 0;
+        for(auto it = race->getChapters().begin(); it != race->getChapters().end(); it++, chapterIdx++) {
+            Chapter *chapter = *it;
+
+            auto nextIt = it;
+            auto prevIt = it;
+            nextIt++;
+            bool isFetch = false;
+            if ( it!=race->getChapters().begin() &&  nextIt != race->getChapters().end()){
+                prevIt--;
+                isFetch = ((*prevIt)->getChapterType() == ChapterTypes::START || (*prevIt)->getChapterType() == ChapterTypes::MARK_ROUNDING)
+                        && (*nextIt)->getChapterType() == ChapterTypes::MARK_ROUNDING;
+            }
+            timeDeltaComputer.startLeg();
+            for( uint64_t idx= chapter->getStartIdx(); idx < chapter->getEndIdx(); idx++){
+                m_rPerformanceVector[idx].raceIdx = raceIdx;
+                m_rPerformanceVector[idx].legIdx = chapterIdx;
+                bool beforeStart = chapter->getChapterType() == ChapterTypes::ChapterType::START && idx < chapter->getGunIdx();
+                if ( beforeStart ){
+                    m_rPerformanceVector[idx].isValid = false;
+                    m_rPerformanceVector[idx].distLostToTarget = 0;
+                    m_rPerformanceVector[idx].timeLostToTarget = 0;
+                }else{
+                    timeDeltaComputer.updatePerformance(idx, m_rPerformanceVector[idx], isFetch);
+                }
+            }
+        }
+        raceIdx ++;
+    }
+
+}
+
+
+void Worker::exportStats(const QString &polarUrl, const QString &path) {
+    computeStats(polarUrl);
+
+    // Store stats as a CSV file
+    std::string csvName = QUrl(path).toLocalFile().toStdString();
+    std::cout << "exporting stats to  " << csvName << std::endl;
+    std::ofstream ofs(csvName);
+
+    for(uint64_t idx = 0; idx < m_rPerformanceVector.size(); idx++){
+        ofs <<  std::string(m_rInstrDataVector[idx]) << ",";
+        ofs << m_rPerformanceVector[idx].toString(m_rInstrDataVector[idx].utc) << ",";
+        ofs << std::endl;
+    }
+
+    ofs.close();
 }

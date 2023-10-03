@@ -5,8 +5,8 @@ TargetsOverlayMaker::TargetsOverlayMaker(Polars &polars, std::vector<InstrumentI
                                          int endIdx, bool ignoreCache)
  :m_rInstrDataVector(instrDataVector),m_polars(polars)
  ,m_width(width), m_height(height), m_ignoreCache(ignoreCache)
- ,m_speedStrip("SPD", 0, 0, m_width, m_height/2-10, startIdx, endIdx, 90 , 0, 200)
- ,m_vmgStrip("VMG", 0, m_height/2 + 5, m_width, m_height/2-10, startIdx, endIdx, 90 , 0, 200)
+ ,m_speedStrip("SPD", 0, 0, m_width, m_height/2-10, startIdx, endIdx, 90 , 50, 150)
+ ,m_vmgStrip("VMG", 0, m_height/2 + 5, m_width, m_height/2-10, startIdx, endIdx, 90 , 50, 150)
  {
     m_pBackgroundImage = new QImage(m_width, m_height, QImage::Format_ARGB32);
     m_pBackgroundImage->fill(QColor(0, 0, 0, 0));
@@ -49,8 +49,14 @@ void TargetsOverlayMaker::addEpoch(const std::string &fileName, int epochIdx) {
 
 
 void TargetsOverlayMaker::makeBaseImage(int startIdx, int endIdx){
+
     QPainter painter(m_pBackgroundImage);
     for( int i = startIdx; i < endIdx; i++){
+
+        if( i >= 27225 ){
+            std::cout << "TargetsOverlayMaker::makeBaseImage() i=" << i << std::endl;
+        }
+
         InstrumentInput &instr = m_rInstrDataVector[i];
         bool spdIsValid = instr.sow.isValid(instr.utc.getUnixTimeMs())
                 && instr.twa.isValid(instr.utc.getUnixTimeMs())
@@ -58,7 +64,7 @@ void TargetsOverlayMaker::makeBaseImage(int startIdx, int endIdx){
         if ( spdIsValid) {
             double spd = instr.sow.getKnots();
             double vmg = abs(spd * cos(instr.twa.getRadians()));
-            double targetSpeed = m_polars.getSpeed(instr.twa.getDegrees(), instr.sow.getKnots());
+            double targetSpeed = m_polars.getSpeed(instr.twa.getDegrees(), instr.tws.getKnots());
             std::pair<double, double> targets =  m_polars.getTargets(instr.tws.getKnots(), instr.twa.getDegrees() < 90);
             double targetVmg = abs(targets.second);
             m_speedStrip.addSample(spd / targetSpeed * 100, true);
@@ -98,7 +104,6 @@ Strip::Strip(const std::string &label, int x, int y, int width, int height, int 
     m_maxValue = threshold;
     m_minValue = threshold;
 
-
     m_axisPen.setWidth(2);
     m_goodPen.setWidth(3);
     m_badPen.setWidth(3);
@@ -125,15 +130,21 @@ void Strip::drawBackground(QPainter &painter) {
     painter.setPen(m_labelPen);
     painter.drawText(m_x0, m_y0 + m_height, QString::fromStdString(m_label));
 
-    // Draw threshold horizontal line
     painter.setPen(m_axisPen);
-    QPoint from = toScreen(m_startIdx, m_threshold);
-    QPoint to = toScreen(m_endIdx, m_threshold);
+    // Draw 100% lne
+    QPoint from = toScreen(m_startIdx, 100);
+    QPoint to = toScreen(m_endIdx, 100);
+    painter.drawLine(from, to);
+
+    // Draw threshold horizontal line
+    from = toScreen(m_startIdx, m_threshold);
+    to = toScreen(m_endIdx, m_threshold);
     painter.drawLine(from, to);
 
     for( int idx = m_startIdx; idx < m_endIdx; idx++) {
         double val = m_values[idx - m_startIdx];
-        QPen *pen = val < m_threshold ? &m_badPen : &m_goodPen;
+        QPen *pen = val < m_threshold ? &m_badPen : &m_okPen;
+        if (val >=100 ) pen = &m_goodPen;
         painter.setPen(*pen );
         QPoint p = toScreen(idx, val);
         painter.drawPoint(p);

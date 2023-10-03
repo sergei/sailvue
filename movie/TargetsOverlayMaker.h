@@ -42,6 +42,7 @@ private:
     QPen m_labelPen = QPen(QColor(255, 255, 255, 220));
     QPen m_axisPen = QPen(QColor(200, 200, 200, 220));
     QPen m_goodPen = QPen(QColor(0, 255, 0, 220));
+    QPen m_okPen = QPen(QColor(255, 255, 0, 220));
     QPen m_badPen = QPen(QColor(255, 0, 0, 220));
     QPen m_tickPen = QPen(QColor(255, 255, 255, 255));
 

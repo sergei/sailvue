@@ -1,69 +1,70 @@
 #include <iostream>
 #include "TimeDeltaComputer.h"
 
-TimeDeltaComputer::TimeDeltaComputer(Polars &polars, std::vector<InstrumentInput> &rInstrDataVector, u_int64_t startIdx,
-                                     u_int64_t endIdx)
+TimeDeltaComputer::TimeDeltaComputer(Polars &polars, std::vector<InstrumentInput> &rInstrDataVector)
 :m_polars(polars), m_rInstrDataVector(rInstrDataVector)
 {
-    // Determine the kind of leg 
-    double minTwa = 200;
-    double maxTwa = -200;
-    for(uint64_t i = startIdx; i < endIdx; i++){
-        if( m_rInstrDataVector[i].twa.isValid(m_rInstrDataVector[i].utc.getUnixTimeMs())){
-            double twa = m_rInstrDataVector[i].twa.getDegrees();
-            if ( twa < minTwa)
-                minTwa = twa;
-            if ( twa > maxTwa)
-                maxTwa = twa;
-        }
-    }
-
-    if ( maxTwa < -190 ){
-        std::cout << "No valid wind to compute loss" << std::endl;
-    }
-    
-    bool downWind = abs(minTwa) > 100;
-    bool upWind = abs(maxTwa) < 80;
-    if ( upWind ){
-        m_legType = LEG_TYPE_UPWIND;
-    } else if ( downWind ){
-        m_legType = LEG_TYPE_DOWNWIND;
-    } else {
-        m_legType = LEG_TYPE_REACH;
-    }
 
 }
 
-int64_t TimeDeltaComputer::getAccDeltaMs(u_int64_t idx) {
+void TimeDeltaComputer::startLeg() {
+    m_accumulateDistToTargetMeters = 0;
+    m_accumulateTimeToTarget = 0;
+    m_prevTimeStamp = 0;
+}
+
+void TimeDeltaComputer::updatePerformance(uint64_t idx, Performance &performance, bool isFetch) {
 
     auto instr = m_rInstrDataVector[idx];
-    if(m_prevTimeStamp == 0 ){
-        m_prevTimeStamp = instr.utc.getUnixTimeMs();
-        return int(m_accumulateTimeToTarget * 1000);
-    }
-    
-    double deltaSec = double(instr.utc.getUnixTimeMs() - m_prevTimeStamp) * 0.001;
-    m_prevTimeStamp = instr.utc.getUnixTimeMs();
+
     double targetSpeed;
     double ourSpeed;
-    if ( m_legType == LEG_TYPE_UNKNOWN ) {
-        return 0;
-    } else if ( m_legType == LEG_TYPE_REACH ){ // Compute delta time using the boat speed vs target boat speed
+    if ( isFetch ){ // Compute delta time using the boat speed vs target boat speed
         targetSpeed = m_polars.getSpeed(instr.twa.getDegrees(), instr.tws.getKnots());
+        performance.targetSpeed = Speed::fromKnots(targetSpeed, instr.utc.getUnixTimeMs());
+        performance.targetTwa = Angle::INVALID;
+        performance.targetVmg = Speed::INVALID;
         ourSpeed = instr.sow.getKnots();
+        performance.ourVmg = Speed::INVALID;
     }else {  // Compute delta time using the boat VMG vs target VMG
         std::pair<double, double> targets =  m_polars.getTargets(instr.tws.getKnots(), instr.twa.getDegrees() < 90);
         targetSpeed = abs(targets.second);
+        performance.targetSpeed = Speed::INVALID;
+        performance.targetTwa = Angle::fromDegrees(targets.first, instr.utc.getUnixTimeMs());
+        performance.targetVmg = Speed::fromKnots(targetSpeed, instr.utc.getUnixTimeMs());
         ourSpeed = abs(instr.sow.getKnots() * cos(instr.twa.getRadians()));
+        performance.ourVmg = Speed::fromKnots(ourSpeed, instr.utc.getUnixTimeMs());
     }
-    
-    double distGainedOnTarget = (ourSpeed - targetSpeed) * deltaSec;
+    performance.isValid = true;
+    performance.isFetching = isFetch;
+
+    if(m_prevTimeStamp == 0 ){
+        m_prevTimeStamp = instr.utc.getUnixTimeMs();
+        performance.distLostToTarget=0;
+        performance.timeLostToTarget=0;
+        return;
+    }
+
+    double deltaSec = double(instr.utc.getUnixTimeMs() - m_prevTimeStamp) * 0.001;
+
+    m_prevTimeStamp = instr.utc.getUnixTimeMs();
+
+    auto deltaSpeedMeterPerSec = (ourSpeed - targetSpeed) * 1852. / 3600. ;
+    auto targetSpeedMeterPerSec = targetSpeed * 1852. / 3600.;
+
+    double distGainedOnTargetMeters = deltaSpeedMeterPerSec * deltaSec;
     // Now compute the time to target
     double timeToTarget = 0;
-    if ( targetSpeed > 0.01 ){
-        timeToTarget = distGainedOnTarget / targetSpeed;
+    if ( targetSpeed > 0.01 ){  // If we don't expect to move, don't increase time to target
+        timeToTarget = distGainedOnTargetMeters / targetSpeedMeterPerSec;
     }
     m_accumulateTimeToTarget += timeToTarget;
+    m_accumulateDistToTargetMeters += distGainedOnTargetMeters;
 
-    return int(m_accumulateTimeToTarget * 1000);
+    performance.distLostToTarget = m_accumulateDistToTargetMeters;
+    performance.timeLostToTarget = m_accumulateTimeToTarget;
 }
+
+
+
+

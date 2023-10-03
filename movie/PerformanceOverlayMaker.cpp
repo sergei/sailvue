@@ -1,10 +1,11 @@
 #include "PerformanceOverlayMaker.h"
 
 PerformanceOverlayMaker::PerformanceOverlayMaker(Polars &polars, std::vector<InstrumentInput> &instrDataVector,
+                                                 std::vector<Performance> &rPerformanceVector,
                                                  std::filesystem::path &workDir, int64_t timeDeltaBefore, int width, int height,
-                                                 int startIdx, int endIdx, bool ignoreCache)
+                                                 bool ignoreCache)
  : m_workDir(workDir), m_width(width), m_height(height), m_ignoreCache(ignoreCache), m_timeDeltaBeforeMs(timeDeltaBefore),
-   m_timeDeltaComputer(polars, instrDataVector, startIdx, endIdx)
+   m_rPerformanceVector(rPerformanceVector)
 {
     std::filesystem::create_directories(m_workDir);
 
@@ -29,7 +30,7 @@ PerformanceOverlayMaker::PerformanceOverlayMaker(Polars &polars, std::vector<Ins
 
 void PerformanceOverlayMaker::addEpoch(const std::string &fileName, int epochIdx) {
 
-    int64_t deltaMs = m_timeDeltaComputer.getAccDeltaMs(epochIdx);
+    auto deltaMs = int64_t(m_rPerformanceVector[epochIdx].timeLostToTarget * 1000);
     m_timeDeltaThisLegMs = deltaMs;
 
     std::filesystem::path pngName = std::filesystem::path(m_workDir) / fileName;

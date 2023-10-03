@@ -248,11 +248,18 @@ ApplicationWindow {
                 onTriggered: projectSaveAsFileDialog.open()
                 enabled: raceTreeModel.isDirty
             }
+
+            Action {
+                text: qsTr("&Export Stats...")
+                onTriggered: statsFileDialog.open()
+                enabled: raceTreeModel.projectName !== "Untitled"
+            }
+
             Action {
                 text: qsTr("&Produce...")
                 onTriggered: produceFolderDialog.open()
                 enabled: raceTreeModel.projectName !== "Untitled"
-                
+
             }
             MenuSeparator { }
             Action {
@@ -298,6 +305,17 @@ ApplicationWindow {
         nameFilters: ["Project files (*.json)"]
         onAccepted: {
             raceTreeModel.saveAs(currentFile)
+        }
+    }
+
+    FileDialog {
+        id: statsFileDialog
+        visible: false
+        title: "Export stats CSV file"
+        fileMode: FileDialog.SaveFile
+        nameFilters: ["Stat files (*.csv)"]
+        onAccepted: {
+            raceTreeModel.exportStats(raceTreeModel.polarPath, currentFile)
         }
     }
 

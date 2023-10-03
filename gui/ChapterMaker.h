@@ -14,6 +14,7 @@ public:
     void onTack(uint32_t fromIdx, uint32_t toIdx, bool isTack, double distLossMeters) override;
     void onMarkRounding(uint32_t eventIdx, uint32_t fromIdx, uint32_t toIdx, bool isWindward) override;
     Chapter *makePerformanceChapter(Chapter *pPrevChapter, Chapter *pNextChapter);
+    static bool isFetch(const Chapter *pPrevChapter, const Chapter *pNextChapter);
 private:
     TreeItem *m_pRaceTreeItem;
     std::vector<InstrumentInput> &m_rInstrDataVector;
