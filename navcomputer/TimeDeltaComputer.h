@@ -14,6 +14,7 @@ enum LegType{
 class TimeDeltaComputer {
 public:
     TimeDeltaComputer(Polars &polars, std::vector<InstrumentInput> &instrData);
+    void startRace();
     void startLeg();
     void updatePerformance(uint64_t idx, Performance &performance, bool isFetch);
 
@@ -21,8 +22,10 @@ private:
     Polars &m_polars;
     std::vector<InstrumentInput> &m_rInstrDataVector;
     LegType m_legType = LEG_TYPE_UNKNOWN;
-    double m_accumulateDistToTargetMeters = 0;  // Positive if we are ahead
-    double m_accumulateTimeToTarget = 0;  // Positive if we are ahead
+    double m_legAccDistToTargetMeters = 0;  // Positive if we are ahead
+    double m_legAccTimeToTargetSec = 0;  // Positive if we are ahead
+    double m_raceAccDistToTargetMeters = 0;  // Positive if we are ahead
+    double m_raceAccTimeToTargetSec = 0;  // Positive if we are ahead
     u_int64_t m_prevTimeStamp = 0;
 };
 

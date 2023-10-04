@@ -44,8 +44,6 @@ private:
                                int width, int target_ovl_height, bool ignoreCache);
     void findGoProClipFragments(std::list<ClipFragment> &clipFragments, uint64_t startUtcMs, uint64_t stopUtcMs);
     void makeRaceVideo(const std::filesystem::path &raceFolder, std::list<std::string> &chaptersList);
-    void insertPerformanceChapters(std::list<Chapter *> &originalList, std::list<Chapter *> &augmentedList);
-    [[nodiscard]] Chapter *makePerformanceChapter(u_int64_t startIdx, u_int64_t endIdx) const;
 
 private:
     const char *INSTR_OVL_FILE_PAT  = "instr_%05d.png";
@@ -57,7 +55,6 @@ private:
 
     bool m_stopRequested = false;
     uint64_t m_totalRaceDuration = 0;
-    int64_t m_timeDeltaFromTarget = 0;
 
     const std::string &m_moviePath;
     IProgressListener& m_rProgressListener;

@@ -16,8 +16,10 @@ public:
     Speed targetVmg;
     Speed ourVmg;
     bool isFetching = false;
-    double distLostToTarget=0;
-    double timeLostToTarget=0;
+    double legDistLostToTargetMeters=0;
+    double legTimeLostToTargetSec=0;
+    double raceDistLostToTargetMeters=0;
+    double raceTimeLostToTargetSec=0;
 
     std::string toString(UtcTime utc) const {
         std::stringstream ss;
@@ -28,8 +30,10 @@ public:
            << ",t_vmg," << targetVmg.toString(utc.getUnixTimeMs())
            << ",vmg," << ourVmg.toString(utc.getUnixTimeMs())
            << ",fetch," << (isValid ? std::to_string(isFetching) : "")
-           << ",dlt," <<  (isValid ? std::to_string(distLostToTarget) : "" )
-           << ",tlt," <<  (isValid ? std::to_string(timeLostToTarget) : "" )
+           << ",ldlt," <<  (isValid ? std::to_string(legDistLostToTargetMeters) : "" )
+           << ",ltlt," <<  (isValid ? std::to_string(legTimeLostToTargetSec) : "" )
+           << ",rdlt," <<  (isValid ? std::to_string(raceDistLostToTargetMeters) : "" )
+           << ",rtlt," <<  (isValid ? std::to_string(raceTimeLostToTargetSec) : "" )
                 ;
         return ss.str();
     }

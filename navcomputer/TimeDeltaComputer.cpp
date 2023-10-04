@@ -7,9 +7,15 @@ TimeDeltaComputer::TimeDeltaComputer(Polars &polars, std::vector<InstrumentInput
 
 }
 
+void TimeDeltaComputer::startRace() {
+    m_raceAccDistToTargetMeters = 0;
+    m_raceAccTimeToTargetSec = 0;
+    startLeg();
+}
+
 void TimeDeltaComputer::startLeg() {
-    m_accumulateDistToTargetMeters = 0;
-    m_accumulateTimeToTarget = 0;
+    m_legAccDistToTargetMeters = 0;
+    m_legAccTimeToTargetSec = 0;
     m_prevTimeStamp = 0;
 }
 
@@ -40,8 +46,10 @@ void TimeDeltaComputer::updatePerformance(uint64_t idx, Performance &performance
 
     if(m_prevTimeStamp == 0 ){
         m_prevTimeStamp = instr.utc.getUnixTimeMs();
-        performance.distLostToTarget=0;
-        performance.timeLostToTarget=0;
+        performance.legDistLostToTargetMeters=0;
+        performance.legTimeLostToTargetSec=0;
+        performance.raceDistLostToTargetMeters = m_raceAccDistToTargetMeters;
+        performance.raceTimeLostToTargetSec = m_raceAccTimeToTargetSec;
         return;
     }
 
@@ -58,12 +66,18 @@ void TimeDeltaComputer::updatePerformance(uint64_t idx, Performance &performance
     if ( targetSpeed > 0.01 ){  // If we don't expect to move, don't increase time to target
         timeToTarget = distGainedOnTargetMeters / targetSpeedMeterPerSec;
     }
-    m_accumulateTimeToTarget += timeToTarget;
-    m_accumulateDistToTargetMeters += distGainedOnTargetMeters;
+    m_legAccTimeToTargetSec += timeToTarget;
+    m_legAccDistToTargetMeters += distGainedOnTargetMeters;
 
-    performance.distLostToTarget = m_accumulateDistToTargetMeters;
-    performance.timeLostToTarget = m_accumulateTimeToTarget;
+    m_raceAccTimeToTargetSec += timeToTarget;
+    m_raceAccDistToTargetMeters += distGainedOnTargetMeters;
+
+    performance.legDistLostToTargetMeters = m_legAccDistToTargetMeters;
+    performance.legTimeLostToTargetSec = m_legAccTimeToTargetSec;
+    performance.raceDistLostToTargetMeters = m_raceAccDistToTargetMeters;
+    performance.raceTimeLostToTargetSec = m_raceAccTimeToTargetSec;
 }
+
 
 
 

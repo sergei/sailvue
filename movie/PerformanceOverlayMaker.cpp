@@ -1,10 +1,9 @@
 #include "PerformanceOverlayMaker.h"
 
-PerformanceOverlayMaker::PerformanceOverlayMaker(Polars &polars, std::vector<InstrumentInput> &instrDataVector,
-                                                 std::vector<Performance> &rPerformanceVector,
-                                                 std::filesystem::path &workDir, int64_t timeDeltaBefore, int width, int height,
+PerformanceOverlayMaker::PerformanceOverlayMaker(std::vector<Performance> &rPerformanceVector,
+                                                 std::filesystem::path &workDir, int width, int height,
                                                  bool ignoreCache)
- : m_workDir(workDir), m_width(width), m_height(height), m_ignoreCache(ignoreCache), m_timeDeltaBeforeMs(timeDeltaBefore),
+ : m_workDir(workDir), m_width(width), m_height(height), m_ignoreCache(ignoreCache),
    m_rPerformanceVector(rPerformanceVector)
 {
     std::filesystem::create_directories(m_workDir);
@@ -30,9 +29,6 @@ PerformanceOverlayMaker::PerformanceOverlayMaker(Polars &polars, std::vector<Ins
 
 void PerformanceOverlayMaker::addEpoch(const std::string &fileName, int epochIdx) {
 
-    auto deltaMs = int64_t(m_rPerformanceVector[epochIdx].timeLostToTarget * 1000);
-    m_timeDeltaThisLegMs = deltaMs;
-
     std::filesystem::path pngName = std::filesystem::path(m_workDir) / fileName;
     if ( std::filesystem::is_regular_file(pngName) && !m_ignoreCache){
         return;
@@ -42,16 +38,21 @@ void PerformanceOverlayMaker::addEpoch(const std::string &fileName, int epochIdx
     image.fill(QColor(0, 0, 0, 0));
     QPainter painter(&image);
 
-    painter.setFont(m_labelTimeFont);
-    painter.setPen(m_labelPen);
-    painter.drawText(0, m_height / 4, "This chapter");
-    painter.drawText(0, m_height * 3 / 4, "Entire race");
+    if( m_rPerformanceVector[epochIdx].isValid ){
+        auto thisLegDeltaMs = int64_t(m_rPerformanceVector[epochIdx].legTimeLostToTargetSec * 1000);
+        auto thisRaceDeltaMs = int64_t(m_rPerformanceVector[epochIdx].raceTimeLostToTargetSec * 1000);
 
-    painter.setFont(m_currentTimeFont);
-    painter.setPen(m_timePen);
-    painter.drawText(0, m_height / 2,  formatTime(deltaMs) );
-    painter.setFont(m_totalTimeFont);
-    painter.drawText(0, m_height ,  formatTime(deltaMs + m_timeDeltaBeforeMs) );
+        painter.setFont(m_labelTimeFont);
+        painter.setPen(m_labelPen);
+        painter.drawText(0, m_height / 4, "This chapter");
+        painter.drawText(0, m_height * 3 / 4, "Entire race");
+
+        painter.setFont(m_currentTimeFont);
+        painter.setPen(m_timePen);
+        painter.drawText(0, m_height / 2,  formatTime(thisLegDeltaMs) );
+        painter.setFont(m_totalTimeFont);
+        painter.drawText(0, m_height ,  formatTime(thisRaceDeltaMs) );
+    }
 
     image.save(QString::fromStdString(pngName.string()), "PNG");
 }

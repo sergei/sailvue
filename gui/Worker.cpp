@@ -106,9 +106,9 @@ void Worker::computeStats(const QString &polarUrl){
     m_rPerformanceVector.resize(m_rInstrDataVector.size());
 
     int raceIdx = 0;
+    TimeDeltaComputer timeDeltaComputer(polars, m_rInstrDataVector);
     for ( RaceData *race: m_RaceDataList) {
-        TimeDeltaComputer timeDeltaComputer(polars, m_rInstrDataVector);
-
+        timeDeltaComputer.startRace();
         int chapterIdx = 0;
         for(auto it = race->getChapters().begin(); it != race->getChapters().end(); it++, chapterIdx++) {
             Chapter *chapter = *it;
@@ -129,8 +129,8 @@ void Worker::computeStats(const QString &polarUrl){
                 bool beforeStart = chapter->getChapterType() == ChapterTypes::ChapterType::START && idx < chapter->getGunIdx();
                 if ( beforeStart ){
                     m_rPerformanceVector[idx].isValid = false;
-                    m_rPerformanceVector[idx].distLostToTarget = 0;
-                    m_rPerformanceVector[idx].timeLostToTarget = 0;
+                    m_rPerformanceVector[idx].legDistLostToTargetMeters = 0;
+                    m_rPerformanceVector[idx].legTimeLostToTargetSec = 0;
                 }else{
                     timeDeltaComputer.updatePerformance(idx, m_rPerformanceVector[idx], isFetch);
                 }

@@ -12,11 +12,10 @@ static const char *const FONT_FAMILY_TIME = "Courier";
 
 class PerformanceOverlayMaker {
 public:
-    PerformanceOverlayMaker(Polars &polars, std::vector<InstrumentInput> &instrDataVector, std::vector<Performance> &rPerformanceVector,
+    PerformanceOverlayMaker(std::vector<Performance> &rPerformanceVector,
                             std::filesystem::path &workDir,
-                            int64_t timeDeltaBefore, int width, int height, bool ignoreCache);
+                            int width, int height, bool ignoreCache);
     void addEpoch(const std::string &fileName, int epochIdx);
-    [[nodiscard]] int64_t getTimeDeltaThisLeg() const { return m_timeDeltaThisLegMs; }
 
 private:
     static QString formatTime(int64_t ms);
@@ -25,8 +24,7 @@ private:
     const int m_width;
     const int m_height;
     const bool m_ignoreCache;
-    int64_t m_timeDeltaBeforeMs;
-    int64_t m_timeDeltaThisLegMs=0;
+
     std::vector<Performance> &m_rPerformanceVector;
 
 private:

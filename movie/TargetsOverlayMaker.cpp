@@ -53,10 +53,6 @@ void TargetsOverlayMaker::makeBaseImage(int startIdx, int endIdx){
     QPainter painter(m_pBackgroundImage);
     for( int i = startIdx; i < endIdx; i++){
 
-        if( i >= 27225 ){
-            std::cout << "TargetsOverlayMaker::makeBaseImage() i=" << i << std::endl;
-        }
-
         InstrumentInput &instr = m_rInstrDataVector[i];
         bool spdIsValid = instr.sow.isValid(instr.utc.getUnixTimeMs())
                 && instr.twa.isValid(instr.utc.getUnixTimeMs())

@@ -41,8 +41,7 @@ void MovieProducer::produce() {
         std::ofstream df (descFileName, std::ios::out);
 
         // Augment charter list with performance chapters
-        std::list<Chapter *> augmentedChapterList;
-        insertPerformanceChapters(race->getChapters(), augmentedChapterList);
+        std::list<Chapter *> chapterList = race->getChapters();
 
 
         int movieWidth = m_rGoProClipInfoList.front().getWidth();
@@ -50,17 +49,16 @@ void MovieProducer::produce() {
         int target_ovl_width = movieWidth;
         int target_ovl_height = 128;
 
-        int startIdx = (int)augmentedChapterList.front()->getStartIdx();
-        int endIdx = (int)augmentedChapterList.back()->getEndIdx();
+        int startIdx = (int)chapterList.front()->getStartIdx();
+        int endIdx = (int)chapterList.back()->getEndIdx();
         TargetsOverlayMaker targetsOverlayMaker(m_polars, m_rInstrDataVector,
                                                 target_ovl_width, target_ovl_height,
                                                 startIdx, endIdx, ignoreCache);
 
         int chapterCount = 0;
         m_totalRaceDuration = 0;
-        m_timeDeltaFromTarget = 0;
         std::list<std::string> chapterClips;
-        for( Chapter *chapter: augmentedChapterList){
+        for( Chapter *chapter: chapterList){
             // Add entry to the description file
             auto sec = m_totalRaceDuration / 1000;
             auto min = sec / 60;
@@ -140,9 +138,8 @@ std::string MovieProducer::produceChapter(TargetsOverlayMaker &targetsOverlayMak
     targetsOverlayMaker.addChapter(targetsOverlayPath, (int)chapter.getStartIdx(), (int)chapter.getEndIdx());
 
     std::filesystem::path performanceOverlayPath = folder / "perf_overlay";
-    PerformanceOverlayMaker performanceOverlayMaker(m_polars, m_rInstrDataVector, m_rPerformanceVector,
-                                                    performanceOverlayPath,
-                                                    m_timeDeltaFromTarget, perf_ovl_width, perf_ovl_height, ignoreCache);
+    PerformanceOverlayMaker performanceOverlayMaker(m_rPerformanceVector, performanceOverlayPath,
+                                                    perf_ovl_width, perf_ovl_height, ignoreCache);
 
 
     int timerX = goProclipFragments.front().width - startTimerOverlayMaker.getWidth();
@@ -171,11 +168,11 @@ std::string MovieProducer::produceChapter(TargetsOverlayMaker &targetsOverlayMak
             std::string timerOvlFileName = acFileName;
             uint64_t gunUtcTimeMs = m_rInstrDataVector[chapter.getGunIdx()].utc.getUnixTimeMs();
             startTimerOverlayMaker.addEpoch(timerOvlFileName, gunUtcTimeMs,  *instrData);
-        } else {
-            sprintf(acFileName, PERF_OVL_FILE_PAT, count);
-            std::string perfOvlFileName = acFileName;
-            performanceOverlayMaker.addEpoch(perfOvlFileName, (int)chapter.getStartIdx() + count);
         }
+
+        sprintf(acFileName, PERF_OVL_FILE_PAT, count);
+        std::string perfOvlFileName = acFileName;
+        performanceOverlayMaker.addEpoch(perfOvlFileName, (int)chapter.getStartIdx() + count);
 
         int progress = count * 100 / totalCount;
         if ( progress != prevProgress){
@@ -184,8 +181,6 @@ std::string MovieProducer::produceChapter(TargetsOverlayMaker &targetsOverlayMak
         }
         count ++;
     }
-
-    m_timeDeltaFromTarget += performanceOverlayMaker.getTimeDeltaThisLeg();
 
     auto duration = float(stopUtcMs - startUtcMs) / 1000;
     float presentationDuration;
@@ -211,9 +206,10 @@ std::string MovieProducer::produceChapter(TargetsOverlayMaker &targetsOverlayMak
 
     if ( chapter.getChapterType() == ChapterTypes::ChapterType::START){ // Add start timer overlay
         ffmpeg.addOverlayPngSequence(timerX, 0, overlaysFps, startTimerOverlayPath.native(), TIMER_OVL_FILE_PAT);
-    }else{ // Add performance overlay
-        ffmpeg.addOverlayPngSequence(perfPadX, height - instrOvlHeight - target_ovl_height - perf_ovl_height - perfPadY, overlaysFps, performanceOverlayPath.native(), PERF_OVL_FILE_PAT);
     }
+
+    // Add performance overlay
+    ffmpeg.addOverlayPngSequence(perfPadX, height - instrOvlHeight - target_ovl_height - perf_ovl_height - perfPadY, overlaysFps, performanceOverlayPath.native(), PERF_OVL_FILE_PAT);
 
     // Add polar overlay
     ffmpeg.addOverlayPngSequence(0, 0, overlaysFps, polarOverlayPath.native(), POLAR_OVL_FILE_PAT);
@@ -264,65 +260,6 @@ void MovieProducer::makeRaceVideo(const std::filesystem::path &raceFolder, std::
     FFMpeg::joinChapters(chaptersList, outMoviePath.native(), progressListener);
 }
 
-void MovieProducer::insertPerformanceChapters(std::list<Chapter *> &originalList, std::list<Chapter *> &augmentedList) {
-    for( auto it = originalList.begin(); it != originalList.end(); it++){
-        augmentedList.push_back(*it);
-        auto nextIt = it;
-        nextIt++;
-        if ( nextIt != originalList.end()){
-            Chapter *nextChapter = *nextIt;
-            auto startIdx = (*it)->getEndIdx() + 1;
-            auto endIdx = nextChapter->getStartIdx() - 1;
-            Chapter *performanceChapter = makePerformanceChapter(startIdx, endIdx);
-            if ( performanceChapter != nullptr) {
-                std::cout << "Adding performance chapter " << performanceChapter->getName() << std::endl;
-                augmentedList.push_back(performanceChapter);
-            }
-        }
-    }
-}
-
-Chapter *MovieProducer::makePerformanceChapter(u_int64_t startIdx, u_int64_t endIdx) const {
-    uint64_t startUtcMs = m_rInstrDataVector[startIdx].utc.getUnixTimeMs();
-    uint64_t stopUtcMs = m_rInstrDataVector[endIdx].utc.getUnixTimeMs();
-
-    uint64_t durationMs = stopUtcMs - startUtcMs;
-    // Don't make too short chapters
-    if (durationMs > MIN_PERF_CHAPTER_DURATION) {
-        auto *chapter = new Chapter(startIdx, endIdx);
-        chapter->setChapterType(ChapterTypes::SPEED_PERFORMANCE);
-
-        // Now let's come up with the name
-        double minTwa = 200;
-        double maxTwa = -200;
-        for(uint64_t i = startIdx; i < endIdx; i++){
-            if( m_rInstrDataVector[i].twa.isValid(m_rInstrDataVector[i].utc.getUnixTimeMs())){
-                double twa = m_rInstrDataVector[i].twa.getDegrees();
-                if ( twa < minTwa)
-                    minTwa = twa;
-                if ( twa > maxTwa)
-                    maxTwa = twa;
-            }
-        }
-
-        if ( maxTwa < -190 ){
-            std::cout << "No valid wind for performance chapter" << std::endl;
-            return nullptr;
-        }
-
-        bool starBoard = minTwa >= 0 && maxTwa >= 0;
-        bool downWind = abs(minTwa) > 100;
-
-        std::string name = std::string(starBoard ? "Starboard " : "Port ")
-                + std::string(downWind ? "downwind" : "upwind");
-        chapter->SetName(name);
-
-        return chapter;
-    }else{
-        std::cout << "Performance chapter would be too short, skip it" << std::endl;
-        return nullptr;
-    }
-}
 
 
 bool EncodingProgressListener::ffmpegProgress(uint64_t msEncoded) {
