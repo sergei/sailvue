@@ -1,3 +1,4 @@
+FIXME close process dialog and show the error if ffmpeg has failed
 FIXME don't use relative path to ffmpeg executable at startup
 
 FIXME Don't start production if there is no chapters in the race

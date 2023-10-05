@@ -113,6 +113,7 @@ private:
     uint32_t m_ulEpochCount = 0;
 
     InstrumentInput m_epoch;
+    UtcTime m_prevEpochUtc = UtcTime::INVALID;
 
     std::list<DatFileInfo> m_listDatFiles;
 

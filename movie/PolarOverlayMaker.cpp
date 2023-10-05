@@ -110,6 +110,13 @@ void PolarOverlayMaker::setHistory(int startIdx, int endIdx) {
     }
 
     float meanTws = twsSum / float(endIdx - startIdx);
+
+    // Check case when the polar curve speed exceeds the max speed
+    for( int twaDeg =0; twaDeg <= 180; twaDeg += 1 ) {
+        auto targetSpd = (float)m_polars.getSpeed(twaDeg, meanTws);
+        m_maxSpeedKts = (int)lround(std::max(float(m_maxSpeedKts), targetSpd));
+    }
+
     m_minSpeedKts = 0;
     m_maxSpeedKts = ( m_maxSpeedKts / m_speedStep ) * m_speedStep;
     m_maxSpeedKts += m_speedStep;

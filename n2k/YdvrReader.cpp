@@ -491,6 +491,17 @@ void YdvrReader::ProcessEpoch(std::ofstream &cache) {
         m_ulEndGpsTimeMs = m_ulGpsFixUnixTimeMs;
         m_ulEpochCount++;
 
+
+        // Now check if time didn't go backwards
+        if ( m_prevEpochUtc.isValid(m_ulGpsFixUnixTimeMs)) {
+            if ( m_prevEpochUtc.getUnixTimeMs() >= m_epoch.utc.getUnixTimeMs() ) {
+                std::cerr << "Time went backwards: " << m_prevEpochUtc.getUnixTimeMs() << " " << m_epoch.utc.getUnixTimeMs() << std::endl;
+                ResetEpoch();
+                return;
+            }
+        }
+
+        m_prevEpochUtc = m_epoch.utc;
         cache << static_cast<std::string>(m_epoch) << std::endl;
     }
 }
