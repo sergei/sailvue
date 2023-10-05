@@ -49,14 +49,16 @@ void Project::fromJson(const QJsonObject &json){
                     QString chapterName = chapterJson["name"].toString();
                     int chapterStartIdx = chapterJson["startIdx"].toInt();
                     int chapterEndIdx = chapterJson["endIdx"].toInt();
+                    int chapterGunIdx = chapterJson["gunIdx"].toInt();
                     int chapterType = chapterJson["type"].toInt();
 
                     auto chapter = new Chapter(chapterStartIdx, chapterEndIdx);
                     chapter->SetName(chapterName.toStdString());
-                    if(  QJsonValue vg = json["gunIdx"]; vg.isDouble()){
-                        int chapterGunIdx = vg.toInt();
-                        chapter->SetGunIdx(chapterGunIdx);
-                    }
+                    chapter->SetGunIdx(chapterGunIdx);
+//                    if(  QJsonValue vg = json["gunIdx"]; vg.isDouble()){
+//                        int chapterGunIdx = vg.toInt();
+//                        chapter->SetGunIdx(chapterGunIdx);
+//                    }
                     chapter->setChapterType(ChapterTypes::ChapterType(chapterType));
 
                     raceData->insertChapter(chapter);

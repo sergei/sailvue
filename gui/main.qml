@@ -89,6 +89,20 @@ ApplicationWindow {
                 }
             }
 
+            MapQuickItem {
+                id: selectedChapterGunMarker
+                anchorPoint.x: endImage.width / 2
+                anchorPoint.y: endImage.height / 2
+                coordinate: QtPositioning.coordinate(0, 0)
+
+                sourceItem: Rectangle {
+                    id: gunImage
+                    width: 9
+                    height: 18
+                    color: "green"
+                    radius: 9
+                }
+            }
     }
 
     function hideChapterEditor(uuid) {
@@ -174,13 +188,16 @@ ApplicationWindow {
             selectedChapterMarkers.visible = true
             selectedChapterStartMarker.coordinate = win.fullMapPath[startIdx]
             selectedChapterEndMarker.coordinate = win.fullMapPath[endIdx]
+            selectedChapterGunMarker.coordinate = win.fullMapPath[gunIdx]
 
-            if ( chapterType !== ChapterTypes.START ) {
-                mediaplayer.seekTo(startIdx)
+            if ( chapterType === ChapterTypes.START || chapterType === ChapterTypes.MARK_ROUNDING) {
+                mediaplayer.seekTo(gunIdx)
                 raceTreeModel.seekToRacePathIdx(gunIdx)
+                selectedChapterGunMarker.visible = true
             } else{
                 mediaplayer.seekTo(startIdx)
-                raceTreeModel.seekToRacePathIdx(gunIdx)
+                raceTreeModel.seekToRacePathIdx(startIdx)
+                selectedChapterGunMarker.visible = false
             }
         }
 
@@ -473,7 +490,7 @@ ApplicationWindow {
                 Layout.columnSpan: 5
 
                 onChanged: function () {
-                    console.log("Chapter changed: " + chapterName + " " + chapterType + " " + startIdx + " " + endIdx)
+                    console.log("Chapter changed: " + chapterName + " " + chapterType + " " + startIdx + " " + endIdx + " " + gunIdx)
                     raceTreeModel.updateChapter(chapterUuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
                     win.chapterMapElements[chapterUuid].path = win.fullMapPath.slice(startIdx, endIdx)
                 }
@@ -489,6 +506,13 @@ ApplicationWindow {
                     console.log("onEndIdxChanged: " + Math.round(endIdx))
                     let idx = Math.round(endIdx)
                     selectedChapterEndMarker.coordinate = win.fullMapPath[idx]
+                    raceTreeModel.seekToRacePathIdx(idx)
+                }
+
+                onGunIdxChanged: {
+                    console.log("onGunIdxChanged: " + Math.round(gunIdx))
+                    let idx = Math.round(gunIdx)
+                    selectedChapterGunMarker.coordinate = win.fullMapPath[idx]
                     raceTreeModel.seekToRacePathIdx(idx)
                 }
 
