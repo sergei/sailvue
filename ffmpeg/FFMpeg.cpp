@@ -208,7 +208,7 @@ std::string FFMpeg::makeClipFfmpegArgs(const std::string &clipPath) {
         for(int i=0; i<firstOverlayIdx; i++){
             ffmpegArgs += "[" + std::to_string(i) + "]";
         }
-        ffmpegArgs += " concat=v=1:a=0 [concv];";
+        ffmpegArgs += " concat=n=" + std::to_string(m_pClipFragments->size()) + ":v=1:a=0 [concv];";
 
         // Concatenate the audio streams
         if ( !m_changeDuration ) {  // If duration is changed, don't copy the audio
