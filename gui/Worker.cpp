@@ -6,7 +6,6 @@
 #include "Worker.h"
 #include "n2k/YdvrReader.h"
 #include "gopro/GoPro.h"
-#include "PgnSrcTreeModel.h"
 #include "Settings.h"
 #include "navcomputer/TimeDeltaComputer.h"
 
@@ -108,6 +107,25 @@ void Worker::computeStats(const QString &polarUrl){
     int raceIdx = 0;
     TimeDeltaComputer timeDeltaComputer(polars, m_rInstrDataVector);
     for ( RaceData *race: m_RaceDataList) {
+
+        // Go through the list of chapters and determine if they are fetches or not
+        for(auto it = race->getChapters().begin(); it != race->getChapters().end(); it++) {
+            Chapter *chapter = *it;
+
+            auto nextIt = it;
+            auto prevIt = it;
+            nextIt++;
+            bool isFetch = false;
+            // Entire chapter is a fetch if it goes directly from mark to mark or start to mark
+            if (it != race->getChapters().begin() && nextIt != race->getChapters().end()) {
+                prevIt--;
+                isFetch = ((*prevIt)->getChapterType() == ChapterTypes::START ||
+                           (*prevIt)->getChapterType() == ChapterTypes::MARK_ROUNDING)
+                          && (*nextIt)->getChapterType() == ChapterTypes::MARK_ROUNDING;
+            }
+            chapter->setFetch(isFetch);
+        }
+
         timeDeltaComputer.startRace();
         int chapterIdx = 0;
         for(auto it = race->getChapters().begin(); it != race->getChapters().end(); it++, chapterIdx++) {
@@ -116,14 +134,24 @@ void Worker::computeStats(const QString &polarUrl){
             auto nextIt = it;
             auto prevIt = it;
             nextIt++;
-            bool isFetch = false;
-            if ( it!=race->getChapters().begin() &&  nextIt != race->getChapters().end()){
-                prevIt--;
-                isFetch = ((*prevIt)->getChapterType() == ChapterTypes::START || (*prevIt)->getChapterType() == ChapterTypes::MARK_ROUNDING)
-                        && (*nextIt)->getChapterType() == ChapterTypes::MARK_ROUNDING;
-            }
+
             timeDeltaComputer.startLeg();
             for( uint64_t idx= chapter->getStartIdx(); idx < chapter->getEndIdx(); idx++){
+                // In case of mark rounding we decide separately if we are fetching or not before and after the mark
+                // depending on the previous and next chapters are fetches or not
+                bool isFetch = chapter->isFetch();
+                if ( chapter->getChapterType() == ChapterTypes::MARK_ROUNDING ) {
+                    if (idx < chapter->getGunIdx()) {
+                        if ( it!=race->getChapters().begin() ) {
+                            isFetch = (*prevIt)->isFetch();
+                        }
+                    }else{
+                        if( nextIt != race->getChapters().end() ){
+                            isFetch = (*nextIt)->isFetch();
+                        }
+                    }
+                }
+
                 m_rPerformanceVector[idx].raceIdx = raceIdx;
                 m_rPerformanceVector[idx].legIdx = chapterIdx;
                 bool beforeStart = chapter->getChapterType() == ChapterTypes::ChapterType::START && idx < chapter->getGunIdx();

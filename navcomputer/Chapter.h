@@ -25,6 +25,9 @@ public:
     void SetGunIdx(u_int64_t gunIdx) { m_gunIdx = gunIdx; }
     void setChapterType(ChapterTypes::ChapterType chapterType) { m_chapterType = chapterType; }
 
+    void setFetch(bool isFetch);
+    [[nodiscard]] bool isFetch() const;
+
 private:
     QUuid m_uuid;
     std::string name="Untitled Chapter";
@@ -32,6 +35,7 @@ private:
     u_int64_t m_endIdx=0;
     u_int64_t m_gunIdx=0;
     ChapterTypes::ChapterType m_chapterType = ChapterTypes::TACK_GYBE;
+    bool m_isFetch=false;
 };
 
 

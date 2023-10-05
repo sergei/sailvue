@@ -10,3 +10,11 @@ void Chapter::SetName(std::string s) {
     name = s;
 }
 
+bool Chapter::isFetch() const {
+    return m_isFetch;
+}
+
+void Chapter::setFetch(bool isFetch) {
+    m_isFetch = isFetch;
+}
+
