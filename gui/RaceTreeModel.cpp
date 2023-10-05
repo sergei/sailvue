@@ -240,6 +240,7 @@ void RaceTreeModel::handleNewInstrDataVector() {
 
 void RaceTreeModel::load(const QString &path) {
     if ( m_project.load(path) ){
+        emit loadStarted();
         emit nmeaPathChanged();
         emit goProPathChanged();
         emit polarPathChanged();
@@ -250,6 +251,7 @@ void RaceTreeModel::load(const QString &path) {
 }
 
 void RaceTreeModel::read(bool ignoreCache) {
+    emit loadStarted();
     deleteAllRaces();
     emit readData(m_project.goproPath(), m_project.nmeaPath(), m_project.polarPath(), ignoreCache);
 }

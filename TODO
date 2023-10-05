@@ -1,4 +1,5 @@
 TODO remove fisheye from the video
+TODO use hash to identify cache files
 TODO speedup YDVR reading
 TODO draw all overlays on the single image to speedup the ffmpeg
 TODO score for starts

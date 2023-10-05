@@ -122,6 +122,10 @@ ApplicationWindow {
             progressText.text = state
         }
 
+        onLoadStarted: function () {
+            fileProgressDialog.open()
+        }
+
         // All data read
         onLoadFinished: function () {
             fileProgressDialog.close()
@@ -249,7 +253,7 @@ ApplicationWindow {
             title: qsTr("&File")
             Action {
                 text: qsTr("&New Project...")
-                onTriggered: filesDialog.open()
+                onTriggered: inputDataDialog.open()
             }
             Action {
                 text: qsTr("&Open project...")
@@ -293,13 +297,13 @@ ApplicationWindow {
         }
     }
 
-    InputDataDialog {
-        id: filesDialog
-        raceTreeModel: raceTreeModel
-    }
-
     Options {
         id: options
+    }
+
+    InputDataDialog {
+        id: inputDataDialog
+        raceTreeModel: raceTreeModel
     }
 
     FileDialog {
@@ -310,7 +314,6 @@ ApplicationWindow {
         nameFilters: ["Project files (*.json)"]
         onAccepted: {
             raceTreeModel.load(currentFile)
-            fileProgressDialog.open()
         }
     }
 

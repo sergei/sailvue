@@ -166,6 +166,7 @@ signals:
     void stop();
     void progressStatus(const QString &state, int progress);
     void fullPathReady(const QGeoPath fullPath);
+    void loadStarted();
     void loadFinished();
     void racePathIdxChanged(uint64_t racePathIdx);
 

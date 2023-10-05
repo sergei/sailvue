@@ -1,4 +1,3 @@
-FIXME There is no progress dialog when new project is being generated
 FIXME don't use relative path to ffmpeg executable at startup
 
 FIXME Don't start production if there is no chapters in the race
