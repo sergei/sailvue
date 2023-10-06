@@ -62,6 +62,10 @@ public:
         m_isDirty = true;
     }
 
+    static void setTwaOffset(const double twaOffset);
+
+    static double twaOffset();
+
 private:
     std::list<RaceData *> &m_RaceDataList;
     QString m_projectName = "Untitled";

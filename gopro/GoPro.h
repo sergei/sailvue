@@ -23,13 +23,13 @@ private:
 private:
     uint64_t m_ulClipStartUtcMs = 0;
     uint64_t m_ulClipEndUtcMs = 0;
-    const std::list<InstrumentInput> *m_pInstrDataList;
+    std::list<InstrumentInput> *m_pInstrDataList;
     const int m_width;
 public:
 private:
     const int m_height;
 public:
-    const std::list<InstrumentInput> *getInstrData() const;
+    std::list<InstrumentInput> *getInstrData();
 };
 
 class GoPro {
@@ -51,7 +51,7 @@ private:
     IProgressListener& m_rProgressListener;
     std::list<GoProClipInfo> m_GoProClipInfoList;
 public:
-    const std::list<GoProClipInfo> &getGoProClipList() const;
+    std::list<GoProClipInfo> &getGoProClipList();
 
 private:
     uint64_t m_ulClipStartUtcMs = 0;

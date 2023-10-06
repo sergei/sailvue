@@ -38,6 +38,9 @@ Dialog {
             TabButton {
                 text: qsTr("PGN List")
             }
+            TabButton {
+                text: qsTr("Calibration")
+            }
         }
 
         StackLayout {
@@ -60,6 +63,26 @@ Dialog {
                 id: pgnTab
                 PGNSources {
                     id: pgnSources
+                }
+            }
+            Item {
+                id: calibrationTab
+                GridLayout {
+                    columns: 3
+                    Label {
+                        text: "TWA offset (add this value to TWA)"
+                    }
+                    TextEdit {
+                        id: twa_offset_value
+                        text: raceTreeModel.twaOffset
+                        color: "white"
+                    }
+                    Button {
+                        text: "Save"
+                        onClicked: {
+                            raceTreeModel.twaOffset = parseFloat(twa_offset_value.text)
+                        }
+                    }
                 }
             }
         }

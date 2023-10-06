@@ -8,6 +8,8 @@
 #include "gopro/GoPro.h"
 #include "Settings.h"
 #include "navcomputer/TimeDeltaComputer.h"
+#include "Project.h"
+#include "navcomputer/Calibration.h"
 
 void Worker::readData(const QString &goproDir, const QString &nmeaDir, const QString &polarFile, bool bIgnoreCache){
     std::cout << "goproDir " + goproDir.toStdString() << std::endl;
@@ -24,6 +26,10 @@ void Worker::readData(const QString &goproDir, const QString &nmeaDir, const QSt
     QSettings settings;
     QString pgnSrcCsvPath = settings.value(SETTINGS_KEY_PGN_CSV, "").toString();
     std::string stPgnSrcCsv;
+
+    double twaOffset = Project::twaOffset();
+    Calibration calibration(twaOffset);
+
     if ( !pgnSrcCsvPath.isEmpty() ){
         stPgnSrcCsv = QUrl(pgnSrcCsvPath).toLocalFile().toStdString();
     } else {
@@ -44,10 +50,11 @@ void Worker::readData(const QString &goproDir, const QString &nmeaDir, const QSt
     int pointsCount = 0;
     m_rGoProClipInfoList.clear();
     m_rInstrDataVector.clear();
-    for (const auto& clip : goPro.getGoProClipList()) {
+    for (auto& clip : goPro.getGoProClipList()) {
         m_rGoProClipInfoList.push_back(clip);
         clipCount++;
         for( auto &ii : *clip.getInstrData()) {
+            calibration.calibrate(ii);
             m_rInstrDataVector.push_back(ii);
             pointsCount++;
         }

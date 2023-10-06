@@ -153,3 +153,17 @@ bool Project::storeProject(const QString path) {
     return true;
 }
 
+void Project::setTwaOffset(const double twaOffset) {
+    QSettings settings;
+    settings.setValue(SETTINGS_TWA_OFFSET, twaOffset);
+    std::cout << "set TWA offset to path to " << std::to_string(twaOffset) << std::endl;
+
+}
+
+double Project::twaOffset() {
+    QSettings settings;
+    double twaOffset = settings.value(SETTINGS_TWA_OFFSET, 0).toDouble();
+    std::cout << "Use TWA offset of " << std::to_string(twaOffset) << " degrees" << std::endl;
+    return twaOffset;
+}
+

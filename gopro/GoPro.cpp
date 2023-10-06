@@ -251,7 +251,7 @@ void GoPro::ReadCacheAndSummary(const std::filesystem::path &pathCacheFile, cons
     }
 }
 
-const std::list<GoProClipInfo> &GoPro::getGoProClipList() const {
+std::list<GoProClipInfo> &GoPro::getGoProClipList() {
     return m_GoProClipInfoList;
 }
 
@@ -263,7 +263,7 @@ m_width(w), m_height(h)
 
 }
 
-const std::list<InstrumentInput> *GoProClipInfo::getInstrData() const {
+std::list<InstrumentInput> *GoProClipInfo::getInstrData()  {
     return m_pInstrDataList;
 }
 

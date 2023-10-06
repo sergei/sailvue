@@ -54,6 +54,7 @@ class RaceTreeModel  : public QAbstractItemModel {
     Q_PROPERTY(QString goproPath READ goproPath WRITE setGoProPath NOTIFY goProPathChanged)
     Q_PROPERTY(QString nmeaPath READ nmeaPath WRITE setNmeaPath NOTIFY nmeaPathChanged)
     Q_PROPERTY(QString polarPath READ polarPath WRITE setPolarPath NOTIFY polarPathChanged)
+    Q_PROPERTY(float twaOffset READ twaOffset WRITE setTwaOffset NOTIFY twaOffsetChanged)
 
 
 public:
@@ -105,7 +106,11 @@ public:
     void setPolarPath(const QString &path){
         m_project.setPolarPath(path);
         emit polarPathChanged();
-        emit isDirtyChanged();
+    }
+
+    void setTwaOffset(const double twaOffset){
+        m_project.setTwaOffset(twaOffset);
+        emit twaOffsetChanged();
     }
 
     [[nodiscard]] QString projectName() const { return m_project.projectName(); }
@@ -113,6 +118,11 @@ public:
     [[nodiscard]] QString goproPath() const{ return m_project.goproPath(); }
     [[nodiscard]] QString nmeaPath() const{ return m_project.nmeaPath(); }
     [[nodiscard]] QString polarPath() const{ return m_project.polarPath(); }
+    [[nodiscard]] double twaOffset() const{ return m_project.twaOffset(); }
+
+
+
+
     Q_INVOKABLE void load(const QString &path);
     Q_INVOKABLE void read(bool ignoreCache);
     Q_INVOKABLE void save();
@@ -161,6 +171,7 @@ signals:
     void projectNameChanged();
     void nmeaPathChanged();
     void polarPathChanged();
+    void twaOffsetChanged();
 
     void readData(const QString &goproDir, const QString &nmeaDir, const QString &polarFile, bool ignoreCache);
     void stop();

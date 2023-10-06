@@ -30,7 +30,7 @@ void Test(const std::string& stYdvrDir, const std::string& stGoProDir, const std
 
     int clipCount = 0;
     int pointsCount = 0;
-    for (const auto& clip : goPro.getGoProClipList()) {
+    for ( auto& clip : goPro.getGoProClipList()) {
         clipCount++;
         for( auto &ii : *clip.getInstrData()) {
             pointsCount++;

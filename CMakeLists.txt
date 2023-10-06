@@ -93,6 +93,8 @@ qt_add_executable(sailvue WIN32 MACOSX_BUNDLE
         movie/PerformanceOverlayMaker.h
         gui/ChapterMaker.cpp
         navcomputer/Performance.h
+        navcomputer/Calibration.h
+        navcomputer/Calibration.cpp
 )
 
 target_include_directories(sailvue PUBLIC
