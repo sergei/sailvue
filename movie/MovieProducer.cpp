@@ -95,8 +95,18 @@ std::string MovieProducer::produceChapter(TargetsOverlayMaker &targetsOverlayMak
     std::cout << "Producing chapter " << chapter.getName() << " " << startUtcMs << ":" << stopUtcMs << std::endl;
 
     std::filesystem::path outMoviePath = folder / "chapter.mp4";
-    uint64_t  clipDurationMs = stopUtcMs - startUtcMs;
-    m_totalRaceDuration += clipDurationMs;
+
+    auto duration = float(stopUtcMs - startUtcMs) / 1000;
+    float presentationDuration;
+    bool changeDuration = false;
+    if( chapter.getChapterType() == ChapterTypes::ChapterType::SPEED_PERFORMANCE) {
+        presentationDuration = 60;
+        changeDuration = true;
+    }else{
+        presentationDuration = duration;
+    }
+
+    m_totalRaceDuration += presentationDuration * 1000;
 
     // Check if the output file already exists
     if ( std::filesystem::is_regular_file(outMoviePath) && !ignoreCache){
@@ -182,15 +192,6 @@ std::string MovieProducer::produceChapter(TargetsOverlayMaker &targetsOverlayMak
         count ++;
     }
 
-    auto duration = float(stopUtcMs - startUtcMs) / 1000;
-    float presentationDuration;
-    bool changeDuration = false;
-    if( chapter.getChapterType() == ChapterTypes::ChapterType::SPEED_PERFORMANCE) {
-        presentationDuration = 60;
-        changeDuration = true;
-    }else{
-        presentationDuration = duration;
-    }
 
     // determine overlays framerate
     float overlaysFps = float(count) / presentationDuration;
@@ -214,6 +215,7 @@ std::string MovieProducer::produceChapter(TargetsOverlayMaker &targetsOverlayMak
     // Add polar overlay
     ffmpeg.addOverlayPngSequence(0, 0, overlaysFps, polarOverlayPath.native(), POLAR_OVL_FILE_PAT);
 
+    uint64_t  clipDurationMs = presentationDuration * 1000;
     EncodingProgressListener progressListener("Chapter " + chapter.getName(), clipDurationMs, m_rProgressListener);
     ffmpeg.makeClip(outMoviePath.native(), progressListener);
     m_stopRequested = progressListener.isStopRequested();
