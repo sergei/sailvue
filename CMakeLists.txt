@@ -18,16 +18,17 @@ find_package(Qt6 COMPONENTS Positioning)
 find_package(Qt6 COMPONENTS Location)
 find_package(Qt6 REQUIRED COMPONENTS Multimedia)
 
+# For profiling
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0    -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0   -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer")
 
 find_package(Boost )   # Required for  libInterpolate
 if(Boost_FOUND)
         include_directories(${Boost_INCLUDE_DIRS})
 endif()
 
-qt_add_executable(sailvue WIN32 MACOSX_BUNDLE
-        main.cpp
+set(N2K_SRC
         InstrDataReader.h
-
         n2k/canboat/analyzer/pgn.c
         n2k/canboat/analyzer/pgn.h
         n2k/canboat/analyzer/lookup.c
@@ -48,16 +49,26 @@ qt_add_executable(sailvue WIN32 MACOSX_BUNDLE
         n2k/geo/Speed.h
         n2k/geo/UtcTime.h
         n2k/geo/GeoLoc.h
+)
 
+set(GOPRO_SRC
         gopro/GoPro.cpp
         gopro/GoPro.h
         gopro/gpmf-parser/GPMF_parser.c
         gopro/gpmf-parser/demo/GPMF_mp4reader.c
+)
 
+set(GUI_SRC
         gui/Worker.cpp
         gui/Worker.h
         gui/Project.cpp
         gui/Project.h
+        gui/ChapterMaker.cpp
+        gui/Settings.cpp
+        gui/Settings.h
+)
+
+set(MOVIE_SRC
         movie/MovieProducer.cpp
         movie/MovieProducer.h
         movie/InstrOverlayMaker.cpp
@@ -68,10 +79,16 @@ qt_add_executable(sailvue WIN32 MACOSX_BUNDLE
         movie/StartTimerOverlayMaker.h
         movie/TargetsOverlayMaker.cpp
         movie/TargetsOverlayMaker.h
+        movie/PerformanceOverlayMaker.cpp
+        movie/PerformanceOverlayMaker.h
+)
 
+set(FFMPEG_SRC
         ffmpeg/FFMpeg.cpp
         ffmpeg/FFMpeg.h
+)
 
+set (NAV_SRC
         navcomputer/InstrumentInput.h
         navcomputer/IProgressListener.h
         navcomputer/RaceData.cpp
@@ -83,18 +100,24 @@ qt_add_executable(sailvue WIN32 MACOSX_BUNDLE
         navcomputer/NavStats.h
         navcomputer/Polars.cpp
         navcomputer/Polars.h
-        gui/Settings.cpp
-        gui/Settings.h
-        utils/Caffeine.cpp
-        utils/Caffeine.h
         navcomputer/TimeDeltaComputer.cpp
         navcomputer/TimeDeltaComputer.h
-        movie/PerformanceOverlayMaker.cpp
-        movie/PerformanceOverlayMaker.h
-        gui/ChapterMaker.cpp
         navcomputer/Performance.h
         navcomputer/Calibration.h
         navcomputer/Calibration.cpp
+)
+
+qt_add_executable(sailvue WIN32 MACOSX_BUNDLE
+        main.cpp
+
+        ${N2K_SRC}
+        ${GOPRO_SRC}
+        ${GUI_SRC}
+        ${MOVIE_SRC}
+        ${FFMPEG_SRC}
+
+        utils/Caffeine.cpp
+        utils/Caffeine.h
 )
 
 target_include_directories(sailvue PUBLIC
@@ -161,3 +184,14 @@ qt_add_qml_module(sailvue
         SOURCES gui/ChapterTypes.h
 )
 
+add_executable(ydn2csv
+        ydn2csv/main.cpp
+
+        ${N2K_SRC}
+)
+
+target_include_directories(ydn2csv PUBLIC
+        n2k/canboat/analyzer
+        n2k/canboat/common
+        cxxopts/include
+)

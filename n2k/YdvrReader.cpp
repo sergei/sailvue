@@ -156,29 +156,45 @@ void YdvrReader::readDatFile(const std::string &ydvrFile, const std::filesystem:
                              const std::filesystem::path &stSummaryFile) {
 
     std::ofstream cache (stCacheFile, std::ios::out);
-    std::ifstream f (ydvrFile, std::ios::in | std::ios::binary);
+    std::ifstream fs (ydvrFile, std::ios::in | std::ios::binary | std::ios::ate);
+    std::streamsize size = fs.tellg();
+    fs.seekg(0, std::ios::beg);
+
+    std::vector<char> buffer(size);
+    auto buff = buffer.data();
+    if (!fs.read(buff, size))
+    {
+        std::cerr << "Failed to read file: " << ydvrFile << std::endl;
+        return;
+    }
+    fs.close();
 
     m_ulStartGpsTimeMs = 0;
     m_ulEndGpsTimeMs = 0;
     m_ulEpochCount = 0;
 
-    while (f) {
+    size_t offset = 0;
+    while (offset < size) {
         uint16_t ts;
-        size_t offset = f.tellg();
 
-        if ( ! f.read((char*)&ts, sizeof(ts)) ) {
+        if ( offset + sizeof(ts) > size )
             break;
-        }
+        memcpy(&ts, buff + offset, sizeof(ts));
+        offset += sizeof(ts);
+
         uint32_t msg_id;
-        if ( ! f.read((char*)&msg_id, sizeof(msg_id)) ) {
+        if ( offset + sizeof(msg_id) > size )
             break;
-        }
+        memcpy(&msg_id, buff + offset, sizeof(msg_id));
+        offset += sizeof(msg_id);
 
         if( msg_id == 0xFFFFFFFF ) {  // YDVR service record
             uint8_t data[8];
-            if ( ! f.read((char*)&data, sizeof(data)) ) {
+            if ( offset + sizeof(data) > size )
                 break;
-            }
+            memcpy(data, buff + offset, sizeof(data));
+            offset += sizeof(data);
+
             if( !memcmp(data, "YDVR", 4) ) {
                 std::cout << "Start of file service record" << std::endl;
                 ResetTime();
@@ -204,30 +220,40 @@ void YdvrReader::readDatFile(const std::string &ydvrFile, const std::filesystem:
 
             if ( m.pgn == 59904 ) {
                 m.len = 3;
-                if ( ! f.read((char*)&m.data, m.len) ) {
+                if ( offset + m.len > size )
                     break;
-                }
+                memcpy(m.data, buff + offset, m.len);
+                offset += m.len;
+
             }else if ( pgn != nullptr && pgn->type == PACKET_FAST && pgn->complete == PACKET_COMPLETE){
                 uint8_t seqNo;
-                if ( ! f.read((char*)&seqNo, 1) ) {
+                if ( offset + 1 > size )
                     break;
-                }
-                if ( ! f.read((char*)&m.len, 1) ) {
+                seqNo = buff[offset];
+                offset += 1;
+
+                if ( offset + 1 > size )
                     break;
-                }
+                m.len = buff[offset];
+                offset += 1;
+
                 if( m.len > sizeof(m.data) ) {
                     std::cerr << "Invalid length: " << m.len <<  " offset " << offset << std::endl;
                     ResetTime();
                     continue;
                 }
-                if ( ! f.read((char*)&m.data, m.len) ) {
+
+                if ( offset + m.len > size )
                     break;
-                }
+                memcpy(m.data, buff + offset, m.len);
+                offset += m.len;
+
             }else {
                 m.len = 8;
-                if ( ! f.read((char*)&m.data, m.len) ) {
+                if ( offset + m.len > size )
                     break;
-                }
+                memcpy(m.data, buff + offset, m.len);
+                offset += m.len;
             }
 //            std::cout << "PGN: " << m.pgn << " len: " << int(m.len) <<  " offset " << offset << std::endl;
             UnrollTimeStamp(ts);
@@ -236,7 +262,6 @@ void YdvrReader::readDatFile(const std::string &ydvrFile, const std::filesystem:
 
     }
 
-    f.close();
     cache.close();
 
     std::ofstream summary (stSummaryFile, std::ios::out);
