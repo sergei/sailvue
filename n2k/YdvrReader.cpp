@@ -222,7 +222,7 @@ void YdvrReader::readDatFile(const std::string &ydvrFile, const std::filesystem:
                 m.len = 3;
                 if ( offset + m.len > size )
                     break;
-                memcpy(m.data, buff + offset, m.len);
+                m.data =  (uint8_t  *)(buff + offset);
                 offset += m.len;
 
             }else if ( pgn != nullptr && pgn->type == PACKET_FAST && pgn->complete == PACKET_COMPLETE){
@@ -237,7 +237,7 @@ void YdvrReader::readDatFile(const std::string &ydvrFile, const std::filesystem:
                 m.len = buff[offset];
                 offset += 1;
 
-                if( m.len > sizeof(m.data) ) {
+                if( m.len > FASTPACKET_MAX_SIZE ) {
                     std::cerr << "Invalid length: " << m.len <<  " offset " << offset << std::endl;
                     ResetTime();
                     continue;
@@ -245,14 +245,14 @@ void YdvrReader::readDatFile(const std::string &ydvrFile, const std::filesystem:
 
                 if ( offset + m.len > size )
                     break;
-                memcpy(m.data, buff + offset, m.len);
+                m.data =  (uint8_t *)(buff + offset);
                 offset += m.len;
 
             }else {
                 m.len = 8;
                 if ( offset + m.len > size )
                     break;
-                memcpy(m.data, buff + offset, m.len);
+                m.data =  (uint8_t  *)(buff + offset);
                 offset += m.len;
             }
 //            std::cout << "PGN: " << m.pgn << " len: " << int(m.len) <<  " offset " << offset << std::endl;
