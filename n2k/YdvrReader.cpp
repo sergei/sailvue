@@ -209,7 +209,7 @@ void YdvrReader::readDatFile(const std::string &ydvrFile, const std::filesystem:
                 ResetTime();
             }
         }else {
-            RawMessage m;
+            YdvrMessage m;
             canIdToN2k(msg_id, m.prio, m.pgn, m.src, m.dst);
 
             if ( m.pgn < 59392 ){
@@ -291,7 +291,7 @@ void YdvrReader::canIdToN2k(uint32_t can_id, uint8_t &prio, uint32_t &pgn, uint8
 
 }
 
-void YdvrReader::ProcessPgn(const RawMessage &msg, std::ofstream& cache)  {
+void YdvrReader::ProcessPgn(const YdvrMessage &msg, std::ofstream& cache)  {
 
     auto data = msg.data;
     auto len = msg.len;

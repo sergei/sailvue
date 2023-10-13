@@ -25,6 +25,17 @@ static const double RES_LL_64 = 1e-16;
 static const double RES_LL_32 = 1e-7;
 static const double RES_MPS = 0.01;
 
+typedef struct
+{
+    uint8_t  prio;
+    uint32_t pgn;
+    uint8_t  dst;
+    uint8_t  src;
+    uint8_t  len;
+    uint8_t  *data;
+} YdvrMessage;
+
+
 class DatFileInfo {
 public:
     std::string stYdvrFile;
@@ -64,7 +75,7 @@ private:
     static void canIdToN2k(uint32_t id, uint8_t &prio, uint32_t &pgn, uint8_t &src, uint8_t &dst);
     void ReadPgnSrcTable(const std::string &basicString);
 
-    void ProcessPgn(const RawMessage &m, std::ofstream &cache) ;
+    void ProcessPgn(const YdvrMessage &m, std::ofstream &cache) ;
         void processGpsFixPgn(const Pgn *pgn, const uint8_t *data, size_t len);
         void processCogSogPgn(const Pgn *pgn, const uint8_t *data, size_t len);
         void processPosRapidUpdate(const Pgn *pgn, const uint8_t *data, uint8_t len);

@@ -19,8 +19,8 @@ find_package(Qt6 COMPONENTS Location)
 find_package(Qt6 REQUIRED COMPONENTS Multimedia)
 
 # For profiling
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0    -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0   -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer")
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0    -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0   -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer")
 
 find_package(Boost )   # Required for  libInterpolate
 if(Boost_FOUND)
@@ -115,6 +115,7 @@ qt_add_executable(sailvue WIN32 MACOSX_BUNDLE
         ${GUI_SRC}
         ${MOVIE_SRC}
         ${FFMPEG_SRC}
+        ${NAV_SRC}
 
         utils/Caffeine.cpp
         utils/Caffeine.h
