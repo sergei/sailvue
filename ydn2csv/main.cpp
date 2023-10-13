@@ -35,11 +35,6 @@ void makeNewPgnCsvFile(const std::string &oldPgnCsvFile, const std::string &newP
         if ( tokens.size() > 3 ){
             uint32_t pgn = std::stoul(tokens[0]);
             std::string desc = tokens[1];
-            std::vector<std::string> srcs;
-            uint32_t srcIdx = std::stoul(tokens[2]);
-            for (int i = 3; i < tokens.size(); i++){
-                srcs.push_back(tokens[i]);
-            }
             if( pgn == pgnToReplace ){
                 // Replace with the line that has this device only
                 fout << pgn << "," << desc << "," << 0 << "," << deviceName << std::endl;
@@ -73,6 +68,7 @@ int main(int argc, char** argv) {
     std::string stYdvrDir = result["ydvr-dir"].as<std::string>();
     std::string stCacheDir = result["cache-dir"].as<std::string>();
     std::string stPgnCsvFile = result["pgn-src"].as<std::string>();
+    std::filesystem::create_directories(stCacheDir);
 
     Source sources[] = {
         // Speed over water
