@@ -12,7 +12,7 @@ class InstrumentInput {
 public:
     UtcTime utc = UtcTime::INVALID;
     GeoLoc  loc = GeoLoc::INVALID;
-    Direction cog = Direction::INVALID;
+    Direction cog = Direction::INVALID;  // Magnetic, not true
     Speed sog = Speed::INVALID;
     Speed aws = Speed::INVALID;
     Angle awa = Angle::INVALID;

@@ -54,6 +54,7 @@ const std::set<uint32_t> REQUIRED_PGNS({
     130306, // Wind Data
     127245, // Rudder
     127257, // Attitude
+    127258, // Magnetic Variation
 });
 
 class YdvrReader : public InstrDataReader {
@@ -127,7 +128,10 @@ private:
     UtcTime m_prevEpochUtc = UtcTime::INVALID;
 
     std::list<DatFileInfo> m_listDatFiles;
+    double m_dMagVarRad = 0;
+    bool b_MagVarValid = false;
 
+    void processMagneticVariation(const Pgn *pPgn, uint8_t *data, uint8_t len);
 };
 
 

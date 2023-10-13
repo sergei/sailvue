@@ -340,6 +340,9 @@ void YdvrReader::ProcessPgn(const YdvrMessage &msg, std::ofstream& cache)  {
                 case 127257:
                     processAttitude(pgn, data, len);
                     break;
+                case 127258:
+                    processMagneticVariation(pgn, data, len);
+                    break;
             }
         }
     }
@@ -348,11 +351,38 @@ void YdvrReader::ProcessPgn(const YdvrMessage &msg, std::ofstream& cache)  {
 /// COG & SOG, Rapid Update
 void YdvrReader::processCogSogPgn(const Pgn *pgn, const uint8_t *data, size_t len) {
     int64_t val;
+    int64_t type;
+    extractNumberByOrder(pgn, 2, data, len, &type);
     extractNumberByOrder(pgn, 4, data, len, &val);
     double rad = double(val) *  RES_RADIANS;
-    m_epoch.cog = rad < 7 ? Direction::fromRadians(rad, m_ulLatestGpsTimeMs) : Direction::INVALID;
+    if ( rad < 7 ){
+        if ( type == 0) {  // True ( convert to magnetic
+            m_epoch.cog =  b_MagVarValid ? Direction::fromRadians(rad - m_dMagVarRad, m_ulLatestGpsTimeMs) : Direction::INVALID;
+        }else if ( type == 1) { // Magnetic ( no need to convert)
+            m_epoch.cog =  Direction::fromRadians(rad, m_ulLatestGpsTimeMs);
+        }else { // Invalid
+            m_epoch.cog =  Direction::INVALID;
+        }
+        m_epoch.cog = Direction::fromRadians(rad, m_ulLatestGpsTimeMs);
+    }else{
+        m_epoch.cog =  Direction::INVALID;
+    }
+
     extractNumberByOrder(pgn, 5, data, len, &val);
     m_epoch.sog = val < 65532 ? Speed::fromMetersPerSecond(double(val) * RES_MPS, m_ulLatestGpsTimeMs) : Speed::INVALID;
+}
+
+void YdvrReader::processVesselHeading(const Pgn *pgn, const uint8_t *data, uint8_t len) {
+    int64_t val;
+    extractNumberByOrder(pgn, 2, data, len, &val);
+    double rad = double(val) * RES_RADIANS;
+
+    extractNumberByOrder(pgn, 5, data, len, &val);
+    if ( val == 1 && rad < 7) { // Magnetic
+        m_epoch.mag = Direction::fromRadians(rad, m_ulLatestGpsTimeMs);
+    }else if( val == 0 && rad < 7) { // true
+        m_epoch.mag = b_MagVarValid ? Direction::fromRadians(rad - m_dMagVarRad, m_ulLatestGpsTimeMs) : Direction::INVALID;
+    }
 }
 
 /// GNSS Position Data
@@ -404,15 +434,6 @@ void YdvrReader::processPosRapidUpdate(const Pgn *pgn, const uint8_t *data, uint
     }
 }
 
-void YdvrReader::processVesselHeading(const Pgn *pgn, const uint8_t *data, uint8_t len) {
-    int64_t val;
-    extractNumberByOrder(pgn, 2, data, len, &val);
-    double hdg = double(val) *  RES_RADIANS;
-    extractNumberByOrder(pgn, 5, data, len, &val);
-    if ( val == 1 && hdg < 7) { // Magnetic
-        m_epoch.mag = Direction::fromRadians(hdg, m_ulLatestGpsTimeMs);
-    }
-}
 
 void YdvrReader::processBoatSpeed(const Pgn *pgn, const uint8_t *data, uint8_t len) {
     int64_t val;
@@ -457,6 +478,16 @@ void YdvrReader::processAttitude(const Pgn *pgn, const uint8_t *data, uint8_t le
     extractNumberByOrder(pgn, 4, data, len, &val);
     m_epoch.roll = val < 65532 ? Angle::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs) : Angle::INVALID;
 
+}
+
+void YdvrReader::processMagneticVariation(const Pgn *pgn, uint8_t *data, uint8_t len) {
+    int64_t val;
+    extractNumberByOrder(pgn, 5, data, len, &val);
+    if ( val < 65532 ){
+        // Positive value is easterly
+        m_dMagVarRad = double(val) * RES_RADIANS;
+        b_MagVarValid = true;
+    }
 }
 
 void YdvrReader::ResetTime() {
@@ -551,6 +582,7 @@ void YdvrReader::ReadPgnSrcTable(const std::string &csvFileName) {
     m_mapDeviceForPgn.clear();
     std::cout  << "Reading PGN sources from " << csvFileName << std::endl;
     while (std::getline(f, line)) {
+        std::cout  << line << std::endl;
         std::istringstream iss(line);
         std::string token;
         std::vector<std::string> tokens;
@@ -609,3 +641,4 @@ void YdvrReader::getPgnData(std::map<uint32_t, std::vector<std::string>> &mapPgn
     std::cout << "---------------------------------------" << std::endl;
 
 }
+
