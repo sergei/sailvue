@@ -6,31 +6,27 @@
 #include <QPainter>
 #include "navcomputer/InstrumentInput.h"
 #include "navcomputer/Polars.h"
+#include "OverlayElement.h"
 
 static const int HIST_DISPLAY_LEN_MS = 1000 * 30;
 
-class PolarOverlayMaker {
+class PolarOverlayMaker : public  OverlayElement{
 public:
+    PolarOverlayMaker(Polars &polars, std::vector<InstrumentInput> &instrDataVector, int width, int height, int x, int y);
     virtual ~PolarOverlayMaker();
+    void addEpoch(QPainter &painter, int epochIdx) override;
+    void setChapter(Chapter &chapter) override;
 
-    PolarOverlayMaker(Polars &polars, std::vector<InstrumentInput> &instrDataVector, std::filesystem::path &workDir, int width,
-                      int startIdx, int endIdx,
-                      bool ignoreCache);
-    void addEpoch(const std::string &fileName, int epochIdx);
 private:
     [[nodiscard]] QPoint toScreen(const std::pair<float, float> &xy) const;
     void setHistory(int startIdx, int endIdx);
 private:
     std::vector<InstrumentInput> &m_rInstrDataVector;
-    std::filesystem::path m_workDir;
-    const int m_width;
-    const bool m_ignoreCache;
     const int m_dotRadius = 10;
     const int m_xPad = m_dotRadius;
     const int m_yPad = m_dotRadius;
     const QColor m_polarGridColor = QColor(255, 255, 255, 127);
 
-    int m_height;
     int m_maxSpeedKts = 0;
     int m_minSpeedKts = 100;
     const int m_speedStep = 2;
@@ -40,12 +36,12 @@ private:
     bool m_showTopHalf = false;
     bool m_showBottomHalf = false;
 
-    int m_y0;
+    int m_y0=0;
 
-    float m_xScale;
-    float m_yScale;
+    float m_xScale=1;
+    float m_yScale=1;
 
-    const int m_startIdx;
+    int m_startIdx=0;
 
     std::vector<std::pair<float, float>> m_history;
 

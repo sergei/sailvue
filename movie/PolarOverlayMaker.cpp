@@ -2,38 +2,38 @@
 #include <cmath>
 #include "PolarOverlayMaker.h"
 
-PolarOverlayMaker::PolarOverlayMaker(Polars &polars, std::vector<InstrumentInput> &instrDataVector, std::filesystem::path &workDir,
-                                     int width, int startIdx, int endIdx, bool ignoreCache)
- :m_polars(polars), m_rInstrDataVector(instrDataVector),
- m_workDir(workDir), m_width(width), m_ignoreCache(ignoreCache), m_startIdx(startIdx)
+PolarOverlayMaker::PolarOverlayMaker(Polars &polars, std::vector<InstrumentInput> &instrDataVector,
+                                     int width, int height, int x, int y)
+ :OverlayElement(width, height, x, y),
+ m_polars(polars), m_rInstrDataVector(instrDataVector)
  {
-    std::filesystem::create_directories(m_workDir);
     m_height = width;
-    m_pBackgroundImage = new QImage(m_width, m_height, QImage::Format_ARGB32);
-    m_pBackgroundImage->fill(QColor(0, 0, 0, 0));
-     m_PolarCurveImage = new QImage(m_width, m_height, QImage::Format_ARGB32);
-    m_PolarCurveImage->fill(QColor(0, 0, 0, 0));
-    setHistory(startIdx, endIdx);
  }
 
 PolarOverlayMaker::~PolarOverlayMaker() {
     delete m_pBackgroundImage;
+    delete m_PolarCurveImage;
 }
 
-void PolarOverlayMaker::addEpoch(const std::string &fileName, int epochIdx) {
-    std::filesystem::path pngName = std::filesystem::path(m_workDir) / fileName;
+void PolarOverlayMaker::setChapter(Chapter &chapter) {
+    delete m_pBackgroundImage;
+    m_pBackgroundImage = new QImage(m_width, m_height, QImage::Format_ARGB32);
+    m_pBackgroundImage->fill(QColor(0, 0, 0, 0));
+    delete m_PolarCurveImage;
+    m_PolarCurveImage = new QImage(m_width, m_height, QImage::Format_ARGB32);
+    m_PolarCurveImage->fill(QColor(0, 0, 0, 0));
+    setHistory((int)chapter.getStartIdx(), (int)chapter.getEndIdx());
+}
 
-    if ( std::filesystem::is_regular_file(pngName) && !m_ignoreCache){
-        return ;
-    }
+void PolarOverlayMaker::addEpoch(QPainter &painter, int epochIdx) {
 
     if ( m_pBackgroundImage == nullptr ){
-        std::cout << "PolarOverlayMaker::addEpoch() called after destructor" << std::endl;
+        std::cout << "PolarOverlayMaker::addEpoch() called before setChapter" << std::endl;
         return;
     }
 
     QImage image = m_pBackgroundImage->copy();
-    QPainter painter(&image);
+    painter.drawImage(0, 0, image);
 
     // Draw history
     auto armPen = QPen(Qt::green);
@@ -76,8 +76,6 @@ void PolarOverlayMaker::addEpoch(const std::string &fileName, int epochIdx) {
 
     // Copy polar curve on top of history
     painter.drawImage(0, 0, *m_PolarCurveImage);
-
-    image.save(QString::fromStdString(pngName.string()), "PNG");
 }
 
 void PolarOverlayMaker::setHistory(int startIdx, int endIdx) {
@@ -87,6 +85,7 @@ void PolarOverlayMaker::setHistory(int startIdx, int endIdx) {
 
     m_maxSpeedKts = 0;
     m_minSpeedKts = 100;
+    m_startIdx = startIdx;
 
     for(int i=startIdx; i<endIdx; i++) {
         InstrumentInput &instrData = m_rInstrDataVector[i];
@@ -144,7 +143,6 @@ void PolarOverlayMaker::setHistory(int startIdx, int endIdx) {
 
     // Draw polar curve
     drawPolarCurve(meanTws);
-
 }
 
 std::pair<float, float> PolarOverlayMaker::polToCart(float rho, float thetaRad) {

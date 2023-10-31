@@ -7,23 +7,19 @@
 #include "navcomputer/InstrumentInput.h"
 #include "navcomputer/Polars.h"
 #include "navcomputer/TimeDeltaComputer.h"
+#include "OverlayElement.h"
 
 static const char *const FONT_FAMILY_TIME = "Courier";
 
-class PerformanceOverlayMaker {
+class PerformanceOverlayMaker : public OverlayElement {
 public:
-    PerformanceOverlayMaker(std::vector<Performance> &rPerformanceVector,
-                            std::filesystem::path &workDir,
-                            int width, int height, bool ignoreCache);
-    void addEpoch(const std::string &fileName, int epochIdx);
+    PerformanceOverlayMaker(std::vector<Performance> &rPerformanceVector, int width, int height, int x, int y);
+    void addEpoch(QPainter &painter, int epochIdx) override;
 
 private:
     static QString formatTime(int64_t ms);
 private:
-    std::filesystem::path m_workDir;
-    const int m_width;
     const int m_height;
-    const bool m_ignoreCache;
 
     std::vector<Performance> &m_rPerformanceVector;
 

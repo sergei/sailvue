@@ -1,10 +1,9 @@
 #include "TargetsOverlayMaker.h"
 
 TargetsOverlayMaker::TargetsOverlayMaker(Polars &polars, std::vector<InstrumentInput> &instrDataVector,
-                                         int width, int height, int startIdx,
-                                         int endIdx, bool ignoreCache)
- :m_rInstrDataVector(instrDataVector),m_polars(polars)
- ,m_width(width), m_height(height), m_ignoreCache(ignoreCache)
+                                         int width, int height, int x, int y, int startIdx, int endIdx)
+ :OverlayElement(width, height, x, y)
+ ,m_rInstrDataVector(instrDataVector),m_polars(polars)
  ,m_speedStrip("SPD", 0, 0, m_width, m_height/2-10, startIdx, endIdx, 90 , 50, 150)
  ,m_vmgStrip("VMG", 0, m_height/2 + 5, m_width, m_height/2-10, startIdx, endIdx, 90 , 50, 150)
  {
@@ -20,31 +19,23 @@ TargetsOverlayMaker::~TargetsOverlayMaker() {
     delete m_pHighLightImage;
 }
 
-void TargetsOverlayMaker::addChapter(std::filesystem::path workDir, int startIdx, int endIdx) {
-    m_workDir = workDir;
-    std::filesystem::create_directories(m_workDir);
-    m_speedStrip.setChapter(startIdx, endIdx);
-    m_vmgStrip.setChapter(startIdx, endIdx);
+void TargetsOverlayMaker::setChapter(Chapter &chapter) {
+    m_speedStrip.setChapter(chapter.getStartIdx(), chapter.getEndIdx());
+    m_vmgStrip.setChapter(chapter.getStartIdx(), chapter.getEndIdx());
 }
 
-void TargetsOverlayMaker::addEpoch(const std::string &fileName, int epochIdx) {
-    std::filesystem::path pngName = std::filesystem::path(m_workDir) / fileName;
+void TargetsOverlayMaker::addEpoch(QPainter &painter, int epochIdx) {
 
-    if ( std::filesystem::is_regular_file(pngName) && !m_ignoreCache){
-        return ;
-    }
     if ( m_pBackgroundImage == nullptr ){
         std::cout << "PolarOverlayMaker::addEpoch() called after destructor" << std::endl;
         return;
     }
 
     QImage image = m_pBackgroundImage->copy();
-    QPainter painter(&image);
+    painter.drawImage(0, 0, image);
 
     m_speedStrip.drawCurrent(painter, epochIdx);
     m_vmgStrip.drawCurrent(painter, epochIdx);
-
-    image.save(QString::fromStdString(pngName.string()), "PNG");
 }
 
 

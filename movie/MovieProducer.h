@@ -10,6 +10,7 @@
 #include "Worker.h"
 #include "ffmpeg/FFMpeg.h"
 #include "TargetsOverlayMaker.h"
+#include "OverlayMaker.h"
 
 class EncodingProgressListener : public FfmpegProgressListener{
 public:
@@ -40,17 +41,11 @@ public:
     void produce();
 
 private:
-    std::string produceChapter(TargetsOverlayMaker &targetsOverlayMaker, Chapter &chapter, std::filesystem::path &folder,
-                               int width, int target_ovl_height, bool ignoreCache);
+    std::string produceChapter(OverlayMaker &overlayMaker, Chapter &chapter);
     void findGoProClipFragments(std::list<ClipFragment> &clipFragments, uint64_t startUtcMs, uint64_t stopUtcMs);
     void makeRaceVideo(const std::filesystem::path &raceFolder, std::list<std::string> &chaptersList);
 
 private:
-    const char *INSTR_OVL_FILE_PAT  = "instr_%05d.png";
-    const char *POLAR_OVL_FILE_PAT  = "polar_%05d.png";
-    const char *TARGET_OVL_FILE_PAT = "target_%05d.png";
-    const char *TIMER_OVL_FILE_PAT  = "timer_%05d.png";
-    const char *PERF_OVL_FILE_PAT  = "perf_%05d.png";
 
 
     bool m_stopRequested = false;

@@ -51,11 +51,9 @@ void InfoCell::draw(QPainter &painter, int x, int y, const QString &label, const
 }
 
 
-InstrOverlayMaker::InstrOverlayMaker(std::filesystem::path &workDir, int width, int height, bool ignoreCache)
-: m_workDir(workDir), m_width(width), m_height(height), m_ignoreCache(ignoreCache)
+InstrOverlayMaker::InstrOverlayMaker(std::vector<InstrumentInput> &instrDataVector, int width, int height, int x, int y)
+:OverlayElement(width, height, x, y), m_instrDataVector(instrDataVector)
 {
-    std::filesystem::create_directories(m_workDir);
-
     m_rectWidth = width;
     int cellWidth = m_rectWidth / m_numCells;
     m_cellStep = m_rectWidth / m_numCells;
@@ -103,17 +101,8 @@ void InstrOverlayMaker::chooseTimeStampFont(int timeStampHeight) {
     m_copyrightFont = QFont(FONT_FAMILY_TIMESTAMP, fontPointSize);
 }
 
-std::string InstrOverlayMaker::addEpoch(const std::string &fileName, InstrumentInput &instrData) {
-    std::filesystem::path pngName = std::filesystem::path(m_workDir) / fileName;
-
-    if ( std::filesystem::is_regular_file(pngName) && !m_ignoreCache){
-        return pngName.string();
-    }
-
-    QImage image(m_width, m_height, QImage::Format_ARGB32);
-    image.fill(QColor(0, 0, 0, 0));
-    QPainter painter(&image);
-
+void InstrOverlayMaker::addEpoch(QPainter &painter, int epochIdx) {
+    InstrumentInput instrData = m_instrDataVector[epochIdx];
     painter.setPen(QColor(0x32, 0x32, 0x32, 0x80));
     painter.setBrush(QColor(0x32, 0x32, 0x32, 0x80));
     painter.drawRect(0, 0, m_width, m_height);
@@ -157,9 +146,6 @@ std::string InstrOverlayMaker::addEpoch(const std::string &fileName, InstrumentI
     x+= m_cellStep;
     txt = formatAngle(instrData.twa, instrData.utc);
     m_infoCell.draw(painter, x, m_rectYoffset, "TWA", QString::fromStdString(txt));
-
-    image.save(QString::fromStdString(pngName.string()), "PNG");
-    return pngName.string();
 }
 
 std::string InstrOverlayMaker::formatSpeed(const Speed& speed, const UtcTime& utc) {

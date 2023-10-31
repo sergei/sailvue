@@ -5,6 +5,7 @@
 #include <QPainter>
 #include "navcomputer/InstrumentInput.h"
 #include "navcomputer/Polars.h"
+#include "OverlayElement.h"
 
 class Strip {
 public:
@@ -50,23 +51,20 @@ private:
     QPen m_outOfChapterPen = QPen(QColor(0, 0, 0, 0));
 };
 
-class TargetsOverlayMaker {
+class TargetsOverlayMaker : public  OverlayElement {
 public:
-    TargetsOverlayMaker(Polars &polars, std::vector<InstrumentInput> &instrDataVector, int width, int height,
-                        int startIdx, int endIdx, bool ignoreCache);
-    void addChapter(std::filesystem::path workDir, int startIdx, int endIdx);
-    void addEpoch(const std::string &fileName, int epochIdx);
+    TargetsOverlayMaker(Polars &polars, std::vector<InstrumentInput> &instrDataVector, int width, int height, int x, int y,
+                        int startIdx, int endIdx);
+    void addEpoch(QPainter &painter, int epochIdx) override;
+    void setChapter(Chapter &chapter) override;
+
     virtual ~TargetsOverlayMaker();
 
 private:
     void makeBaseImage(int startIdx, int endIdx);
 
     std::vector<InstrumentInput> &m_rInstrDataVector;
-    std::filesystem::path m_workDir;
     Polars &m_polars;
-    const int m_width;
-    const int m_height;
-    bool m_ignoreCache;
 
     QImage *m_pBackgroundImage = nullptr;
     QImage *m_pHighLightImage = nullptr;

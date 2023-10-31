@@ -3,9 +3,8 @@
 
 static const char *const FONT_FAMILY_TIMESTAMP = "Courier";
 
-StartTimerOverlayMaker::StartTimerOverlayMaker(std::filesystem::path &workDir, int height, bool ignoreCache)
-: m_workDir(workDir), m_height(height), m_width(height), m_ignoreCache(ignoreCache) {
-    std::filesystem::create_directories(m_workDir);
+StartTimerOverlayMaker::StartTimerOverlayMaker(std::vector<InstrumentInput>  &instrData, int width, int height, int x, int y)
+:  OverlayElement(width, height, x, y), m_rInstrDataVector(instrData){
 
     int fontPointSize;
     for(int fs=10; fs <100; fs ++){
@@ -22,18 +21,17 @@ StartTimerOverlayMaker::StartTimerOverlayMaker(std::filesystem::path &workDir, i
     m_timeStampFont.setPointSize(fontPointSize);
 }
 
-void StartTimerOverlayMaker::addEpoch(const std::string &fileName, uint64_t gunUtcTimeMs, InstrumentInput &instrData) {
-    std::filesystem::path pngName = std::filesystem::path(m_workDir) / fileName;
+void StartTimerOverlayMaker::setChapter(Chapter &chapter) {
+    m_isStart = chapter.getChapterType() == ChapterTypes::START;
+    m_gunUtcTimeMs = m_rInstrDataVector[chapter.getGunIdx()].utc.getUnixTimeMs();
+}
 
-    if ( std::filesystem::is_regular_file(pngName) && !m_ignoreCache){
+void StartTimerOverlayMaker::addEpoch(QPainter &painter, int epochIdx) {
+    if ( ! m_isStart ){
         return;
     }
-    QImage image(m_width, m_height, QImage::Format_ARGB32);
-    image.fill(QColor(0, 0, 0, 0));
-    QPainter painter(&image);
 
-
-    int64_t timeToStartSec = (int64_t(gunUtcTimeMs) - int64_t(instrData.utc.getUnixTimeMs())) / 1000;
+    int64_t timeToStartSec = (int64_t(m_gunUtcTimeMs) - int64_t(m_rInstrDataVector[epochIdx].utc.getUnixTimeMs())) / 1000;
 
     if ( timeToStartSec < 0 ){
         painter.setPen(m_afterStartPen);
@@ -51,8 +49,6 @@ void StartTimerOverlayMaker::addEpoch(const std::string &fileName, uint64_t gunU
     painter.setFont(m_timeStampFont);
     painter.drawText(0, m_height, QString::fromStdString(oss.str()));
 
-    image.save(QString::fromStdString(pngName.string()), "PNG");
 }
-
 
 

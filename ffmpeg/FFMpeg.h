@@ -6,6 +6,7 @@
 #include <ostream>
 #include <string>
 #include <cstdio>
+#include <filesystem>
 
 #include <list>
 
@@ -80,11 +81,14 @@ public:
 };
 
 struct OverlayPngSequence {
+    OverlayPngSequence(int x_, int y_, float fps_, std::filesystem::path path_, std::string filePattern_)
+    :x(x_), y(y_), fps(fps_), path(std::move(path_)), filePattern(std::move(filePattern_)){
+    }
     int x;
     int y;
     float fps;
-    const std::string &path;
-    const std::string &filePattern;
+    const std::filesystem::path path;
+    const std::string filePattern;
 };
 
 class FfmpegProgressListener {
@@ -99,7 +103,7 @@ public:
     static std::tuple<int , int > getVideoResolution(const std::string &mp4name);
 
     void setBackgroundClip(std::list<ClipFragment> *pClipFragments, bool changeDuration, float durationScale);
-    void addOverlayPngSequence(int x, int y, float fps, const std::string &path, const std::string &filePattern);
+    void addOverlayPngSequence(int x, int y, float fps, const std::filesystem::path &path, const std::string &filePattern);
 
     void makeClip(const std::string &clipPath, FfmpegProgressListener &progress);
 

@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <QPainter>
 #include "navcomputer/InstrumentInput.h"
+#include "OverlayElement.h"
 
 static const char *const FONT_FAMILY_TIMESTAMP = "Courier";
 static const char *const FONT_FAMILY_VALUE = "Courier";
@@ -28,20 +29,17 @@ private:
 };
 
 
-class InstrOverlayMaker {
+class InstrOverlayMaker : public OverlayElement{
 public:
-    InstrOverlayMaker(std::filesystem::path &workDir, int width, int height, bool ignoreCache);
-    std::string addEpoch(const std::string &fileName, InstrumentInput &instrData);
+    InstrOverlayMaker(std::vector<InstrumentInput> &instrDataVector, int width, int height, int x, int y);
+    void addEpoch(QPainter &painter, int epochIdx);
 private:
     void chooseTimeStampFont(int timeStampHeight);
     static std::string formatSpeed(const Speed& speed, const UtcTime& utc);
     static std::string formatAngle(const Angle& angle, const UtcTime& utc);
 private:
     InfoCell m_infoCell;
-    std::filesystem::path m_workDir;
-    int m_width;
-    int m_height;
-    bool m_ignoreCache;
+    std::vector<InstrumentInput> &m_instrDataVector;
 
     const int m_numCells = 5;
     int m_rectWidth;

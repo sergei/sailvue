@@ -1,7 +1,6 @@
 #include "FFMpeg.h"
 #include <iostream>
 #include <sstream>
-#include <filesystem>
 #include <unistd.h>
 #include <csignal>
 #include <fstream>
@@ -56,8 +55,8 @@ std::tuple<int, int> FFMpeg::getVideoResolution(const std::string &mp4name) {
     return {-1, -1};
 }
 
-void FFMpeg::addOverlayPngSequence(int x, int y, float fps, const std::string &path, const std::string &filePattern) {
-    m_pOverlays.push_back({x, y, fps, path, filePattern});
+void FFMpeg::addOverlayPngSequence(int x, int y, float fps, const std::filesystem::path &path, const std::string &filePattern) {
+    m_pOverlays.emplace_back(x, y, fps, path, filePattern);
 }
 
 void FFMpeg::setBackgroundClip(std::list<ClipFragment> *pClipFragments, bool changeDuration, float durationScale) {
@@ -191,7 +190,7 @@ std::string FFMpeg::makeClipFfmpegArgs(const std::string &clipPath) {
 
     // List of overlay files
     for(const auto& overlay: m_pOverlays){
-        ffmpegArgs += " -framerate " + std::to_string(overlay.fps) + " -i " + overlay.path + "/" + overlay.filePattern;
+        ffmpegArgs += " -framerate " + std::to_string(overlay.fps) + " -i " + overlay.path.string() + "/" + overlay.filePattern;
         ffmpegArgs += " \\\n";
         clipIdx++;
     }

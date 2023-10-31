@@ -105,6 +105,10 @@ set (NAV_SRC
         navcomputer/Performance.h
         navcomputer/Calibration.h
         navcomputer/Calibration.cpp
+        movie/OverlayElement.cpp
+        movie/OverlayElement.h
+        movie/OverlayMaker.cpp
+        movie/OverlayMaker.h
 )
 
 qt_add_executable(sailvue WIN32 MACOSX_BUNDLE

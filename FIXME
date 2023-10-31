@@ -1,3 +1,5 @@
+FIXME Review timestamping of epoch and avoid "Time went backwards" error
+
 FIXME close process dialog and show the error if ffmpeg has failed
 FIXME don't use relative path to ffmpeg executable at startup
 
