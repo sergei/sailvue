@@ -13,3 +13,6 @@
 [submodule "libInterpolate"]
 	path = libInterpolate
 	url = https://github.com/CD3/libInterpolate.git
+[submodule "n2k/NMEA2000"]
+	path = n2k/NMEA2000
+	url = https://github.com/ttlappalainen/NMEA2000.git

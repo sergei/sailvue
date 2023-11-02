@@ -195,6 +195,8 @@ signals:
     void produceFinished();
 
     void exportStats(const QString &polarUrl, const QString &path);
+    void beginSimulation(const QString &addr, uint16_t port);
+    void endSimulation();
 
 #pragma clang diagnostic pop
 
@@ -205,6 +207,7 @@ private:
     Project m_project;
     TreeItem *rootItem;
     QThread workerThread;
+    QThread m_netSimThread;
     QGeoPath m_geoPath;
 
     std::list<GoProClipInfo> m_GoProClipInfoList;
@@ -220,6 +223,8 @@ private:
 
     void deleteAllRaces();
     void computeStats();
+
+    void startNetworkSimulator();
 };
 
 

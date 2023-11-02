@@ -51,6 +51,16 @@ set(N2K_SRC
         n2k/geo/GeoLoc.h
 )
 
+set(NMEA2000_SRC
+        n2k/NMEA2000/src/NMEA2000.cpp
+        n2k/NMEA2000/src/N2kGroupFunction.cpp
+        n2k/NMEA2000/src/N2kGroupFunctionDefaultHandlers.cpp
+        n2k/NMEA2000/src/N2kMsg.cpp
+        n2k/NMEA2000/src/N2kStream.cpp
+        n2k/NMEA2000/src/N2kMessages.cpp
+        n2k/NMEA2000/src/N2kTimer.cpp
+)
+
 set(GOPRO_SRC
         gopro/GoPro.cpp
         gopro/GoPro.h
@@ -109,12 +119,19 @@ set (NAV_SRC
         movie/OverlayElement.h
         movie/OverlayMaker.cpp
         movie/OverlayMaker.h
+        net_sim/NetworkSimulator.cpp
+        net_sim/NetworkSimulator.h
+        net_sim/NMEA2000_UDP.cpp
+        net_sim/NMEA2000_UDP.h
+        net_sim/N2kDebugStream.cpp
+        net_sim/N2kDebugStream.h
 )
 
 qt_add_executable(sailvue WIN32 MACOSX_BUNDLE
         main.cpp
 
         ${N2K_SRC}
+        ${NMEA2000_SRC}
         ${GOPRO_SRC}
         ${GUI_SRC}
         ${MOVIE_SRC}

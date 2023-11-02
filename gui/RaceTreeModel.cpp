@@ -1,10 +1,12 @@
 #include <iostream>
 #include <fstream>
+#include <QQmlApplicationEngine>
 #include "RaceTreeModel.h"
 #include "Worker.h"
 #include "navcomputer/NavStats.h"
 #include "ChapterMaker.h"
 #include "navcomputer/TimeDeltaComputer.h"
+#include "net_sim/NetworkSimulator.h"
 
 TreeItem::TreeItem(RaceData *pRaceData, Chapter *pChapter, TreeItem *parent)
         : m_pRaceData(pRaceData), m_pChapter(pChapter), m_parentItem(parent)
@@ -119,12 +121,33 @@ RaceTreeModel::RaceTreeModel(QObject *parent)
     connect(this, &RaceTreeModel::exportStats, worker, &Worker::exportStats);
 
     workerThread.start();
+
+    startNetworkSimulator();
 }
 
-RaceTreeModel::~RaceTreeModel()
-{
+void RaceTreeModel::startNetworkSimulator() {
+    auto *netSim = new NetworkSimulator(m_InstrDataVector);
+    netSim->moveToThread(&m_netSimThread);
+
+    connect(&m_netSimThread, &QThread::finished, netSim, &QObject::deleteLater);
+    connect(this, &RaceTreeModel::racePathIdxChanged, netSim, &NetworkSimulator::idxChanged);
+    connect(this, &RaceTreeModel::beginSimulation, netSim, &NetworkSimulator::startSimulator);
+    connect(this, &RaceTreeModel::endSimulation, netSim, &NetworkSimulator::stopSimulator);
+
+    m_netSimThread.start();
+
+    emit beginSimulation("255.255.255.255", 12345);
+}
+
+RaceTreeModel::~RaceTreeModel() {
     workerThread.quit();
     workerThread.wait();
+
+    emit endSimulation();
+
+    QThread::msleep(1000);
+    m_netSimThread.quit();
+    m_netSimThread.wait();
 
     delete rootItem;
 }
@@ -774,3 +797,5 @@ void RaceTreeModel::makeAnalytics() {
 
     emit layoutChanged();
 }
+
+
