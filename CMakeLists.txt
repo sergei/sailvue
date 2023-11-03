@@ -174,6 +174,9 @@ set(qml_resource_files
         "gui/InputDataDialog.qml"
         "gui/PGNSources.qml"
         "gui/Options.qml"
+        "gui/RaceVideo.qml"
+        "gui/RaceMap.qml"
+        "gui/RaceTreeView.qml"
 )
 
 qt6_add_resources(sailvue "qml"
