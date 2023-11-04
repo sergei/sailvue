@@ -42,7 +42,8 @@ private:
     void transmitAttitude(UtcTime &utc, Angle &yaw, Angle &pitch, Angle &roll) const;
     void transmitWind(UtcTime &utc, Angle &angle, Speed &speed, bool isApparent) const;
     void transmitBoatSpeed(UtcTime &utc, Speed &sow) const;
-    uint8_t uc_SeqId=0;
+    static double makePositive(double angle) ;
+    uint8_t m_ucSeqId=0;
 };
 
 

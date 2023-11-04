@@ -59,12 +59,14 @@ void NetworkSimulator::sendEpoch(InstrumentInput &ii) {
     transmitWind(ii.utc, ii.twa, ii.tws, false);
     transmitBoatSpeed(ii.utc, ii.sow);
 
-    uc_SeqId ++;
+    m_ucSeqId ++;
+    if (m_ucSeqId == 253 )
+        m_ucSeqId = 0;
+
     m_lastEpochMs = now;
 }
 
 void NetworkSimulator::idxChanged(uint64_t idx) {
-    std::cout << "idxChanged " << idx << std::endl;
     if ( m_nmea2000 != nullptr && m_lastIdx != idx) {
         InstrumentInput &instrInput = m_instrDataVector[idx];
         sendEpoch(instrInput);
@@ -78,9 +80,9 @@ void NetworkSimulator::stopSimulator() {
 
 
 void NetworkSimulator::initN2k(tNMEA2000 &n2k) {
-    n2k.SetForwardStream(&m_n2kDebugStream);  // Debug output on idf monitor
-    n2k.SetForwardType(tNMEA2000::fwdt_Text); // Show in clear text
-    n2k.EnableForward(true);
+//    n2k.SetForwardStream(&m_n2kDebugStream);  // Debug output on idf monitor
+//    n2k.SetForwardType(tNMEA2000::fwdt_Text); // Show in clear text
+//    n2k.EnableForward(true);
 
     n2k.SetN2kCANMsgBufSize(8);
     n2k.SetN2kCANReceiveFrameBufSize(100);
@@ -111,7 +113,7 @@ void NetworkSimulator::initN2k(tNMEA2000 &n2k) {
 
 void NetworkSimulator::transmitSystemTime(uint16_t daysSince1970, double secondsSinceMidnight) {
     tN2kMsg N2kMsg;
-    SetN2kSystemTime(N2kMsg, this->uc_SeqId, daysSince1970,  secondsSinceMidnight);
+    SetN2kSystemTime(N2kMsg, this->m_ucSeqId, daysSince1970, secondsSinceMidnight);
 
     m_nmea2000->SendMsg(N2kMsg);
 }
@@ -127,10 +129,10 @@ void NetworkSimulator::transmitFullGpsData(uint16_t daysSince1970, double second
     double HDOP = isLocValid ? 1 : N2kDoubleNA;
 
     tN2kMsg N2kMsg;
-    SetN2kGNSS(N2kMsg, this->uc_SeqId, daysSince1970,  secondsSinceMidnight,
-               Latitude,  Longitude,  Altitude,
-               GNSStype,  GNSSmethod,
-               nSatellites,  HDOP);
+    SetN2kGNSS(N2kMsg, this->m_ucSeqId, daysSince1970, secondsSinceMidnight,
+               Latitude, Longitude, Altitude,
+               GNSStype, GNSSmethod,
+               nSatellites, HDOP);
 
     m_nmea2000->SendMsg(N2kMsg);
 }
@@ -150,33 +152,49 @@ void NetworkSimulator::transmitRapidCogSog(UtcTime &utc, Direction &cog, Speed &
     double c = cog.isValid(utc.getUnixTimeMs()) ? DegToRad(cog.getDegrees()) : N2kDoubleNA;
     double s = sog.isValid(utc.getUnixTimeMs()) ? KnotsToms(sog.getKnots()): N2kDoubleNA;
     tN2kMsg N2kMsg;
-    SetN2kCOGSOGRapid(N2kMsg, this->uc_SeqId, N2khr_true, c, s);
+    SetN2kCOGSOGRapid(N2kMsg, this->m_ucSeqId, N2khr_true, c, s);
+
+    m_nmea2000->SendMsg(N2kMsg);
 }
 
 void NetworkSimulator::transmitMagneticHeading(UtcTime &utc, Direction &mag) const {
     double c = mag.isValid(utc.getUnixTimeMs()) ? DegToRad(mag.getDegrees()) : N2kDoubleNA;
     tN2kMsg N2kMsg;
-    SetN2kMagneticHeading(N2kMsg, this->uc_SeqId, c);
+    SetN2kMagneticHeading(N2kMsg, this->m_ucSeqId, c);
+
+    m_nmea2000->SendMsg(N2kMsg);
 }
 void NetworkSimulator::transmitAttitude(UtcTime &utc, Angle &yaw, Angle &pitch, Angle &roll) const {
     double y = yaw.isValid(utc.getUnixTimeMs()) ? DegToRad(yaw.getDegrees()) : N2kDoubleNA;
     double p = pitch.isValid(utc.getUnixTimeMs()) ? DegToRad(pitch.getDegrees()) : N2kDoubleNA;
     double r = roll.isValid(utc.getUnixTimeMs()) ? DegToRad(roll.getDegrees()) : N2kDoubleNA;
     tN2kMsg N2kMsg;
-    SetN2kAttitude(N2kMsg, this->uc_SeqId, y, p, r);
+    SetN2kAttitude(N2kMsg, this->m_ucSeqId, y, p, r);
+
+    m_nmea2000->SendMsg(N2kMsg);
+}
+
+double NetworkSimulator:: makePositive(double angle) {
+    if ( angle < 0 )
+        return angle + 360;
+    else
+        return angle;
 }
 
 void NetworkSimulator::transmitWind(UtcTime &utc, Angle &angle, Speed &speed, bool isApparent) const {
-    double a = angle.isValid(utc.getUnixTimeMs()) ? DegToRad(angle.getDegrees()) : N2kDoubleNA;
+    double a = angle.isValid(utc.getUnixTimeMs()) ? DegToRad(makePositive(angle.getDegrees())) : N2kDoubleNA;
     double s = speed.isValid(utc.getUnixTimeMs()) ? KnotsToms(speed.getKnots()): N2kDoubleNA;
     tN2kWindReference windReference = isApparent ? N2kWind_Apparent : N2kWind_True_water;
     tN2kMsg N2kMsg;
-    SetN2kWindSpeed(N2kMsg, this->uc_SeqId, s, a, windReference);
+    SetN2kWindSpeed(N2kMsg, this->m_ucSeqId, s, a, windReference);
+    m_nmea2000->SendMsg(N2kMsg);
 }
 
 void NetworkSimulator::transmitBoatSpeed(UtcTime &utc, Speed &sow) const {
     double s = sow.isValid(utc.getUnixTimeMs()) ? KnotsToms(sow.getKnots()): N2kDoubleNA;
     tN2kMsg N2kMsg;
-    SetN2kBoatSpeed(N2kMsg, this->uc_SeqId, s, N2kDoubleNA, N2kSWRT_Paddle_wheel);
+    SetN2kBoatSpeed(N2kMsg, this->m_ucSeqId, s, N2kDoubleNA, N2kSWRT_Paddle_wheel);
+
+    m_nmea2000->SendMsg(N2kMsg);
 }
 

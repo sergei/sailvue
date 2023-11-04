@@ -513,7 +513,6 @@ ApplicationWindow {
                 }
 
                 onGunIdxChanged: {
-                    console.log("onGunIdxChanged: " + Math.round(gunIdx))
                     let idx = Math.round(gunIdx)
                     selectedChapterGunMarker.coordinate = win.fullMapPath[idx]
                     raceTreeModel.seekToRacePathIdx(idx)
