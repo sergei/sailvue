@@ -10,7 +10,7 @@ class GoProMediaPlayer : public QMediaPlayer {
 Q_OBJECT
     QML_ELEMENT
     QML_ADDED_IN_MINOR_VERSION(1)
-    Q_PROPERTY(RaceTreeModel *model READ model WRITE setModel)
+    Q_PROPERTY(RaceTreeModel *model READ model WRITE setModel NOTIFY modelChanged)
 
 public:
     explicit GoProMediaPlayer(QObject *parent = nullptr);
@@ -55,6 +55,7 @@ signals:
 #pragma ide diagnostic ignored "NotImplementedFunctions"
     void clipNameChanged(const QString &clipBaseName);
     void racePathIdxChanged(uint64_t racePathIdx);
+    void modelChanged();
 #pragma clang diagnostic pop
 
 private slots:

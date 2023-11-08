@@ -4,64 +4,79 @@ import QtQuick.Controls
 import QtQuick.Window
 import QtQuick.Layouts
 import QtLocation
-
 import sails
+import QtQuick.Controls.Fusion
 
 Rectangle {
     anchors.fill: parent
-    required property var model
+    color: "#848282"
 
-    ColumnLayout {
-        Layout.leftMargin: 20
+    required property var raceModel
+    property var isRaceSelected: false
+    property var isChapterSelected: false
+    property var selectedName: ""
 
-        // Chapters list
-        TreeView {
-            id: racesTreeView
-            visible: true
 
-            Layout.fillHeight: true
-            Layout.fillWidth: true
 
-            alternatingRows: false
-            clip: true
-            model: model
-            delegate: TreeViewDelegate {}
-            selectionModel: ItemSelectionModel {
-                onCurrentChanged: function (current, previous) {
-                    model.currentChanged(current, previous)
-                    win.isRaceSelected = model.isRaceSelected()
-                    win.isChapterSelected = model.isChapterSelected()
-                    win.selectedName = model.getSelectedName()
-                }
-                onSelectionChanged: function (current, previous) {
-                    model.selectionChanged(current, previous)
-                }
+    // Chapters list
+    TreeView {
+        id: racesTreeView
+        visible: true
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: deleteRaceOrChapterButton.top
+        anchors.margins: 8
+
+        alternatingRows: false
+        clip: true
+        model: raceModel
+        delegate: TreeViewDelegate {}
+        selectionModel: ItemSelectionModel {
+            onCurrentChanged: function (current, previous) {
+                model.currentChanged(current, previous)
+                isRaceSelected = model.isRaceSelected()
+                isChapterSelected = model.isChapterSelected()
+                selectedName = model.getSelectedName()
+            }
+            onSelectionChanged: function (current, previous) {
+                model.selectionChanged(current, previous)
             }
         }
+    }
 
-        Button {
-            id: deleteRaceOrChapterButton
-            text: "Delete " + selectedName
-            enabled: isRaceSelected || isChapterSelected
-            onClicked: {
-                model.deleteSelected()
-            }
+    Button {
+        id: deleteRaceOrChapterButton
+        text: "Delete " + selectedName
+        enabled: isRaceSelected || isChapterSelected
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: addChapterButton.top
+        onClicked: {
+            model.deleteSelected()
         }
+    }
 
-        Button {
-            id: addChapterButton
-            text: "Add chapter"
-            onClicked: {
-                model.addChapter()
-            }
+    Button {
+        id: addChapterButton
+        text: "Add chapter"
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: addRaceButton.top
+        onClicked: {
+            model.addChapter()
         }
+    }
 
-        Button {
-            id: addRaceButton
-            text: "Split race"
-            onClicked: {
-                model.splitRace()
-            }
+    Button {
+        id: addRaceButton
+        text: "Split race"
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+
+        onClicked: {
+            model.splitRace()
         }
     }
 

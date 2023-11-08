@@ -177,6 +177,7 @@ set(qml_resource_files
         "gui/RaceVideo.qml"
         "gui/RaceMap.qml"
         "gui/RaceTreeView.qml"
+        "gui/RaceTimeLine.qml"
 )
 
 qt6_add_resources(sailvue "qml"
