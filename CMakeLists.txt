@@ -191,6 +191,8 @@ qt_add_resources(sailvue "app_images"
         PREFIX "/"
         FILES
         "images/mapmarker.png"
+        "images/icons8-zoom-in-50.png"
+        "images/icons8-zoom-out-50.png"
 )
 
 # Suppress policy warning

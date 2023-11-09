@@ -80,8 +80,9 @@ ApplicationWindow {
 
 
         onChapterSelected : function (uuid, chapterName, chapterType, startIdx, endIdx, gunIdx) {
-            chapterEditor.visible = true
-            chapterEditor.setSelected(uuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
+            // chapterEditor.visible = true
+            // chapterEditor.setSelected(uuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
+            raceTimeLine.onChapterSelected(uuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
 
             if ( chapterType === ChapterTypes.START || chapterType === ChapterTypes.MARK_ROUNDING) {
                 raceVideo.seekTo(gunIdx)
