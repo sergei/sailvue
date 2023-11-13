@@ -20,11 +20,6 @@ ApplicationWindow {
     // --------------------------------------------------
     // Functions
     // --------------------------------------------------
-    function hideChapterEditor(uuid) {
-        console.log("Hiding chapter editor")
-        raceEditor.visible = false
-        chapterEditor.visible = false
-    }
 
 
     // --------------------------------------------------
@@ -61,18 +56,14 @@ ApplicationWindow {
             // Set the position marker on the map
             raceMap.onRacePathIdxChanged(racePathIdx)
 
-            // Update chapter editor
-            chapterEditor.gunIdx = racePathIdx
-
             // Update timeline
             raceTimeLine.onRacePathIdxChanged(racePathIdx)
         }
 
         onRaceSelected : function (raceName, startIdx, endIdx) {
             console.log("onRaceSelected", raceName, startIdx, endIdx)
-            raceEditor.visible = true
-            raceEditor.raceName = raceName
             raceMap.onRaceSelected(startIdx, endIdx)
+            raceTimeLine.raceName = raceName
             raceTimeLine.onRaceSelected(startIdx, endIdx)
             raceVideo.seekTo(startIdx)
             raceTreeModel.seekToRacePathIdx(startIdx)
@@ -80,8 +71,6 @@ ApplicationWindow {
 
 
         onChapterSelected : function (uuid, chapterName, chapterType, startIdx, endIdx, gunIdx) {
-            // chapterEditor.visible = true
-            // chapterEditor.setSelected(uuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
             raceTimeLine.onChapterSelected(uuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
 
             if ( chapterType === ChapterTypes.START || chapterType === ChapterTypes.MARK_ROUNDING) {
@@ -94,7 +83,7 @@ ApplicationWindow {
         }
 
         onChapterUnSelected : function (uuid) {
-            hideChapterEditor(uuid)
+            raceTimeLine.onChapterUnSelected(uuid)
         }
 
         onChapterAdded : function (uuid, chapterName, chapterType, startIdx, endIdx, gunIdx) {
@@ -102,8 +91,8 @@ ApplicationWindow {
         }
 
         onChapterDeleted : function (uuid) {
+            raceTimeLine.onChapterDeleted(uuid)
             raceMap.onChapterDeleted(uuid)
-            hideChapterEditor(uuid)
         }
 
         onProduceStarted: function () {
@@ -330,56 +319,39 @@ ApplicationWindow {
             SplitView.fillHeight: false
             color: "#5b5a5a"
 
-            ChapterEditor {
-                id: chapterEditor
+            RaceTimeLine {
+                id: raceTimeLine
                 model: raceTreeModel
+                player: raceVideo
 
-                onChanged: function () {
+                onChapterChanged: function () {
                     console.log("Chapter changed: " + chapterName + " " + chapterType + " " + startIdx + " " + endIdx + " " + gunIdx)
                     raceTreeModel.updateChapter(chapterUuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
                     raceMap.updateChapter(chapterUuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
                 }
 
-                onStartIdxChanged: {
+                onChapterStartIdxChanged: {
                     console.log("onStartIdxChanged: " + Math.round(startIdx))
                     let idx = Math.round(startIdx)
                     raceMap.onSelectedChapterStartIdxChanged(idx)
                     raceTreeModel.seekToRacePathIdx(idx)
                 }
 
-                onEndIdxChanged: {
+                onChapterEndIdxChanged: {
                     console.log("onEndIdxChanged: " + Math.round(endIdx))
                     let idx = Math.round(endIdx)
                     raceMap.onSelectedChapterEndIdxChanged(idx)
                     raceTreeModel.seekToRacePathIdx(idx)
                 }
 
-                onGunIdxChanged: {
+                onChapterGunIdxChanged: {
                     console.log("onGunIdxChanged: " + Math.round(gunIdx))
                     let idx = Math.round(gunIdx)
                     raceMap.onSelectedChapterGunIdxChanged(idx)
                     raceTreeModel.seekToRacePathIdx(idx)
                 }
 
-            }
 
-            RaceEditor {
-                id: raceEditor
-                onChanged: {
-                    raceTreeModel.updateRace(raceName)
-                }
-                onDetectManeuvers: {
-                    raceTreeModel.detectManeuvers()
-                }
-                onMakeAnalytics: {
-                    raceTreeModel.makeAnalytics()
-                }
-            }
-
-            RaceTimeLine {
-                id: raceTimeLine
-                model: raceTreeModel
-                player: raceVideo
             }
 
         }

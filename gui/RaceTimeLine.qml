@@ -13,6 +13,13 @@ Rectangle {
     required property var model
     required property var player
 
+    signal chapterChanged()
+    property alias chapterStartIdx: chapterEditor.startIdx
+    property alias chapterEndIdx: chapterEditor.endIdx
+    property alias chapterGunIdx: chapterEditor.gunIdx
+
+    property alias raceName: raceEditor.raceName
+
     property int raceLength: 0
     property int raceStartidx: 0
 
@@ -30,6 +37,12 @@ Rectangle {
 
     property real scrollOffset: 0
     property real scaleFactor: 1.0
+
+    function hideChapterEditor(uuid) {
+        console.log("Hiding chapter editor")
+        raceEditor.visible = false
+        chapterEditor.visible = false
+    }
 
     function onRacePathIdxChanged(idx) {
         currentTimeLabel.text = raceTreeModel.getTimeString(idx)
@@ -55,6 +68,17 @@ Rectangle {
         chapterSliderX = (start_idx - raceStartidx) / raceLength * videoSlider.width
 
         console.log("chapterLength=" + chapterLength + ", chapterSlider.width=" + chapterSlider.width + ", chapterSlider.x=" + chapterSlider.x)
+
+        chapterEditor.visible = true
+        chapterEditor.setSelected(chapter_uuid, name, chapterType, start_idx, end_idx, gun_idx)
+    }
+
+    function onChapterUnSelected(uuid) {
+        hideChapterEditor(uuid)
+    }
+
+     function onChapterDeleted (uuid) {
+        hideChapterEditor(uuid)
     }
 
     Label {
@@ -252,6 +276,36 @@ Rectangle {
         onPositionChanged: {
             scrollOffset = top_panel.width  * position
             console.log("hbar.position=" + position + ", scrollOffset=" + scrollOffset)
+        }
+    }
+
+    Rectangle {
+        id: chapterAndRaceEditors
+        anchors.top: hbar.bottom
+        anchors.margins: 12
+        color: "#ce0e0e"
+
+        ChapterEditor {
+            id: chapterEditor
+            model: top_panel.model
+
+            onChanged: function () {
+                chapterChanged()
+            }
+        }
+    }
+
+
+    RaceEditor {
+        id: raceEditor
+        onChanged: {
+            raceTreeModel.updateRace(raceName)
+        }
+        onDetectManeuvers: {
+            raceTreeModel.detectManeuvers()
+        }
+        onMakeAnalytics: {
+            raceTreeModel.makeAnalytics()
         }
     }
 
