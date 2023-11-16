@@ -11,11 +11,14 @@ import sails
 
 ApplicationWindow {
     id: app
-    property ApplicationWindow appWindow : app
 
     visible: true
+    title: raceTreeModel.projectName + (raceTreeModel.isDirty ? "*" : "")
     width: videoArea.implicitWidth + sideBar.implicitWidth + mapArea.implicitWidth
     height: 800
+
+    property ApplicationWindow appWindow : app
+
 
     // --------------------------------------------------
     // Functions
@@ -325,28 +328,25 @@ ApplicationWindow {
                 player: raceVideo
 
                 onChapterChanged: function () {
-                    console.log("Chapter changed: " + chapterName + " " + chapterType + " " + startIdx + " " + endIdx + " " + gunIdx)
-                    raceTreeModel.updateChapter(chapterUuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
-                    raceMap.updateChapter(chapterUuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
+                    console.log("Chapter changed: " + chapterName + " " + chapterType + " " + chapterStartIdx + " " + chapterEndIdx + " " + chapterGunIdx)
+                    raceTreeModel.updateChapter(chapterUuid, chapterName, chapterType, chapterStartIdx, chapterEndIdx, chapterGunIdx)
+                    raceMap.updateChapter(chapterUuid, chapterName, chapterType, chapterStartIdx, chapterGunIdx, chapterGunIdx)
                 }
 
                 onChapterStartIdxChanged: {
-                    console.log("onStartIdxChanged: " + Math.round(startIdx))
-                    let idx = Math.round(startIdx)
+                    let idx = Math.round(chapterStartIdx)
                     raceMap.onSelectedChapterStartIdxChanged(idx)
                     raceTreeModel.seekToRacePathIdx(idx)
                 }
 
                 onChapterEndIdxChanged: {
-                    console.log("onEndIdxChanged: " + Math.round(endIdx))
-                    let idx = Math.round(endIdx)
+                    let idx = Math.round(chapterEndIdx)
                     raceMap.onSelectedChapterEndIdxChanged(idx)
                     raceTreeModel.seekToRacePathIdx(idx)
                 }
 
                 onChapterGunIdxChanged: {
-                    console.log("onGunIdxChanged: " + Math.round(gunIdx))
-                    let idx = Math.round(gunIdx)
+                    let idx = Math.round(chapterGunIdx)
                     raceMap.onSelectedChapterGunIdxChanged(idx)
                     raceTreeModel.seekToRacePathIdx(idx)
                 }

@@ -4,6 +4,8 @@ import QtQuick.Controls
 import QtQuick.Window
 import QtQuick.Layouts
 import QtQuick.Controls.Fusion
+import sails
+
 
 Rectangle {
     anchors.fill: parent
@@ -13,35 +15,38 @@ Rectangle {
     required property var model
     required property var player
 
-    signal chapterChanged()
+    property alias chapterUuid: chapterEditor.chapterUuid
     property alias chapterStartIdx: chapterEditor.startIdx
     property alias chapterEndIdx: chapterEditor.endIdx
     property alias chapterGunIdx: chapterEditor.gunIdx
+    property alias chapterName: chapterEditor.chapterName
+    property alias chapterType: chapterEditor.chapterType
+    signal chapterChanged()
 
     property alias raceName: raceEditor.raceName
 
     property int raceLength: 0
     property int raceStartidx: 0
 
-    property int selectedChapterStartIdx: 0
-    property int selectedChapterEndIdx: 0
-    property int selectedChapterGunIdx: 0
-
     property real videoSliderX: 8
     property real videoSliderWidth: top_panel.width - 16
-
-    property int chapterLength : 0
-
-    property real chapterSliderX: 100
-    property real chapterSliderWidth: 200
 
     property real scrollOffset: 0
     property real scaleFactor: 1.0
 
     function hideChapterEditor(uuid) {
-        console.log("Hiding chapter editor")
         raceEditor.visible = false
         chapterEditor.visible = false
+    }
+
+    function chapterIdxToX(idx, offset, scale) {
+        let beforeScrollX = (idx - raceStartidx) / raceLength * videoSlider.width;
+        return (beforeScrollX - offset) * scale
+    }
+
+    function chapterXToIdx(x, offset, scale) {
+        let beforeScrollX = x / scale + offset
+        return beforeScrollX / videoSlider.width * raceLength + raceStartidx
     }
 
     function onRacePathIdxChanged(idx) {
@@ -51,6 +56,7 @@ Rectangle {
     }
 
     function onRaceSelected(startIdx, endIdx){
+        raceEditor.visible = true
         raceLength = endIdx - startIdx
         raceStartidx = startIdx
         progressIndicator.position = 0
@@ -59,15 +65,13 @@ Rectangle {
     function onChapterSelected (chapter_uuid, name, chapterType, start_idx, end_idx, gun_idx) {
         console.log("onChapterSelected: [" + name + "], type=" + chapterType + ", start_idx=" + start_idx + ", end_idx=" + end_idx, ", gun_idx=" + gun_idx)
 
-        selectedChapterStartIdx = start_idx
-        selectedChapterEndIdx = end_idx
-        selectedChapterGunIdx = gun_idx
+        chapterSlider.visible = true
+        chapterStartIdx = start_idx
+        chapterEndIdx = end_idx
+        chapterGunIdx = gun_idx
 
-        chapterLength = end_idx - start_idx
-        chapterSliderWidth = chapterLength / raceLength * videoSlider.width
-        chapterSliderX = (start_idx - raceStartidx) / raceLength * videoSlider.width
-
-        console.log("chapterLength=" + chapterLength + ", chapterSlider.width=" + chapterSlider.width + ", chapterSlider.x=" + chapterSlider.x)
+        gunIndicator.visible = chapterType === ChapterTypes.START
+            || chapterType === ChapterTypes.MARK_ROUNDING
 
         chapterEditor.visible = true
         chapterEditor.setSelected(chapter_uuid, name, chapterType, start_idx, end_idx, gun_idx)
@@ -169,20 +173,20 @@ Rectangle {
         anchors.margins: 8
         radius: 3
         implicitHeight: 24
-        x: (chapterSliderX - scrollOffset) * scaleFactor
-        width: chapterSliderWidth * scaleFactor
-        color: "#15814b"
 
-        onXChanged: {
-            console.log("chapterSlider.x=" + x)
-        }
+        visible: false
+
+        x: chapterIdxToX(chapterStartIdx, scrollOffset, scaleFactor)
+        width: chapterIdxToX(chapterEndIdx, scrollOffset, scaleFactor)
+             - chapterIdxToX(chapterStartIdx, scrollOffset, scaleFactor)
+        color: "#15814b"
 
         Rectangle {
             id: gunIndicator
             property real position: 0.5
             width: 10
             radius: 3
-            x: parent.width * position - width / 2
+            x: chapterIdxToX(chapterGunIdx, scrollOffset, scaleFactor) - chapterSlider.x - width/2
             anchors.top: parent.top
             anchors.bottom: parent.bottom
             color: "#072c1a"
@@ -196,8 +200,7 @@ Rectangle {
                 drag.maximumX: chapterSlider.width - gunIndicator.width
                 onMouseXChanged: {
                     if ( drag.active) {
-                        // gunIndicator.gunPosition = gunIndicator.x / gunIndicator.width
-                        // let idx = Math.round(selectedChapterStartIdx + gunIndicator.position * (selectedChapterEndIdx - selectedChapterStartIdx))
+                        chapterEditor.gunIdx = chapterXToIdx(chapterSlider.x + gunIndicator.x, scrollOffset, scaleFactor)
                     }
                 }
             }
@@ -222,11 +225,17 @@ Rectangle {
                 drag.maximumX: chapterSlider.width / 2 - startIndicator.width
                 onMouseXChanged: {
                     if ( drag.active) {
+                        // Update view
                         chapterSlider.x = chapterSlider.x + mouseX
                         let newWidth = chapterSlider.width - mouseX
                         if (newWidth < 30)
                             return
                         chapterSlider.width = newWidth
+                        // Update dependencies
+                        chapterEditor.startIdx = chapterXToIdx(chapterSlider.x, scrollOffset, scaleFactor)
+                        if (chapterEditor.gunIdx < chapterEditor.startIdx) {
+                            chapterEditor.gunIdx = chapterEditor.startIdx
+                        }
                     }
                 }
             }
@@ -251,10 +260,17 @@ Rectangle {
                 drag.maximumX: chapterSlider.width - endIndicator.width
                 onMouseXChanged: {
                     if ( drag.active) {
+                        // Update view
                         let newWidth = chapterSlider.width + mouseX
                         if (newWidth < 30)
                             return
                         chapterSlider.width = newWidth
+
+                        // Update dependencies
+                        chapterEditor.endIdx = chapterXToIdx(chapterSlider.x + chapterSlider.width, scrollOffset, scaleFactor)
+                        if (chapterEditor.gunIdx > chapterEditor.endIdx) {
+                            chapterEditor.gunIdx = chapterEditor.endIdx
+                        }
                     }
                 }
             }
@@ -275,7 +291,6 @@ Rectangle {
 
         onPositionChanged: {
             scrollOffset = top_panel.width  * position
-            console.log("hbar.position=" + position + ", scrollOffset=" + scrollOffset)
         }
     }
 
@@ -285,8 +300,28 @@ Rectangle {
         anchors.margins: 12
         color: "#ce0e0e"
 
+        RaceEditor {
+            id: raceEditor
+            anchors.left: parent.left
+            anchors.leftMargin: 12
+
+            onChanged: {
+                model.updateRace(raceName)
+            }
+            onDetectManeuvers: {
+                model.detectManeuvers()
+            }
+            onMakeAnalytics: {
+                model.makeAnalytics()
+            }
+        }
+
         ChapterEditor {
             id: chapterEditor
+            anchors.top: raceEditor.bottom
+            anchors.left: parent.left
+            anchors.leftMargin: 12
+
             model: top_panel.model
 
             onChanged: function () {
@@ -294,19 +329,4 @@ Rectangle {
             }
         }
     }
-
-
-    RaceEditor {
-        id: raceEditor
-        onChanged: {
-            raceTreeModel.updateRace(raceName)
-        }
-        onDetectManeuvers: {
-            raceTreeModel.detectManeuvers()
-        }
-        onMakeAnalytics: {
-            raceTreeModel.makeAnalytics()
-        }
-    }
-
 }
