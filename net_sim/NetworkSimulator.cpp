@@ -64,7 +64,6 @@ void NetworkSimulator::sendEpoch(InstrumentInput &ii) {
 }
 
 void NetworkSimulator::idxChanged(uint64_t idx) {
-    std::cout << "idxChanged " << idx << std::endl;
     if ( m_nmea2000 != nullptr && m_lastIdx != idx) {
         InstrumentInput &instrInput = m_instrDataVector[idx];
         sendEpoch(instrInput);

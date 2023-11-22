@@ -17,7 +17,7 @@ Rectangle {
     MapPolyline {
         id: racePathLine
         line.width: 3
-        line.color: "red"
+        line.color: "#5b5a5a"
     }
 
     MapQuickItem {
@@ -102,6 +102,8 @@ Rectangle {
         mapView.map.addMapItemGroup(selectedChapterMarkers)
         mapView.map.center = raceGeoPath.path[0]
         boatMarker.coordinate = fullMapPath[0]
+
+        mapView.map.fitViewportToVisibleMapItems()
     }
 
     function onRaceSelected(startIdx, endIdx){
@@ -131,6 +133,21 @@ Rectangle {
                 chapterMapElement.evt_coord = fullMapPath[gunIdx]
             } else {
                 chapterMapElement.evt_visible = false
+            }
+
+            switch (chapterType) {  // TODO find out how to use chapterType as the key for the dictionary
+                case ChapterTypes.TACK_GYBE:
+                    chapterMapElement.pathColor = "purple"
+                    break;
+                case ChapterTypes.SPEED_PERFORMANCE:
+                    chapterMapElement.pathColor = "#cc6816"
+                    break;
+                case ChapterTypes.START:
+                    chapterMapElement.pathColor = "green"
+                    break;
+                case ChapterTypes.MARK_ROUNDING:
+                    chapterMapElement.pathColor = "blue"
+                    break;
             }
 
             chapterMapElements[uuid] = chapterMapElement

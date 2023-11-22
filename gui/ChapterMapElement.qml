@@ -6,6 +6,7 @@ import QtLocation
 MapItemGroup {
 
     property alias path: chapterPathLine.path
+    property alias pathColor: chapterPathLine.line.color
     property alias evt_coord: eventMarker.coordinate
     property alias evt_visible: eventMarker.visible
 
@@ -63,7 +64,7 @@ MapItemGroup {
 
     MapPolyline {
         id: chapterPathLine
-        line.width: 3
+        line.width: 6
         line.color: "blue"
         path: []
     }

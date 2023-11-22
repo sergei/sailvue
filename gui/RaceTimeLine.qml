@@ -34,6 +34,7 @@ Rectangle {
     property real scrollOffset: 0
     property real scaleFactor: 1.0
 
+
     function hideChapterEditor(uuid) {
         raceEditor.visible = false
         chapterEditor.visible = false
@@ -66,9 +67,9 @@ Rectangle {
         console.log("onChapterSelected: [" + name + "], type=" + chapterType + ", start_idx=" + start_idx + ", end_idx=" + end_idx, ", gun_idx=" + gun_idx)
 
         chapterSlider.visible = true
-        chapterStartIdx = start_idx
-        chapterEndIdx = end_idx
-        chapterGunIdx = gun_idx
+        chapterEditor.startIdx = start_idx
+        chapterEditor.endIdx = end_idx
+        chapterEditor.gunIdx = gun_idx
 
         gunIndicator.visible = chapterType === ChapterTypes.START
             || chapterType === ChapterTypes.MARK_ROUNDING
@@ -176,17 +177,24 @@ Rectangle {
 
         visible: false
 
-        x: chapterIdxToX(chapterStartIdx, scrollOffset, scaleFactor)
-        width: chapterIdxToX(chapterEndIdx, scrollOffset, scaleFactor)
-             - chapterIdxToX(chapterStartIdx, scrollOffset, scaleFactor)
+        x: chapterIdxToX(chapterEditor.startIdx, scrollOffset, scaleFactor)
+        width: chapterIdxToX(chapterEditor.endIdx, scrollOffset, scaleFactor)
+             - chapterIdxToX(chapterEditor.startIdx, scrollOffset, scaleFactor)
         color: "#15814b"
+
+        onXChanged: {
+            console.log("chapterSlider.x: " + chapterSlider.x)
+        }
+        onWidthChanged: {
+            console.log("chapterSlider.width: " + chapterSlider.width)
+        }
 
         Rectangle {
             id: gunIndicator
             property real position: 0.5
             width: 10
             radius: 3
-            x: chapterIdxToX(chapterGunIdx, scrollOffset, scaleFactor) - chapterSlider.x - width/2
+            x: chapterIdxToX(chapterEditor.gunIdx, scrollOffset, scaleFactor) - chapterSlider.x - width/2
             anchors.top: parent.top
             anchors.bottom: parent.bottom
             color: "#072c1a"
@@ -222,17 +230,21 @@ Rectangle {
                 drag.target: startIndicator
                 drag.axis: Drag.XAxis
                 drag.minimumX: 0
-                drag.maximumX: chapterSlider.width / 2 - startIndicator.width
+                drag.maximumX: chapterSlider.width - startIndicator.width
                 onMouseXChanged: {
                     if ( drag.active) {
+                        console.log("mouseX: " + mouseX + ", startIndicator.x: " + startIndicator.x )
+
                         // Update view
-                        chapterSlider.x = chapterSlider.x + mouseX
                         let newWidth = chapterSlider.width - mouseX
-                        if (newWidth < 30)
+                        if (newWidth < startIndicator.width)
                             return
+
+                        chapterSlider.x = chapterSlider.x + mouseX
                         chapterSlider.width = newWidth
                         // Update dependencies
                         chapterEditor.startIdx = chapterXToIdx(chapterSlider.x, scrollOffset, scaleFactor)
+                        // Keep gun inside of the chapter
                         if (chapterEditor.gunIdx < chapterEditor.startIdx) {
                             chapterEditor.gunIdx = chapterEditor.startIdx
                         }
@@ -256,13 +268,13 @@ Rectangle {
                 cursorShape: Qt.SizeHorCursor
                 drag.target: endIndicator
                 drag.axis: Drag.XAxis
-                drag.minimumX: chapterSlider.width/2 + endIndicator.width
+                drag.minimumX: 0
                 drag.maximumX: chapterSlider.width - endIndicator.width
                 onMouseXChanged: {
                     if ( drag.active) {
                         // Update view
                         let newWidth = chapterSlider.width + mouseX
-                        if (newWidth < 30)
+                        if (newWidth < endIndicator.width)
                             return
                         chapterSlider.width = newWidth
 
