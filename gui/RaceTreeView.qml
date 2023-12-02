@@ -16,7 +16,9 @@ Rectangle {
     property var isChapterSelected: false
     property var selectedName: ""
 
-
+    Component.onCompleted: {
+        raceModel.setSelectionModel(racesTreeViewSelectionModel)
+    }
 
     // Chapters list
     TreeView {
@@ -33,7 +35,9 @@ Rectangle {
         model: raceModel
         delegate: TreeViewDelegate {}
         selectionModel: ItemSelectionModel {
+            id: racesTreeViewSelectionModel
             onCurrentChanged: function (current, previous) {
+                racesTreeView.expandToIndex(current)
                 model.currentChanged(current, previous)
                 isRaceSelected = model.isRaceSelected()
                 isChapterSelected = model.isChapterSelected()
@@ -47,13 +51,13 @@ Rectangle {
 
     Button {
         id: deleteRaceOrChapterButton
-        text: "Delete " + selectedName
+        text: "Delete \"" + selectedName + "\""
         enabled: isRaceSelected || isChapterSelected
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: addChapterButton.top
         onClicked: {
-            model.deleteSelected()
+            raceModel.deleteSelected()
         }
     }
 
@@ -64,7 +68,7 @@ Rectangle {
         anchors.right: parent.right
         anchors.bottom: addRaceButton.top
         onClicked: {
-            model.addChapter()
+            raceModel.addChapter()
         }
     }
 
@@ -76,7 +80,7 @@ Rectangle {
         anchors.bottom: parent.bottom
 
         onClicked: {
-            model.splitRace()
+            raceModel.splitRace()
         }
     }
 

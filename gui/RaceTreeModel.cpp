@@ -256,9 +256,12 @@ void RaceTreeModel::handleNewInstrDataVector() {
     makeRaceList();
 
     showRaceData();
+
     m_ulCurrentInstrDataIdx = 0;
 
     emit loadFinished();
+
+    selectFirstChapter();
 }
 
 void RaceTreeModel::load(const QString &path) {
@@ -344,6 +347,21 @@ void RaceTreeModel::showRaceData() {
     emit layoutChanged();
 }
 
+void RaceTreeModel::selectFirstChapter() {// Select the first chapter in the first race
+    if( m_RaceDataList.empty() )
+        return;
+
+    QModelIndex top = index(0, 0, QModelIndex());
+    if( m_RaceDataList.front()->getChapters().empty() ){
+        // Select first race
+        m_selectionModel->setCurrentIndex(top, QItemSelectionModel::SelectCurrent);
+    }else{
+        // Select first chapter
+        QModelIndex chapter = index(0, 0, top);
+        m_selectionModel->setCurrentIndex(chapter, QItemSelectionModel::SelectCurrent);
+    }
+}
+
 
 void RaceTreeModel::deleteAllRaces() {
     emit layoutAboutToBeChanged();
@@ -368,7 +386,8 @@ void RaceTreeModel::deleteSelected() {
     auto *itemToDelete = static_cast<TreeItem*>(m_selectedTreeIdx.internalPointer());
 
     // Get ready for removal from the view model
-    emit beginRemoveRows(m_selectedTreeIdx.parent(), m_selectedTreeIdx.row(), m_selectedTreeIdx.row());
+    int deletedRow = m_selectedTreeIdx.row();
+    emit beginRemoveRows(m_selectedTreeIdx.parent(), deletedRow, deletedRow);
 
     // Remove from underlying data
     auto *race = const_cast<RaceData*>(itemToDelete->getRaceData());
@@ -393,6 +412,9 @@ void RaceTreeModel::deleteSelected() {
 
     // Notify to redraw
     emit endRemoveRows();
+
+    // TODO Select the neighboring item
+
 }
 
 void RaceTreeModel::addChapter() {

@@ -23,7 +23,18 @@ ApplicationWindow {
     // --------------------------------------------------
     // Functions
     // --------------------------------------------------
+    function doChaterSelection(uuid, chapterName, chapterType, startIdx, endIdx, gunIdx) {
+        raceTimeLine.onChapterSelected(uuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
+        raceMap.onChapterSelected(uuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
 
+        if ( chapterType === ChapterTypes.START || chapterType === ChapterTypes.MARK_ROUNDING) {
+            raceVideo.seekTo(gunIdx)
+            raceTreeModel.seekToRacePathIdx(gunIdx)
+        } else{
+            raceVideo.seekTo(startIdx)
+            raceTreeModel.seekToRacePathIdx(startIdx)
+        }
+    }
 
     // --------------------------------------------------
     // Models
@@ -74,16 +85,7 @@ ApplicationWindow {
 
 
         onChapterSelected : function (uuid, chapterName, chapterType, startIdx, endIdx, gunIdx) {
-            raceTimeLine.onChapterSelected(uuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
-            raceMap.onChapterSelected(uuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
-
-            if ( chapterType === ChapterTypes.START || chapterType === ChapterTypes.MARK_ROUNDING) {
-                raceVideo.seekTo(gunIdx)
-                raceTreeModel.seekToRacePathIdx(gunIdx)
-            } else{
-                raceVideo.seekTo(startIdx)
-                raceTreeModel.seekToRacePathIdx(startIdx)
-            }
+            doChaterSelection(uuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
         }
 
         onChapterUnSelected : function (uuid) {

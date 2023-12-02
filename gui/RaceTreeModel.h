@@ -120,9 +120,7 @@ public:
     [[nodiscard]] QString polarPath() const{ return m_project.polarPath(); }
     [[nodiscard]] double twaOffset() const{ return m_project.twaOffset(); }
 
-
-
-
+    Q_INVOKABLE void setSelectionModel(QItemSelectionModel *selectionModel) { m_selectionModel = selectionModel;}
     Q_INVOKABLE void load(const QString &path);
     Q_INVOKABLE void read(bool ignoreCache);
     Q_INVOKABLE void save();
@@ -220,11 +218,13 @@ private:
 
     RaceData *m_pCurrentRace = nullptr;
     uint64_t m_ulCurrentInstrDataIdx = 0;
+    QItemSelectionModel *m_selectionModel = nullptr;
 
     void deleteAllRaces();
     void computeStats();
-
     void startNetworkSimulator();
+
+    void selectFirstChapter();
 };
 
 
