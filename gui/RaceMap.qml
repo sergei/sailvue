@@ -112,14 +112,11 @@ Rectangle {
         // Clear all chapter map elements
         for(let uuid in chapterMapElements) {
             if ( uuid === "aa")  continue  // FIXME need to rid of stupid initializer in the property declaration
-            console.log("Removing Chapter map element uuid: " + uuid)
             const chapterMapElement = chapterMapElements[uuid]
-            console.log("Removing chapter map element: " + chapterMapElement)
             mapView.map.removeMapItemGroup(chapterMapElement)
             chapterMapElements[uuid].destroy()
             delete chapterMapElements[uuid]
         }
-
     }
 
     function onChapterAdded(uuid, chapterName, chapterType, startIdx, endIdx, gunIdx){
@@ -166,6 +163,8 @@ Rectangle {
 
 
     function onChapterSelected(uuid, chapterName, chapterType, startIdx, endIdx, gunIdx) {
+        console.log("onChapterSelected", uuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
+
         selectedChapterMarkers.visible = true
         selectedChapterStartMarker.coordinate = fullMapPath[startIdx]
         selectedChapterEndMarker.coordinate = fullMapPath[endIdx]

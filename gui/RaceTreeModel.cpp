@@ -380,14 +380,28 @@ void RaceTreeModel::deleteAllRaces() {
 
 
 void RaceTreeModel::deleteSelected() {
+
     if (!m_selectedTreeIdx.isValid())
         return ;
 
+    int rowToDelete = m_selectedTreeIdx.row();
     auto *itemToDelete = static_cast<TreeItem*>(m_selectedTreeIdx.internalPointer());
+    TreeItem *parent = itemToDelete->parentItem();
+
+    // Get new selection (before current item is removed and its index becomes invalid)
+    QModelIndex parentIdx = m_selectedTreeIdx.parent();
+
+    int newRow = rowToDelete;
+    if ( newRow >= parent->childCount() - 1) // Extra 1, since we are going to remove the item
+        newRow = parent->childCount() - 2;
+
+    if ( newRow  <  0 ) {
+        newRow = parentIdx.row();
+        parentIdx = parentIdx.parent();
+    }
 
     // Get ready for removal from the view model
-    int deletedRow = m_selectedTreeIdx.row();
-    emit beginRemoveRows(m_selectedTreeIdx.parent(), deletedRow, deletedRow);
+    emit beginRemoveRows(m_selectedTreeIdx.parent(), rowToDelete, rowToDelete);
 
     // Remove from underlying data
     auto *race = const_cast<RaceData*>(itemToDelete->getRaceData());
@@ -407,14 +421,14 @@ void RaceTreeModel::deleteSelected() {
     }
 
     // Remove from the view model
-    TreeItem *parent = itemToDelete->parentItem();
     parent->removeChild(itemToDelete);
 
     // Notify to redraw
     emit endRemoveRows();
 
-    // TODO Select the neighboring item
-
+    // Select neighboring item
+    m_selectedTreeIdx = index(newRow, 0, parentIdx);
+    m_selectionModel->setCurrentIndex(m_selectedTreeIdx, QItemSelectionModel::SelectCurrent);
 }
 
 void RaceTreeModel::addChapter() {
