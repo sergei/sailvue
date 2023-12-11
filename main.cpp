@@ -1,5 +1,4 @@
 #include <iostream>
-#include "cxxopts.hpp"
 #include "n2k/YdvrReader.h"
 #include "gopro/GoPro.h"
 #include "ffmpeg/FFMpeg.h"
@@ -43,36 +42,6 @@ void Test(const std::string& stYdvrDir, const std::string& stGoProDir, const std
 }
 
 int main(int argc, char** argv) {
-    cxxopts::Options options("sailvue", "produce video overlay for GOPRO clips using NMEA2000 data");
-    options.add_options()
-            ("d,ydvr-dir", "YDVR directory",
-                    cxxopts::value<std::string>())
-            ("g,gopro-dir", "YDVR directory",
-                    cxxopts::value<std::string>())
-            ("c,cache-dir", "Cache directory",
-                    cxxopts::value<std::string>()->default_value("/tmp/sailvue"))
-            ("p,pgn-src", "CSV file describing sources for PGNs",
-                    cxxopts::value<std::string>()->default_value("data/pgn-src.csv"))
-            ("s,summary", "Print summary only",
-                    cxxopts::value<bool>()->default_value("false"))
-            ("h,help", "Print usage")
-            ;
-
-    auto result = options.parse(argc, argv);
-
-    if (result.count("help"))
-    {
-        std::cout << options.help() << std::endl;
-        exit(0);
-    }
-
-    std::string stYdvrDir = result["ydvr-dir"].as<std::string>();
-    std::string stGoProDir = result["gopro-dir"].as<std::string>();
-    std::string stCacheDir = result["cache-dir"].as<std::string>();
-    std::string stPgnSrcCsv = result["pgn-src"].as<std::string>();
-    bool bSummaryOnly = result["summary"].as<bool>();
-
-//    Test(stYdvrDir, stGoProDir, stCacheDir, stPgnSrcCsv, bSummaryOnly);
     if (! FFMpeg::setBinDir("./ffmpeg/bin/osx") ){
         std::cerr << "FFMpeg::setBinDir failed" << std::endl;
         exit(1);
@@ -91,5 +60,4 @@ int main(int argc, char** argv) {
 
 
     return QGuiApplication::exec();
-
 }
