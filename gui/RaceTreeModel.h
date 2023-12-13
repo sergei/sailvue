@@ -28,12 +28,14 @@ public:
     [[nodiscard]] int childCount() const;
     static int columnCount() ;
     [[nodiscard]] QVariant data(int column) const;
+    bool setData(const QVariant &value, int column);
     [[nodiscard]] int row() const;
     TreeItem *parentItem();
 
     [[nodiscard]] bool isRace() const { return m_pChapter == nullptr; }
     [[nodiscard]] RaceData *getRaceData() ;
     [[nodiscard]] Chapter *getChapter() ;
+
 
 
 private:
@@ -73,6 +75,7 @@ public:
     [[nodiscard]] int columnCount(const QModelIndex &) const override;
 
     [[nodiscard]] QVariant data(const QModelIndex &index, int role) const override;
+    [[nodiscard]]  bool setData(const QModelIndex &index, const QVariant &value, int role) override;
 
     [[nodiscard]] QHash<int, QByteArray> roleNames() const override
     {
@@ -139,7 +142,6 @@ public:
     Q_INVOKABLE void updateChapter(const QString &uuid, const QString &chapterName, ChapterTypes::ChapterType chapterType,
                                    uint64_t startIdx, uint64_t endIdx, uint64_t gunIdx);
     Q_INVOKABLE void updateRace(const QString &raceName);
-    Q_INVOKABLE void deleteSelected();
 
     Q_INVOKABLE [[nodiscard]] bool isRaceSelected() const ;
     Q_INVOKABLE [[nodiscard]] bool isChapterSelected() const;
@@ -182,6 +184,7 @@ signals:
     void chapterSelected(QString uuid, QString chapterName, ChapterTypes::ChapterType chapterType, uint64_t startIdx, uint64_t endIdx, uint64_t gunIdx);
     void chapterUnSelected(QString uuid);
     void chapterAdded(QString uuid, QString chapterName, ChapterTypes::ChapterType chapterType, uint64_t startIdx, uint64_t endIdx, uint64_t gunIdx);
+    void chapterUpdated(QString uuid, QString chapterName, ChapterTypes::ChapterType chapterType, uint64_t startIdx, uint64_t endIdx, uint64_t gunIdx);
     void chapterDeleted(QString uuid);
 
     void raceSelected(QString raceName, uint64_t startIdx, uint64_t endIdx);
@@ -220,10 +223,10 @@ private:
     uint64_t m_ulCurrentInstrDataIdx = 0;
     QItemSelectionModel *m_selectionModel = nullptr;
 
+    void deleteItem(QModelIndex itemIndex);
     void deleteAllRaces();
     void computeStats();
     void startNetworkSimulator();
-
     void selectFirstChapter();
 };
 

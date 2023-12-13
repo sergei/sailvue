@@ -168,7 +168,6 @@ add_subdirectory (test)
 # Resources:
 set(qml_resource_files
         "gui/main.qml"
-        "gui/RaceEditor.qml"
         "gui/ChapterEditor.qml"
         "gui/ChapterMapElement.qml"
         "gui/InputDataDialog.qml"
@@ -193,6 +192,7 @@ qt_add_resources(sailvue "app_images"
         "images/mapmarker.png"
         "images/icons8-zoom-in-50.png"
         "images/icons8-zoom-out-50.png"
+        "images/icons8-delete-button-50.png"
 )
 
 # Suppress policy warning

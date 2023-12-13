@@ -43,13 +43,17 @@ GridLayout {
         chapterName = name
         chapter_name.text = chapterName
         chapterType = type
-        chapter_type.currentIndex = chapterType
 
         startIdx = start_idx
         endIdx = end_idx
         gunIdx = gun_idx
 
         changeGunCtrlVisibility(chapterType)
+    }
+
+    Label {
+        id: chapter_name
+        text: "Tack"
     }
 
     Label {
@@ -78,40 +82,6 @@ GridLayout {
     Label {
         id: end_time
         text: model.getTimeString(endIdx)
-    }
-
-    Label {
-        text: "Name:"
-    }
-
-    TextEdit {
-        id: chapter_name
-        text: "Tack"
-        color: "white"
-        onTextChanged: {
-            parent.chapterName = text
-        }
-    }
-
-    Label {
-        text: "Type:"
-    }
-
-    ComboBox {
-        id: chapter_type
-        model: ["Tack/Gybe", "Performance", "Start", "Mark rounding"]
-        onActivated: function (index) {
-            console.log("Chapter type changed to " + index)
-            parent.chapterType = index
-            changeGunCtrlVisibility(index);
-        }
-    }
-
-    Button {
-        text: "Save"
-        onClicked: {
-            changed()
-        }
     }
 
 }

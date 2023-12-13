@@ -23,8 +23,6 @@ Rectangle {
     property alias chapterType: chapterEditor.chapterType
     signal chapterChanged()
 
-    property alias raceName: raceEditor.raceName
-
     property int raceLength: 0
     property int raceStartidx: 0
 
@@ -36,7 +34,6 @@ Rectangle {
 
 
     function hideChapterEditor(uuid) {
-        raceEditor.visible = false
         chapterEditor.visible = false
     }
 
@@ -57,7 +54,6 @@ Rectangle {
     }
 
     function onRaceSelected(startIdx, endIdx){
-        raceEditor.visible = true
         raceLength = endIdx - startIdx
         raceStartidx = startIdx
         progressIndicator.position = 0
@@ -307,30 +303,12 @@ Rectangle {
     }
 
     Rectangle {
-        id: chapterAndRaceEditors
         anchors.top: hbar.bottom
         anchors.margins: 12
         color: "#ce0e0e"
 
-        RaceEditor {
-            id: raceEditor
-            anchors.left: parent.left
-            anchors.leftMargin: 12
-
-            onChanged: {
-                model.updateRace(raceName)
-            }
-            onDetectManeuvers: {
-                model.detectManeuvers()
-            }
-            onMakeAnalytics: {
-                model.makeAnalytics()
-            }
-        }
-
         ChapterEditor {
             id: chapterEditor
-            anchors.top: raceEditor.bottom
             anchors.left: parent.left
             anchors.leftMargin: 12
 

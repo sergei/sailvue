@@ -65,7 +65,6 @@ ApplicationWindow {
         onRaceSelected : function (raceName, startIdx, endIdx) {
             console.log("onRaceSelected", raceName, startIdx, endIdx)
             raceMap.onRaceSelected(startIdx, endIdx)
-            raceTimeLine.raceName = raceName
             raceTimeLine.onRaceSelected(startIdx, endIdx)
             raceVideo.seekTo(startIdx)
             raceTreeModel.seekToRacePathIdx(startIdx)
@@ -92,6 +91,12 @@ ApplicationWindow {
 
         onChapterAdded : function (uuid, chapterName, chapterType, startIdx, endIdx, gunIdx) {
             raceMap.onChapterAdded(uuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
+        }
+
+        onChapterUpdated: function (uuid, chapterName, chapterType, startIdx, endIdx, gunIdx) {
+            console.log("Chapter changed: " + chapterName + " " + chapterType + " " + startIdx + " " + endIdx + " " + gunIdx)
+            raceTimeLine.onChapterSelected(uuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
+            raceMap.updateChapter(uuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
         }
 
         onChapterDeleted : function (uuid) {
@@ -279,8 +284,8 @@ ApplicationWindow {
 
                 Rectangle {
                     id: sideBar
-                    SplitView.minimumWidth: 200
-                    implicitWidth: 320
+                    SplitView.minimumWidth: 320
+                    implicitWidth: 480
                     SplitView.fillWidth: false
                     color: "#848282"
 
@@ -355,10 +360,7 @@ ApplicationWindow {
                     raceMap.onSelectedChapterGunIdxChanged(idx)
                     raceTreeModel.seekToRacePathIdx(idx)
                 }
-
-
             }
-
         }
     }
 

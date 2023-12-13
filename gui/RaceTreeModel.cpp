@@ -71,23 +71,59 @@ int TreeItem::row() const
 
 int TreeItem::columnCount()
 {
-    // Always 1
-    return 1;
+    return 3;
 }
 
 QVariant TreeItem::data(int column) const
 {
-    if (column < 0 || column >= 1)
-        return {};  // Have only one column
-
-    if ( m_pChapter != nullptr )
-        return QString::fromStdString(m_pChapter->getName());
-    else if ( m_pRaceData != nullptr )
-        return QString::fromStdString(m_pRaceData->getName());
+    if ( m_pChapter != nullptr ) {  // Chapter
+        if ( column == 0){
+            return QString::fromStdString(m_pChapter->getName());
+        }else{
+            return m_pChapter->getChapterType();
+        }
+    }
+    else if ( m_pRaceData != nullptr ) { // Race
+        if( column == 0){
+            return QString::fromStdString(m_pRaceData->getName());
+        }else{
+            return -1;
+        }
+    }
     else
         return {}; // Should never happen
 
 }
+
+bool TreeItem::setData(const QVariant &value, int column) {
+    if ( m_pChapter != nullptr ) {  // Chapter
+        if ( column == 0){
+            m_pChapter->SetName(value.toString().toStdString());
+            return true;
+        }else if ( column == 1){
+            m_pChapter->setChapterType(ChapterTypes::ChapterType(value.toInt()));
+            return true;
+        }else if ( column == 2){
+            // Delete chapter
+        }else{
+            return false;
+        }
+    }
+    else if ( m_pRaceData != nullptr ) { // Race
+        if( column == 0){
+            m_pRaceData->SetName(value.toString().toStdString());
+            return true;
+        }else if ( column == 2){
+            // delete race
+        }else{
+            return false;
+        }
+    }else{
+        return false;
+    }
+}
+
+
 
 TreeItem *TreeItem::parentItem()
 {
@@ -101,6 +137,7 @@ RaceData *TreeItem::getRaceData()  {
 Chapter *TreeItem::getChapter()  {
     return m_pChapter;
 }
+
 
 
 RaceTreeModel::RaceTreeModel(QObject *parent)
@@ -235,7 +272,38 @@ Qt::ItemFlags RaceTreeModel::flags(const QModelIndex &index) const
     if (!index.isValid())
         return Qt::NoItemFlags;
 
-    return QAbstractItemModel::flags(index);
+    return QAbstractItemModel::flags(index) | Qt::ItemIsEditable;
+}
+
+bool RaceTreeModel::setData(const QModelIndex &index, const QVariant &value, int role) {
+    std::cout << "setData: " << value.toString().toStdString() << std::endl;
+
+    if ( index.column() == 2){
+        deleteItem(index);
+        return true;
+    }
+
+    auto *item = static_cast<TreeItem*>(index.internalPointer());
+
+    if ( item->setData(value, index.column()) )
+    {
+        if( item->isRace() ){
+
+        }else{
+            Chapter * chapter = item->getChapter();
+            emit chapterUpdated(chapter->getUuid(), QString::fromStdString(chapter->getName()), chapter->getChapterType(),
+                                chapter->getStartIdx(), chapter->getEndIdx(), chapter->getGunIdx());
+        }
+        emit dataChanged(index, index);
+
+        m_project.raceDataChanged();
+        emit isDirtyChanged();
+
+        return true;
+    }else{
+        return false;
+    }
+
 }
 
 QVariant RaceTreeModel::headerData(int section, Qt::Orientation orientation,
@@ -382,17 +450,17 @@ void RaceTreeModel::deleteAllRaces() {
 }
 
 
-void RaceTreeModel::deleteSelected() {
+void RaceTreeModel::deleteItem(QModelIndex itemIndex) {
 
-    if (!m_selectedTreeIdx.isValid())
+    if (!itemIndex.isValid())
         return ;
 
-    int rowToDelete = m_selectedTreeIdx.row();
-    auto *itemToDelete = static_cast<TreeItem*>(m_selectedTreeIdx.internalPointer());
+    int rowToDelete = itemIndex.row();
+    auto *itemToDelete = static_cast<TreeItem*>(itemIndex.internalPointer());
     TreeItem *parent = itemToDelete->parentItem();
 
     // Get new selection (before current item is removed and its index becomes invalid)
-    QModelIndex parentIdx = m_selectedTreeIdx.parent();
+    QModelIndex parentIdx = itemIndex.parent();
 
     int newRow = rowToDelete;
     if ( newRow >= parent->childCount() - 1) // Extra 1, since we are going to remove the item
@@ -404,7 +472,7 @@ void RaceTreeModel::deleteSelected() {
     }
 
     // Get ready for removal from the view model
-    emit beginRemoveRows(m_selectedTreeIdx.parent(), rowToDelete, rowToDelete);
+    emit beginRemoveRows(itemIndex.parent(), rowToDelete, rowToDelete);
 
     // Remove from underlying data
     auto *race = const_cast<RaceData*>(itemToDelete->getRaceData());
@@ -435,7 +503,6 @@ void RaceTreeModel::deleteSelected() {
 }
 
 void RaceTreeModel::addChapter() {
-
     // Find race to insert chapter into
     for(int raceRow = 0; raceRow < rootItem->childCount(); raceRow++){
         TreeItem *raceTreeItem = rootItem->child(raceRow);
@@ -841,5 +908,6 @@ void RaceTreeModel::makeAnalytics() {
 
     emit layoutChanged();
 }
+
 
 
