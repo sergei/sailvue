@@ -254,6 +254,10 @@ ApplicationWindow {
         }
     }
 
+    Options {
+        id: options
+    }
+
 
     // --------------------------------------------------
     // Widgets

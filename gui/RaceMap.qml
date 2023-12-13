@@ -95,6 +95,7 @@ Rectangle {
 
     function onFullPathReady(raceGeoPath) {
         fullMapPath = raceGeoPath.path
+        console.log('fullMapPath.length=', fullMapPath.length)
         racePathLine.path = raceGeoPath.path
 
         mapView.map.addMapItem(racePathLine)
@@ -120,9 +121,11 @@ Rectangle {
     }
 
     function onChapterAdded(uuid, chapterName, chapterType, startIdx, endIdx, gunIdx){
+        console.log('onChapterAdded', chapterName, chapterType, startIdx, endIdx, gunIdx)
         let co = Qt.createComponent('ChapterMapElement.qml')
         if (co.status === Component.Ready) {
             let chapterMapElement = co.createObject(appWindow)
+
             chapterMapElement.path = fullMapPath.slice(startIdx, endIdx)
 
             if ( chapterType === ChapterTypes.START || chapterType === ChapterTypes.MARK_ROUNDING ) {
