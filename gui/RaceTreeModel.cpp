@@ -24,16 +24,19 @@ void TreeItem::appendChild(TreeItem *item)
     m_childItems.append(item);
 }
 
-void TreeItem::insertChapterChild(TreeItem *child) {
+int TreeItem::insertChapterChild(TreeItem *child) {
     // insert chapters in order of startIdx
+    int chapterRow = 0;
     for(auto it = m_childItems.begin(); it != m_childItems.end(); it++){
         if( (*it)->getChapter()->getStartIdx() > child->getChapter()->getStartIdx() ){
             m_childItems.insert(it, child);
-            return;
+            return chapterRow;
         }
+        chapterRow ++;
     }
     // The chapter is the last one
     m_childItems.append(child);
+    return chapterRow;
 }
 
 void TreeItem::removeChild(TreeItem *item)
@@ -434,8 +437,8 @@ void RaceTreeModel::deleteSelected() {
 void RaceTreeModel::addChapter() {
 
     // Find race to insert chapter into
-    for( int i = 0; i < rootItem->childCount(); i++){
-        TreeItem *raceTreeItem = rootItem->child(i);
+    for(int raceRow = 0; raceRow < rootItem->childCount(); raceRow++){
+        TreeItem *raceTreeItem = rootItem->child(raceRow);
         RaceData *race = raceTreeItem->getRaceData();
         if ( race->getStartIdx() <= m_ulCurrentInstrDataIdx && race->getEndIdx() >= m_ulCurrentInstrDataIdx){
 
@@ -469,13 +472,18 @@ void RaceTreeModel::addChapter() {
 
             // Add data to the view model
             auto *chapterTreeItem = new TreeItem(race, chapter, raceTreeItem);
-            raceTreeItem->insertChapterChild(chapterTreeItem);
+            int chapterRow = raceTreeItem->insertChapterChild(chapterTreeItem);
 
             m_project.raceDataChanged();
             emit isDirtyChanged();
             emit chapterAdded(chapter->getUuid(), QString::fromStdString(chapter->getName()), chapter->getChapterType(),
                                  chapter->getStartIdx(),  chapter->getEndIdx(), chapter->getGunIdx());
             emit layoutChanged();
+
+            // Select newly added chapter
+            QModelIndex raceIndex = index(raceRow, 0 , QModelIndex());
+            m_selectedTreeIdx = index(chapterRow, 0, raceIndex);
+            m_selectionModel->setCurrentIndex(m_selectedTreeIdx, QItemSelectionModel::SelectCurrent);
 
             return;
         }

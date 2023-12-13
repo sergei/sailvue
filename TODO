@@ -1,3 +1,5 @@
+TODO add PGN filter setting to the project to make sure the cache is being rebuild using the same settings
+TODO add hash of cache to the project file and rebuild cach if it's out of sync
 TODO remove fisheye from the video
 TODO use hash to identify cache files
 TODO Add NMEA0183 support

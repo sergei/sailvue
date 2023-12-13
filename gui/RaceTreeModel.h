@@ -21,7 +21,7 @@ public:
     ~TreeItem();
 
     void appendChild(TreeItem *child);
-    void insertChapterChild(TreeItem *child);
+    int insertChapterChild(TreeItem *child);
     void removeChild(TreeItem *child);
     void removeChildren(int i, int n);
     TreeItem *child(int row);
