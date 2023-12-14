@@ -17,7 +17,7 @@ public:
     void appendChild(PgnTreeItem *child){m_childItems.append(child); }
     PgnTreeItem *child(int row) const;
     [[nodiscard]] int childCount() const {return int(m_childItems.count());}
-    static int columnCount() {return 1;};
+    static int columnCount() ;
     [[nodiscard]] QVariant data(int column) const;
     [[nodiscard]] int row() const;
     PgnTreeItem *parentItem(){return m_parentItem;};
