@@ -141,6 +141,9 @@ public:
     Q_INVOKABLE void makeAnalytics();
     Q_INVOKABLE void updateChapter(const QString &uuid, const QString &chapterName, ChapterTypes::ChapterType chapterType,
                                    uint64_t startIdx, uint64_t endIdx, uint64_t gunIdx);
+    Q_INVOKABLE void updateChapterStartIdx(uint64_t idx);
+    Q_INVOKABLE void updateChapterEndIdx(uint64_t idx);
+    Q_INVOKABLE void updateChapterGunIdx(uint64_t idx);
     Q_INVOKABLE void updateRace(const QString &raceName);
 
     Q_INVOKABLE [[nodiscard]] bool isRaceSelected() const ;

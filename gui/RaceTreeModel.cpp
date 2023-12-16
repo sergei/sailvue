@@ -598,6 +598,32 @@ void RaceTreeModel::updateChapter(const QString &uuid, const QString &chapterNam
 
 }
 
+void RaceTreeModel::updateChapterStartIdx(uint64_t idx) {
+    Chapter *chapter = getSelectedChapter();
+    if ( chapter == nullptr ){
+        std::cerr << "No chapter selected" << std::endl;
+        return;
+    }
+    chapter->setStartIdx(idx);
+}
+
+void RaceTreeModel::updateChapterEndIdx(uint64_t idx) {
+    Chapter *chapter = getSelectedChapter();
+    if ( chapter == nullptr ){
+        std::cerr << "No chapter selected" << std::endl;
+        return;
+    }
+    chapter->setEndIdx(idx);
+}
+
+void RaceTreeModel::updateChapterGunIdx(uint64_t idx) {
+    Chapter *chapter = getSelectedChapter();
+    if ( chapter == nullptr ){
+        std::cerr << "No chapter selected" << std::endl;
+        return;
+    }
+    chapter->SetGunIdx(idx);
+}
 
 void RaceTreeModel::splitRace() {
     if ( m_ulCurrentInstrDataIdx == 0){

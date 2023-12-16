@@ -337,28 +337,25 @@ ApplicationWindow {
                 model: raceTreeModel
                 player: raceVideo
 
-                onChapterChanged: function () {
-                    console.log("Chapter changed: " + chapterName + " " + chapterType + " " + chapterStartIdx + " " + chapterEndIdx + " " + chapterGunIdx)
-                    raceTreeModel.updateChapter(chapterUuid, chapterName, chapterType, chapterStartIdx, chapterEndIdx, chapterGunIdx)
-                    raceMap.updateChapter(chapterUuid, chapterName, chapterType, chapterStartIdx, chapterGunIdx, chapterGunIdx)
-                }
-
                 onChapterStartIdxChanged: {
                     let idx = Math.round(chapterStartIdx)
                     raceMap.onSelectedChapterStartIdxChanged(idx)
                     raceTreeModel.seekToRacePathIdx(idx)
+                    raceTreeModel.updateChapterStartIdx(idx)
                 }
 
                 onChapterEndIdxChanged: {
                     let idx = Math.round(chapterEndIdx)
                     raceMap.onSelectedChapterEndIdxChanged(idx)
                     raceTreeModel.seekToRacePathIdx(idx)
+                    raceTreeModel.updateChapterEndIdx(idx)
                 }
 
                 onChapterGunIdxChanged: {
                     let idx = Math.round(chapterGunIdx)
                     raceMap.onSelectedChapterGunIdxChanged(idx)
                     raceTreeModel.seekToRacePathIdx(idx)
+                    raceTreeModel.updateChapterGunIdx(idx)
                 }
             }
         }
