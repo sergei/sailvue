@@ -129,6 +129,7 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
     std::cout << "Producing chapter " << chapter.getName() << " " << startUtcMs << ":" << stopUtcMs << std::endl;
 
     overlayMaker.setChapter(chapter);
+    std::filesystem::path clipFulPathName = overlayMaker.getChapterFolder() / "clip.mp4";
 
     auto duration = float(stopUtcMs - startUtcMs) / 1000;
     float presentationDuration;
@@ -142,16 +143,35 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
 
     m_totalRaceDuration += presentationDuration * 1000;
 
+    // Check if the chapter already exists
+    // Don't return until the m_totalRaceDuration is updated
+    if ( std::filesystem::is_regular_file(clipFulPathName) ){
+        return clipFulPathName;
+    }
+
+
     std::list<ClipFragment> goProclipFragments;
 
     // Create the input list
     findGoProClipFragments(goProclipFragments, startUtcMs, stopUtcMs);
 
-    int count = 0;
     int prevProgress = -1;
     int totalCount = int(chapter.getEndIdx() - chapter.getStartIdx());
+    // determine overlays framerate
+    float overlaysFps = float(totalCount) / presentationDuration;
+    u_int64_t ulEpochStep = 1;
+    if ( overlaysFps > 10 ){
+        // We  don't want to have too many frames
+        // let's skip some epochs
+        // TODO do some filtering before decimation
+        int targetFps = 10;
+        ulEpochStep = totalCount / u_int64_t(presentationDuration) / targetFps;
+        // Recompute overlay FPS
+        overlaysFps = float(totalCount / ulEpochStep) / presentationDuration;
+    }
 
-    for(auto epochIdx = chapter.getStartIdx(); epochIdx < chapter.getEndIdx(); epochIdx++){
+    int count = 0;
+    for(auto epochIdx = chapter.getStartIdx(); epochIdx < chapter.getEndIdx(); epochIdx += ulEpochStep){
 
         if ( m_stopRequested ){
             return "";
@@ -167,8 +187,6 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
         count ++;
     }
 
-    // determine overlays framerate
-    float overlaysFps = float(count) / presentationDuration;
 
     FFMpeg ffmpeg;
     float durationScale = presentationDuration / duration ;
@@ -181,7 +199,6 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
     uint64_t  clipDurationMs = presentationDuration * 1000;
     EncodingProgressListener progressListener("Chapter " + chapter.getName(), clipDurationMs, m_rProgressListener);
 
-    std::filesystem::path clipFulPathName = overlayMaker.getChapterFolder() / "clip.mp4";
     ffmpeg.makeClip(clipFulPathName, progressListener);
     m_stopRequested = progressListener.isStopRequested();
 
