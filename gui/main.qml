@@ -70,11 +70,16 @@ ApplicationWindow {
             raceTreeModel.seekToRacePathIdx(startIdx)
         }
 
+        onRaceUnSelected : function () {
+            console.log("onRaceUnSelected")
+            raceMap.onRaceUnSelected()
+        }
 
         onChapterSelected : function (uuid, chapterName, chapterType, startIdx, endIdx, gunIdx) {
-            console.log("onChapterSelected", uuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
-            raceTimeLine.onChapterSelected(uuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
+            console.log("main: onChapterSelected", uuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
             raceMap.onChapterSelected(uuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
+            // Update time after race map, since race map depends on race timeline
+            raceTimeLine.onChapterSelected(uuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
 
             if ( chapterType === ChapterTypes.START || chapterType === ChapterTypes.MARK_ROUNDING) {
                 raceVideo.seekTo(gunIdx)

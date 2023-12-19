@@ -9,8 +9,15 @@ import sails
 import QtQuick.Controls.Fusion
 
 Rectangle {
+    id: top
     anchors.fill: parent
     required property var model
+
+    property string selectedChapterUuid: ""
+    property int selectedChapterStartIdx: 0
+    property int selectedChapterEndIdx: 0
+    property int selectedChapterGunIdx: 0
+
     property var fullMapPath  // Path for entire project
     property var chapterMapElements: {'aa': 'bb'}  // Initialize it with some nonsense, otherwise we get an assignment error
 
@@ -27,59 +34,9 @@ Rectangle {
 
         sourceItem: Image {
             id: boatImage
-            width: 24
-            height: 24
+            width: 32
+            height: 32
             source: "qrc:/images/mapmarker.png"
-        }
-    }
-
-    MapItemGroup {
-        id: selectedChapterMarkers
-        visible: false
-
-        MapQuickItem {
-            id: selectedChapterStartMarker
-            anchorPoint.x: startImage.width / 2
-            anchorPoint.y: startImage.height / 2
-            coordinate: QtPositioning.coordinate(0, 0)
-
-            sourceItem: Rectangle {
-                id: startImage
-                width: 18
-                height: 36
-                color: "red"
-                radius: 9
-            }
-        }
-
-        MapQuickItem {
-            id: selectedChapterEndMarker
-            anchorPoint.x: endImage.width / 2
-            anchorPoint.y: endImage.height / 2
-            coordinate: QtPositioning.coordinate(0, 0)
-
-            sourceItem: Rectangle {
-                id: endImage
-                width: 18
-                height: 36
-                color: "yellow"
-                radius: 9
-            }
-        }
-
-        MapQuickItem {
-            id: selectedChapterGunMarker
-            anchorPoint.x: endImage.width / 2
-            anchorPoint.y: endImage.height / 2
-            coordinate: QtPositioning.coordinate(0, 0)
-
-            sourceItem: Rectangle {
-                id: gunImage
-                width: 9
-                height: 18
-                color: "green"
-                radius: 9
-            }
         }
     }
 
@@ -100,7 +57,6 @@ Rectangle {
 
         mapView.map.addMapItem(racePathLine)
         mapView.map.addMapItem(boatMarker)
-        mapView.map.addMapItemGroup(selectedChapterMarkers)
         mapView.map.center = raceGeoPath.path[0]
         boatMarker.coordinate = fullMapPath[0]
 
@@ -109,10 +65,13 @@ Rectangle {
 
     function onRaceSelected(startIdx, endIdx){
         racePathLine.path = fullMapPath.slice(startIdx, endIdx)
+    }
 
+    function onRaceUnSelected(startIdx, endIdx){
         // Clear all chapter map elements
         for(let uuid in chapterMapElements) {
             if ( uuid === "aa")  continue  // FIXME need to rid of stupid initializer in the property declaration
+            console.log('Removing chapterMapElements[uuid]', uuid)
             const chapterMapElement = chapterMapElements[uuid]
             mapView.map.removeMapItemGroup(chapterMapElement)
             chapterMapElements[uuid].destroy()
@@ -121,62 +80,52 @@ Rectangle {
     }
 
     function onChapterAdded(uuid, chapterName, chapterType, startIdx, endIdx, gunIdx){
-        console.log('onChapterAdded', chapterName, chapterType, startIdx, endIdx, gunIdx)
+        console.log('onChapterAdded', uuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
         let co = Qt.createComponent('ChapterMapElement.qml')
+        console.log(co)
         if (co.status === Component.Ready) {
+
             let chapterMapElement = co.createObject(appWindow)
-
             chapterMapElement.path = fullMapPath.slice(startIdx, endIdx)
-
-            if ( chapterType === ChapterTypes.START || chapterType === ChapterTypes.MARK_ROUNDING ) {
-                chapterMapElement.evt_visible = true
-                chapterMapElement.evt_coord = fullMapPath[gunIdx]
-            } else {
-                chapterMapElement.evt_visible = false
-            }
-
-            switch (chapterType) {  // TODO find out how to use chapterType as the key for the dictionary
-                case ChapterTypes.TACK_GYBE:
-                    chapterMapElement.pathColor = "purple"
-                    break;
-                case ChapterTypes.SPEED_PERFORMANCE:
-                    chapterMapElement.pathColor = "#cc6816"
-                    break;
-                case ChapterTypes.START:
-                    chapterMapElement.pathColor = "green"
-                    break;
-                case ChapterTypes.MARK_ROUNDING:
-                    chapterMapElement.pathColor = "blue"
-                    break;
-            }
+            chapterMapElement.chapterType = chapterType
+            chapterMapElement.evt_coord = fullMapPath[gunIdx]
 
             chapterMapElements[uuid] = chapterMapElement
             mapView.map.addMapItemGroup(chapterMapElement)
         } else {
             console.log("Error loading component:", co.errorString())
         }
+
+        console.log('onChapterAdded chapterMapElements size', Object.keys(chapterMapElements).length)
     }
+
     function onChapterDeleted(uuid) {
+        console.log("RaceMap:  onChapterDeleted", uuid)
         // Remove chapter from map
         let chapterMapElement = chapterMapElements[uuid]
         mapView.map.removeMapItemGroup(chapterMapElement)
         chapterMapElements[uuid].destroy()
         delete chapterMapElements[uuid]
     }
-
-
+    
     function onChapterSelected(uuid, chapterName, chapterType, startIdx, endIdx, gunIdx) {
-        console.log("onChapterSelected", uuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
+        console.log("RaceMap:  onChapterSelected", uuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
 
-        selectedChapterMarkers.visible = true
-        selectedChapterStartMarker.coordinate = fullMapPath[startIdx]
-        selectedChapterEndMarker.coordinate = fullMapPath[endIdx]
-        selectedChapterGunMarker.coordinate = fullMapPath[gunIdx]
+        let prevUuid = selectedChapterUuid
+        selectedChapterUuid = uuid
 
-        selectedChapterGunMarker.visible =
-            chapterType === ChapterTypes.START
-            || chapterType === ChapterTypes.MARK_ROUNDING;
+        console.log("prevUuid ", prevUuid)
+        console.log("selectedChapterUuid ", selectedChapterUuid)
 
+        if ( prevUuid !== "" && chapterMapElements[prevUuid] !== undefined){
+            chapterMapElements[prevUuid].selected = false
+        }
+
+        selectedChapterStartIdx = startIdx
+        selectedChapterEndIdx = endIdx
+        selectedChapterGunIdx = gunIdx
+
+        chapterMapElements[selectedChapterUuid].selected = true
     }
 
     function onRacePathIdxChanged(idx) {
@@ -188,15 +137,19 @@ Rectangle {
     }
 
     function onSelectedChapterStartIdxChanged(idx) {
-        selectedChapterStartMarker.coordinate = fullMapPath[idx]
+        selectedChapterStartIdx = idx
+        console.log("onSelectedChapterStartIdxChanged selectedChapterUuid ", selectedChapterUuid, selectedChapterStartIdx, selectedChapterEndIdx)
+        chapterMapElements[selectedChapterUuid].path = fullMapPath.slice(selectedChapterStartIdx, selectedChapterEndIdx)
     }
 
     function onSelectedChapterEndIdxChanged(idx) {
-        selectedChapterEndMarker.coordinate = fullMapPath[idx]
+        selectedChapterEndIdx = idx
+        console.log("onSelectedChapterEndIdxChanged selectedChapterUuid ", selectedChapterUuid, selectedChapterStartIdx, selectedChapterEndIdx)
+        chapterMapElements[selectedChapterUuid].path = fullMapPath.slice(selectedChapterStartIdx, selectedChapterEndIdx)
     }
 
     function onSelectedChapterGunIdxChanged(idx) {
-        selectedChapterGunMarker.coordinate = fullMapPath[idx]
+        chapterMapElements[selectedChapterUuid].evt_coord = fullMapPath[idx]
     }
 
 }

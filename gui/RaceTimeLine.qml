@@ -64,6 +64,7 @@ Rectangle {
     }
 
     function onChapterSelected (chapter_uuid, name, type, start_idx, end_idx, gun_idx) {
+        console.log("RaceTimeline: onChapterSelected", chapter_uuid, name, type, start_idx, end_idx, gun_idx)
         chapterSlider.visible = true
 
         chapterName = name
