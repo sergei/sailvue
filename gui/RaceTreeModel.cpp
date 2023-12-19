@@ -610,6 +610,8 @@ void RaceTreeModel::updateChapterStartIdx(uint64_t idx) {
         return;
     }
     chapter->setStartIdx(idx);
+    m_project.raceDataChanged();
+    emit isDirtyChanged();
 }
 
 void RaceTreeModel::updateChapterEndIdx(uint64_t idx) {
@@ -619,6 +621,8 @@ void RaceTreeModel::updateChapterEndIdx(uint64_t idx) {
         return;
     }
     chapter->setEndIdx(idx);
+    m_project.raceDataChanged();
+    emit isDirtyChanged();
 }
 
 void RaceTreeModel::updateChapterGunIdx(uint64_t idx) {
@@ -628,6 +632,8 @@ void RaceTreeModel::updateChapterGunIdx(uint64_t idx) {
         return;
     }
     chapter->SetGunIdx(idx);
+    m_project.raceDataChanged();
+    emit isDirtyChanged();
 }
 
 void RaceTreeModel::splitRace() {
