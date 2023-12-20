@@ -1,3 +1,4 @@
+FIXME Keep cached data on the same disk as original by default
 FIXME Review timestamping of epoch and avoid "Time went backwards" error
 
 FIXME close process dialog and show the error if ffmpeg has failed

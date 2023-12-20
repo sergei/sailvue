@@ -67,7 +67,9 @@ void NetworkSimulator::sendEpoch(InstrumentInput &ii) {
 }
 
 void NetworkSimulator::idxChanged(uint64_t idx) {
-    if ( m_nmea2000 != nullptr && m_lastIdx != idx) {
+    // This is happening if cache is out of sync with project
+    assert(idx < m_instrDataVector.size());
+    if ( m_nmea2000 != nullptr && m_lastIdx != idx ) {
         InstrumentInput &instrInput = m_instrDataVector[idx];
         sendEpoch(instrInput);
         m_lastIdx = idx;

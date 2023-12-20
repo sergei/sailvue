@@ -24,16 +24,19 @@ void TreeItem::appendChild(TreeItem *item)
     m_childItems.append(item);
 }
 
-void TreeItem::insertChapterChild(TreeItem *child) {
+int TreeItem::insertChapterChild(TreeItem *child) {
     // insert chapters in order of startIdx
+    int chapterRow = 0;
     for(auto it = m_childItems.begin(); it != m_childItems.end(); it++){
         if( (*it)->getChapter()->getStartIdx() > child->getChapter()->getStartIdx() ){
             m_childItems.insert(it, child);
-            return;
+            return chapterRow;
         }
+        chapterRow ++;
     }
     // The chapter is the last one
     m_childItems.append(child);
+    return chapterRow;
 }
 
 void TreeItem::removeChild(TreeItem *item)
@@ -68,23 +71,59 @@ int TreeItem::row() const
 
 int TreeItem::columnCount()
 {
-    // Always 1
-    return 1;
+    return 3;
 }
 
 QVariant TreeItem::data(int column) const
 {
-    if (column < 0 || column >= 1)
-        return {};  // Have only one column
-
-    if ( m_pChapter != nullptr )
-        return QString::fromStdString(m_pChapter->getName());
-    else if ( m_pRaceData != nullptr )
-        return QString::fromStdString(m_pRaceData->getName());
+    if ( m_pChapter != nullptr ) {  // Chapter
+        if ( column == 0){
+            return QString::fromStdString(m_pChapter->getName());
+        }else{
+            return m_pChapter->getChapterType();
+        }
+    }
+    else if ( m_pRaceData != nullptr ) { // Race
+        if( column == 0){
+            return QString::fromStdString(m_pRaceData->getName());
+        }else{
+            return -1;
+        }
+    }
     else
         return {}; // Should never happen
 
 }
+
+bool TreeItem::setData(const QVariant &value, int column) {
+    if ( m_pChapter != nullptr ) {  // Chapter
+        if ( column == 0){
+            m_pChapter->SetName(value.toString().toStdString());
+            return true;
+        }else if ( column == 1){
+            m_pChapter->setChapterType(ChapterTypes::ChapterType(value.toInt()));
+            return true;
+        }else if ( column == 2){
+            // Delete chapter
+        }else{
+            return false;
+        }
+    }
+    else if ( m_pRaceData != nullptr ) { // Race
+        if( column == 0){
+            m_pRaceData->SetName(value.toString().toStdString());
+            return true;
+        }else if ( column == 2){
+            // delete race
+        }else{
+            return false;
+        }
+    }else{
+        return false;
+    }
+}
+
+
 
 TreeItem *TreeItem::parentItem()
 {
@@ -98,6 +137,7 @@ RaceData *TreeItem::getRaceData()  {
 Chapter *TreeItem::getChapter()  {
     return m_pChapter;
 }
+
 
 
 RaceTreeModel::RaceTreeModel(QObject *parent)
@@ -232,7 +272,45 @@ Qt::ItemFlags RaceTreeModel::flags(const QModelIndex &index) const
     if (!index.isValid())
         return Qt::NoItemFlags;
 
-    return QAbstractItemModel::flags(index);
+    return QAbstractItemModel::flags(index) | Qt::ItemIsEditable;
+}
+
+bool RaceTreeModel::setData(const QModelIndex &dataIndex, const QVariant &value, int role) {
+    std::cout << "setData: " << value.toString().toStdString() << std::endl;
+
+    if (dataIndex.column() == 2){
+        deleteItem(dataIndex);
+        return true;
+    }
+
+    auto *item = static_cast<TreeItem*>(dataIndex.internalPointer());
+
+    if ( item->setData(value, dataIndex.column()) )
+    {
+        if( item->isRace() ){
+
+        }else{
+            Chapter * chapter = item->getChapter();
+            emit chapterUpdated(chapter->getUuid(), QString::fromStdString(chapter->getName()), chapter->getChapterType(),
+                                chapter->getStartIdx(), chapter->getEndIdx(), chapter->getGunIdx());
+
+            if (dataIndex.column() == 1) {
+                // Select the first column in row
+                QModelIndex newIdx = index(dataIndex.row(), 0, dataIndex.parent());
+                m_selectionModel->setCurrentIndex(newIdx, QItemSelectionModel::SelectCurrent);
+            }
+
+        }
+        emit dataChanged(dataIndex, dataIndex);
+
+        m_project.raceDataChanged();
+        emit isDirtyChanged();
+
+        return true;
+    }else{
+        return false;
+    }
+
 }
 
 QVariant RaceTreeModel::headerData(int section, Qt::Orientation orientation,
@@ -256,9 +334,12 @@ void RaceTreeModel::handleNewInstrDataVector() {
     makeRaceList();
 
     showRaceData();
+
     m_ulCurrentInstrDataIdx = 0;
 
     emit loadFinished();
+
+    selectFirstChapter();
 }
 
 void RaceTreeModel::load(const QString &path) {
@@ -334,14 +415,34 @@ void RaceTreeModel::showRaceData() {
             // Add chapter
             auto *chapterTreeItem = new TreeItem(race, chapter, raceTreeItem);
             raceTreeItem->appendChild(chapterTreeItem);
-
-            emit chapterAdded(chapter->getUuid(),QString::fromStdString(chapter->getName()),
-                              chapter->getChapterType(),chapter->getStartIdx(),chapter->getEndIdx(),
-                              chapter->getGunIdx());
         }
     }
 
     emit layoutChanged();
+}
+
+void RaceTreeModel::selectFirstChapter() {// Select the first chapter in the first race
+    if( m_RaceDataList.empty() )
+        return;
+
+    auto firstRace = m_RaceDataList.front();
+
+    // Show first race chapters on a map
+    for( Chapter *chapter: firstRace->getChapters() ) {
+        emit chapterAdded(chapter->getUuid(),QString::fromStdString(chapter->getName()),
+                          chapter->getChapterType(),chapter->getStartIdx(),chapter->getEndIdx(),
+                          chapter->getGunIdx());
+    }
+
+    QModelIndex top = index(0, 0, QModelIndex());
+    if( firstRace->getChapters().empty() ){
+        // Select first race
+        m_selectionModel->setCurrentIndex(top, QItemSelectionModel::SelectCurrent);
+    }else{
+        // Select first chapter
+        QModelIndex chapter = index(0, 0, top);
+        m_selectionModel->setCurrentIndex(chapter, QItemSelectionModel::SelectCurrent);
+    }
 }
 
 
@@ -361,14 +462,29 @@ void RaceTreeModel::deleteAllRaces() {
 }
 
 
-void RaceTreeModel::deleteSelected() {
-    if (!m_selectedTreeIdx.isValid())
+void RaceTreeModel::deleteItem(QModelIndex itemIndex) {
+
+    if (!itemIndex.isValid())
         return ;
 
-    auto *itemToDelete = static_cast<TreeItem*>(m_selectedTreeIdx.internalPointer());
+    int rowToDelete = itemIndex.row();
+    auto *itemToDelete = static_cast<TreeItem*>(itemIndex.internalPointer());
+    TreeItem *parent = itemToDelete->parentItem();
+
+    // Get new selection (before current item is removed and its index becomes invalid)
+    QModelIndex parentIdx = itemIndex.parent();
+
+    int newRow = rowToDelete;
+    if ( newRow >= parent->childCount() - 1) // Extra 1, since we are going to remove the item
+        newRow = parent->childCount() - 2;
+
+    if ( newRow  <  0 ) {
+        newRow = parentIdx.row();
+        parentIdx = parentIdx.parent();
+    }
 
     // Get ready for removal from the view model
-    emit beginRemoveRows(m_selectedTreeIdx.parent(), m_selectedTreeIdx.row(), m_selectedTreeIdx.row());
+    emit beginRemoveRows(itemIndex.parent(), rowToDelete, rowToDelete);
 
     // Remove from underlying data
     auto *race = const_cast<RaceData*>(itemToDelete->getRaceData());
@@ -388,18 +504,20 @@ void RaceTreeModel::deleteSelected() {
     }
 
     // Remove from the view model
-    TreeItem *parent = itemToDelete->parentItem();
     parent->removeChild(itemToDelete);
 
     // Notify to redraw
     emit endRemoveRows();
+
+    // Select neighboring item
+    m_selectedTreeIdx = index(newRow, 0, parentIdx);
+    m_selectionModel->setCurrentIndex(m_selectedTreeIdx, QItemSelectionModel::SelectCurrent);
 }
 
 void RaceTreeModel::addChapter() {
-
     // Find race to insert chapter into
-    for( int i = 0; i < rootItem->childCount(); i++){
-        TreeItem *raceTreeItem = rootItem->child(i);
+    for(int raceRow = 0; raceRow < rootItem->childCount(); raceRow++){
+        TreeItem *raceTreeItem = rootItem->child(raceRow);
         RaceData *race = raceTreeItem->getRaceData();
         if ( race->getStartIdx() <= m_ulCurrentInstrDataIdx && race->getEndIdx() >= m_ulCurrentInstrDataIdx){
 
@@ -433,13 +551,18 @@ void RaceTreeModel::addChapter() {
 
             // Add data to the view model
             auto *chapterTreeItem = new TreeItem(race, chapter, raceTreeItem);
-            raceTreeItem->insertChapterChild(chapterTreeItem);
+            int chapterRow = raceTreeItem->insertChapterChild(chapterTreeItem);
 
             m_project.raceDataChanged();
             emit isDirtyChanged();
             emit chapterAdded(chapter->getUuid(), QString::fromStdString(chapter->getName()), chapter->getChapterType(),
                                  chapter->getStartIdx(),  chapter->getEndIdx(), chapter->getGunIdx());
             emit layoutChanged();
+
+            // Select newly added chapter
+            QModelIndex raceIndex = index(raceRow, 0 , QModelIndex());
+            m_selectedTreeIdx = index(chapterRow, 0, raceIndex);
+            m_selectionModel->setCurrentIndex(m_selectedTreeIdx, QItemSelectionModel::SelectCurrent);
 
             return;
         }
@@ -487,6 +610,38 @@ void RaceTreeModel::updateChapter(const QString &uuid, const QString &chapterNam
 
 }
 
+void RaceTreeModel::updateChapterStartIdx(uint64_t idx) {
+    Chapter *chapter = getSelectedChapter();
+    if ( chapter == nullptr ){
+        std::cerr << "No chapter selected" << std::endl;
+        return;
+    }
+    chapter->setStartIdx(idx);
+    m_project.raceDataChanged();
+    emit isDirtyChanged();
+}
+
+void RaceTreeModel::updateChapterEndIdx(uint64_t idx) {
+    Chapter *chapter = getSelectedChapter();
+    if ( chapter == nullptr ){
+        std::cerr << "No chapter selected" << std::endl;
+        return;
+    }
+    chapter->setEndIdx(idx);
+    m_project.raceDataChanged();
+    emit isDirtyChanged();
+}
+
+void RaceTreeModel::updateChapterGunIdx(uint64_t idx) {
+    Chapter *chapter = getSelectedChapter();
+    if ( chapter == nullptr ){
+        std::cerr << "No chapter selected" << std::endl;
+        return;
+    }
+    chapter->SetGunIdx(idx);
+    m_project.raceDataChanged();
+    emit isDirtyChanged();
+}
 
 void RaceTreeModel::splitRace() {
     if ( m_ulCurrentInstrDataIdx == 0){
@@ -632,34 +787,43 @@ void RaceTreeModel::currentChanged(QModelIndex current, QModelIndex previous) {
     if (!current.isValid())
         return ;
 
+    auto newRace = static_cast<TreeItem*>(current.internalPointer())->getRaceData();
+    bool chaptersWereDeleted = false;
     if ( previous.isValid()){
-        std::cout << "previous: " << std::endl;
-        std::cout << "row: " << previous.row() << " column: " << previous.column() << std::endl;
+        std::cout << "Previous  row: " << previous.row() << " column: " << previous.column() << std::endl;
         auto *treeItem = static_cast<TreeItem*>(previous.internalPointer());
-        auto race = treeItem->getRaceData();
+        auto prevRace = treeItem->getRaceData();
+
+        if ( newRace != prevRace ){
+            chaptersWereDeleted = true; // onRaceUnSelected signal below clears all chapters from the map
+            emit raceUnSelected();
+        }
+
         if ( treeItem->isRace() ){
-            std::cout << "Race " << race->getName() << std::endl;
+            std::cout << "Previous Race " << prevRace->getName() << " (no chapter were selected)" << std::endl;
         }else{
             auto chapter = treeItem->getChapter();
-            std::cout  << "Race " << race->getName() << "Chapter " << chapter->getName() << std::endl;
+            std::cout << "Previous Race " << prevRace->getName() << ", chapter " << chapter->getName() << std::endl;
             emit chapterUnSelected(chapter->getUuid());
         }
     }
 
-    m_pCurrentRace = static_cast<TreeItem*>(current.internalPointer())->getRaceData();
+    m_pCurrentRace = newRace;
     std::cout << "currentChanged " << getSelectedName().toStdString() << std::endl;
 
-    if ( isChapterSelected() ){
-        // If the race has changed we need to emit raceSelected signal
-        emit raceSelected(QString::fromStdString(m_pCurrentRace->getName()),
-                          m_pCurrentRace->getStartIdx(), m_pCurrentRace->getEndIdx());
-
+    if ( chaptersWereDeleted ){
         // All chapter map elements are removed from the map now, so we need to add them back
         for( Chapter *chapter: m_pCurrentRace->getChapters() ){
             emit chapterAdded(chapter->getUuid(),QString::fromStdString(chapter->getName()),
                               chapter->getChapterType(),chapter->getStartIdx(),chapter->getEndIdx(),
                               chapter->getGunIdx());
         }
+    }
+
+    if ( isChapterSelected() ){
+        // If the race has changed we need to emit raceSelected signal
+        emit raceSelected(QString::fromStdString(m_pCurrentRace->getName()),
+                          m_pCurrentRace->getStartIdx(), m_pCurrentRace->getEndIdx());
 
         Chapter *chapter = getSelectedChapter();
         emit chapterSelected(chapter->getUuid(), QString::fromStdString(chapter->getName()),
@@ -668,12 +832,6 @@ void RaceTreeModel::currentChanged(QModelIndex current, QModelIndex previous) {
     }else{
         emit raceSelected(QString::fromStdString(m_pCurrentRace->getName()),
                           m_pCurrentRace->getStartIdx(), m_pCurrentRace->getEndIdx());
-        // All chapter map elements are removed from the map now, so we need to add them back
-        for( Chapter *chapter: m_pCurrentRace->getChapters() ){
-            emit chapterAdded(chapter->getUuid(),QString::fromStdString(chapter->getName()),
-                              chapter->getChapterType(),chapter->getStartIdx(),chapter->getEndIdx(),
-                              chapter->getGunIdx());
-        }
     }
 
 }
@@ -752,6 +910,18 @@ void RaceTreeModel::detectManeuvers() {
         navStats.update(i, m_InstrDataVector[i]);
     }
 
+    // Redraw the chapters on a map
+    emit raceUnSelected();
+    // All chapter map elements are removed from the map now, so we need to add them back
+    for( Chapter *chapter: m_pCurrentRace->getChapters() ){
+        emit chapterAdded(chapter->getUuid(),QString::fromStdString(chapter->getName()),
+                          chapter->getChapterType(),chapter->getStartIdx(),chapter->getEndIdx(),
+                          chapter->getGunIdx());
+    }
+    emit raceSelected(QString::fromStdString(m_pCurrentRace->getName()),
+                      m_pCurrentRace->getStartIdx(), m_pCurrentRace->getEndIdx());
+
+
     m_project.raceDataChanged();
     emit isDirtyChanged();
     emit layoutChanged();
@@ -797,5 +967,32 @@ void RaceTreeModel::makeAnalytics() {
 
     emit layoutChanged();
 }
+
+qint64 RaceTreeModel::getIdxOffsetByMs(qint64 ms) const {
+    auto idx = qint64(m_ulCurrentInstrDataIdx);
+
+    if ( m_pCurrentRace == nullptr){
+        std::cerr << "No race is set " << std::endl;
+        return idx;
+    }
+
+    auto currentUtc = m_InstrDataVector[m_ulCurrentInstrDataIdx].utc.getUnixTimeMs();
+    uint64_t  targetUtc = currentUtc + ms;
+
+    if ( ms > 0 ){
+        for( ; idx < m_pCurrentRace->getEndIdx(); idx++){
+            if( m_InstrDataVector[idx].utc.getUnixTimeMs() >= targetUtc)
+                return idx;
+        }
+    }else if (ms < 0 ) {
+        for( ; idx >= m_pCurrentRace->getStartIdx(); idx--){
+            if( m_InstrDataVector[idx].utc.getUnixTimeMs() <= targetUtc)
+                return idx;
+        }
+    }
+    
+    return idx;
+}
+
 
 

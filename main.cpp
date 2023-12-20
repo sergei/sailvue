@@ -5,6 +5,7 @@
 
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
+#include <QLoggingCategory>
 
 class EncodingProgressListener : public IProgressListener {
 public:
@@ -53,6 +54,7 @@ int main(int argc, char** argv) {
 
     QGuiApplication app(argc, argv);
     QQmlApplicationEngine engine;
+    QLoggingCategory::setFilterRules(QStringLiteral("qt.qml.binding.removal.info=true"));
     engine.load(QUrl(QStringLiteral("qrc:/gui/main.qml")));
 
     if (engine.rootObjects().isEmpty())

@@ -16,8 +16,6 @@ int PgnTreeItem::row() const
 }
 
 QVariant PgnTreeItem::data(int column) const {
-    if (column < 0 || column >= 1)
-        return {};  // Have only one column
 
     if ( isPgn  ){
         std::string src = "None";
@@ -25,11 +23,26 @@ QVariant PgnTreeItem::data(int column) const {
         if ( selectedSource != nullptr){
             src = selectedSource->desc;
         }
-        std::string txt = desc + " (PGN:" + std::to_string(pgnNum) + ") - " + src;
-        return QString::fromStdString(txt );
+        if ( column == 0) {
+            return QString::fromStdString(desc + " (PGN:" + std::to_string(pgnNum) + ")");
+        }else if ( column == 1) {
+            return QString::fromStdString(src);
+        }else {
+            return {};
+        }
     }else {
-        return QString::fromStdString(desc);
+        if ( column == 0) {
+            return QString::fromStdString(desc);
+        }else if ( column == 1) {
+            return ""; // Nothing here
+        }else {
+            return {};
+        }
     }
+}
+
+int PgnTreeItem::columnCount() {
+    return 2;
 }
 
 PgnSrcTreeModel::PgnSrcTreeModel(QObject *parent)

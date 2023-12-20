@@ -8,6 +8,10 @@ GoProMediaPlayer::GoProMediaPlayer(QObject *parent)
     connect(this, &QMediaPlayer::playbackStateChanged, this, &GoProMediaPlayer::processStateChanged);
     connect(this, &QMediaPlayer::mediaStatusChanged, this, &GoProMediaPlayer::processMediaStatusChanged);
     connect(this, &QMediaPlayer::positionChanged, this, &GoProMediaPlayer::processPositionChanged);
+    connect(this, &QMediaPlayer::sourceChanged, this, &GoProMediaPlayer::processSourceChanged);
+    connect(this, &QMediaPlayer::bufferProgressChanged, this, &GoProMediaPlayer::processBufferProgressChanged);
+    connect(this, &QMediaPlayer::playingChanged, this, &GoProMediaPlayer::processPlayingChanged);
+    connect(this, &QMediaPlayer::errorOccurred, this, &GoProMediaPlayer::processErrorOccurred);
 }
 
 void GoProMediaPlayer::updateRaceIdx(qint64 clipPositionMs) {
@@ -23,11 +27,7 @@ void GoProMediaPlayer::moveByMs(qint64 ms) {
     if(m_pRaceTreeModel == nullptr )
         return;
 
-    if( m_pCurrentClipInfo == nullptr )
-        return;
-
-    uint64_t ulUtcMs = m_pCurrentClipInfo->getClipStartUtcMs() + position() + ms;
-    qint64 idx = m_pRaceTreeModel->getIdxForUtc(ulUtcMs);
+    qint64 idx = m_pRaceTreeModel->getIdxOffsetByMs(ms);
     seekTo(idx);
 }
 
@@ -57,6 +57,8 @@ void GoProMediaPlayer::seekTo(qint64 idx) {
 }
 
 void GoProMediaPlayer::playNextClip() {
+    assert(m_pRaceTreeModel);
+
     std::list<GoProClipInfo> *clips = m_pRaceTreeModel->getClipList();
     // Find clip after the current one and play it
     for( auto it = clips->begin(); it != clips->end(); it++ ){
@@ -68,6 +70,7 @@ void GoProMediaPlayer::playNextClip() {
                 QUrl clipUrl = QUrl::fromLocalFile(mp4.c_str());
                 auto position = 0;
                 setClip(clipUrl, position);
+                play();
                 return;
             }
         }
@@ -76,7 +79,7 @@ void GoProMediaPlayer::playNextClip() {
 
 
 void GoProMediaPlayer::setClip(const QUrl &clip, qint64 position) {
-    qDebug() << position << " " << ToString(m_goProState) << "GoProMediaPlayer::setClip: " << clip.toString().toStdString();
+    qDebug() << "GoProMediaPlayer::setClip" << position << " " << ToString(m_goProState) << "clip" << clip.toString().toStdString();
     bool newClipNeeded = m_newClip != clip;
     m_newClip = clip;
     m_NewPosition = position;
@@ -84,136 +87,66 @@ void GoProMediaPlayer::setClip(const QUrl &clip, qint64 position) {
     if( newClipNeeded ){
         QString clipBaseName = clip.fileName();
         emit clipNameChanged(clipBaseName);
+        qDebug() << "MediaPlayer::setSource()" << m_newClip;
+        setSource(m_newClip);
     }
 
-
-    switch (m_goProState) {
-        case GoProStoppedState:
-            m_goProState = GoProWaitingToLoadState;
-            setSource(clip);
-            break;
-        case GoProWaitingForNewClipState:
-            setSource(m_newClip);
-            setPosition(m_NewPosition);
-            play();
-            m_goProState = GoProPlayingState;
-            break;
-        case GoProPlayingState:
-            if( newClipNeeded ) {
-                m_goProState = GoProWaitingToStopAndLoadState;
-                qDebug() << "MediaPlayer::stop()" ;
-                stop();
-            }else{
-                m_goProState = GoProWaitingToPauseSeekAndPlayState;
-                qDebug() << "MediaPlayer::pause()" ;
-                pause();
-            }
-            break;
-        case GoProPausedState:
-            if( newClipNeeded ) {
-                qDebug() << "MediaPlayer::setSource(" << m_newClip.toString().toStdString() << ")" ;
-                setSource(m_newClip);
-                setPosition(m_NewPosition);
-                play();
-//                QThread::msleep(500);
-                pause();
-            }else{
-                qDebug() << "MediaPlayer::setPosition(" << position << ")" ;
-                setPosition(m_NewPosition);
-            }
-            break;
-        case GoProWaitingToLoadState:
-        case GoProWaitingToStopAndLoadState:
-        case GoProWaitingToPauseSeekAndPlayState:
-            break;
-    }
+    qDebug() << "MediaPlayer::setPosition()" << m_NewPosition;
+    setPosition(m_NewPosition);
 }
 
 void GoProMediaPlayer::processStateChanged(QMediaPlayer::PlaybackState playBackState){
     qDebug() << "GoProMediaPlayer::processStateChanged: " << ToString(playBackState) << " " << ToString(m_goProState) ;
-    switch (m_goProState) {
-        case GoProStoppedState:
-        case GoProPlayingState:
-        case GoProPausedState:
-        case GoProWaitingToLoadState:
-        case GoProWaitingForNewClipState:
-            break;
-        case GoProWaitingToStopAndLoadState:
-            if(playBackState == QMediaPlayer::StoppedState ){
-                m_goProState = GoProWaitingToLoadState;
-                qDebug() << "MediaPlayer::setSource(" << m_newClip.toString().toStdString() << ")" ;
-                setSource(m_newClip);
-            }
-            break;
-        case GoProWaitingToPauseSeekAndPlayState:
-            if(playBackState == QMediaPlayer::PausedState ){
-                setPosition(m_NewPosition);
-                qDebug() << "MediaPlayer::play()" ;
-                play();
-                m_goProState = GoProPlayingState;
-            }
-            break;
-    }
 }
 
 void GoProMediaPlayer::processMediaStatusChanged(QMediaPlayer::MediaStatus status) {
     qDebug() << "GoProMediaPlayer::processMediaStatusChanged: " << ToString(status) << " " << ToString(m_goProState) ;
-    switch (m_goProState) {
-        case GoProStoppedState:
-            break;
-        case GoProPlayingState:
-            if( status == QMediaPlayer::EndOfMedia ){
-                m_goProState = GoProWaitingForNewClipState;
-                playNextClip();
-            }
-            break;
-        case GoProWaitingForNewClipState:
-        case GoProPausedState:
-            break;
-        case GoProWaitingToLoadState:
-            if ( status == QMediaPlayer::LoadedMedia ){
-                qDebug() << "MediaPlayer::play()" ;
+
+    switch (status) {
+        case LoadedMedia:
+            if ( m_goProState == GoProPausedState || m_goProState == GoProStoppedState){
+                // Start playing clip so it will appear on a screen
+                qDebug() << "Play a bit";
                 play();
             }
             break;
-        case GoProWaitingToStopAndLoadState:
-        case GoProWaitingToPauseSeekAndPlayState:
+        case EndOfMedia:
+            if ( m_goProState == GoProPlayingState){
+                // Load the next clip
+                playNextClip();
+            }
+            break;
+        case NoMedia:
+        case LoadingMedia:
+        case StalledMedia:
+        case BufferingMedia:
+        case BufferedMedia:
+        case InvalidMedia:
             break;
     }
+
 }
 
 void GoProMediaPlayer::processPositionChanged(qint64 position) {
 //    qDebug() << "GoProMediaPlayer::ProcessPositionChanged: " << position << " " << ToString(m_goProState) ;
+    if ( m_goProState == GoProPausedState || m_goProState == GoProStoppedState){
+        // Stop playing clip so it will appear on a screen
+        qDebug() << "Stop,  since we are paused";
+        pause();
+    }
     updateRaceIdx(position);
 
-    switch (m_goProState) {
-        case GoProStoppedState:
-        case GoProPlayingState:
-        case GoProPausedState:
-        case GoProWaitingForNewClipState:
-            break;
-        case GoProWaitingToLoadState:
-            qDebug() << "QThread::msleep(500);" ;
-            QThread::msleep(500);
-            qDebug() << "MediaPlayer::pause()" ;
-            pause();
-            m_goProState = GoProPausedState;
-            break;
-        case GoProWaitingToStopAndLoadState:
-        case GoProWaitingToPauseSeekAndPlayState:
-            break;
-    }
 }
 
 void GoProMediaPlayer::playClip() {
     m_goProState = GoProPlayingState;
-    qDebug() << "MediaPlayer::play()" ;
+    qDebug() << "GoProMediaPlayer::play()" ;
     play();
 }
 
 void GoProMediaPlayer::pauseClip() {
     m_goProState = GoProPausedState;
-    qDebug() << "MediaPlayer::pause()" ;
+    qDebug() << "GoProMediaPlayer::pause()" ;
     pause();
 }
 
@@ -221,12 +154,8 @@ void GoProMediaPlayer::pauseClip() {
 std::string GoProMediaPlayer::ToString(GoProMediaPlayer::GoProState state) {
     switch (state) {
         case GoProStoppedState: return "GoProStoppedState";
-        case GoProWaitingToLoadState: return "GoProWaitingToLoadState";
-        case GoProWaitingToStopAndLoadState: return "GoProWaitingToStopAndLoadState";
-        case GoProWaitingToPauseSeekAndPlayState: return "GoProWaitingToPauseAndSeekState";
         case GoProPlayingState: return "GoProPlayingState";
         case GoProPausedState: return "GoProPausedState";
-        case GoProWaitingForNewClipState: return "GoProWaitingForNewClipState";
         default: return "GoProUnknownState";
     }
 }
@@ -254,4 +183,18 @@ std::string GoProMediaPlayer::ToString(QMediaPlayer::PlaybackState state){
     }
 }
 
+void GoProMediaPlayer::processSourceChanged(const QUrl &media) {
+    qDebug() << "GoProMediaPlayer::processSourceChanged()" << media;
+}
+
+void GoProMediaPlayer::processBufferProgressChanged(float progress){
+    qDebug() << "GoProMediaPlayer::processBufferProgressChanged()" << progress;
+}
+void GoProMediaPlayer::processPlayingChanged(bool playing){
+    qDebug() << "GoProMediaPlayer::processPlayingChanged()" << playing;
+
+}
+void GoProMediaPlayer::processErrorOccurred(QMediaPlayer::Error error, const QString &errorString){
+    qDebug() << "GoProMediaPlayer::processErrorOccurred()" << errorString << "(" << error << ")";
+}
 

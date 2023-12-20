@@ -21,19 +21,21 @@ public:
     ~TreeItem();
 
     void appendChild(TreeItem *child);
-    void insertChapterChild(TreeItem *child);
+    int insertChapterChild(TreeItem *child);
     void removeChild(TreeItem *child);
     void removeChildren(int i, int n);
     TreeItem *child(int row);
     [[nodiscard]] int childCount() const;
     static int columnCount() ;
     [[nodiscard]] QVariant data(int column) const;
+    bool setData(const QVariant &value, int column);
     [[nodiscard]] int row() const;
     TreeItem *parentItem();
 
     [[nodiscard]] bool isRace() const { return m_pChapter == nullptr; }
     [[nodiscard]] RaceData *getRaceData() ;
     [[nodiscard]] Chapter *getChapter() ;
+
 
 
 private:
@@ -73,6 +75,7 @@ public:
     [[nodiscard]] int columnCount(const QModelIndex &) const override;
 
     [[nodiscard]] QVariant data(const QModelIndex &index, int role) const override;
+    [[nodiscard]]  bool setData(const QModelIndex &dataIndex, const QVariant &value, int role) override;
 
     [[nodiscard]] QHash<int, QByteArray> roleNames() const override
     {
@@ -120,9 +123,7 @@ public:
     [[nodiscard]] QString polarPath() const{ return m_project.polarPath(); }
     [[nodiscard]] double twaOffset() const{ return m_project.twaOffset(); }
 
-
-
-
+    Q_INVOKABLE void setSelectionModel(QItemSelectionModel *selectionModel) { m_selectionModel = selectionModel;}
     Q_INVOKABLE void load(const QString &path);
     Q_INVOKABLE void read(bool ignoreCache);
     Q_INVOKABLE void save();
@@ -140,13 +141,16 @@ public:
     Q_INVOKABLE void makeAnalytics();
     Q_INVOKABLE void updateChapter(const QString &uuid, const QString &chapterName, ChapterTypes::ChapterType chapterType,
                                    uint64_t startIdx, uint64_t endIdx, uint64_t gunIdx);
+    Q_INVOKABLE void updateChapterStartIdx(uint64_t idx);
+    Q_INVOKABLE void updateChapterEndIdx(uint64_t idx);
+    Q_INVOKABLE void updateChapterGunIdx(uint64_t idx);
     Q_INVOKABLE void updateRace(const QString &raceName);
-    Q_INVOKABLE void deleteSelected();
 
     Q_INVOKABLE [[nodiscard]] bool isRaceSelected() const ;
     Q_INVOKABLE [[nodiscard]] bool isChapterSelected() const;
     Q_INVOKABLE [[nodiscard]] QString getSelectedName() const;
     Q_INVOKABLE [[nodiscard]] QString getTimeString(uint64_t idx) const;
+    Q_INVOKABLE [[nodiscard]] qint64 getIdxOffsetByMs(qint64 ms) const;
 
     std::list<GoProClipInfo> *getClipList()  {return &m_GoProClipInfoList;};
 
@@ -184,6 +188,7 @@ signals:
     void chapterSelected(QString uuid, QString chapterName, ChapterTypes::ChapterType chapterType, uint64_t startIdx, uint64_t endIdx, uint64_t gunIdx);
     void chapterUnSelected(QString uuid);
     void chapterAdded(QString uuid, QString chapterName, ChapterTypes::ChapterType chapterType, uint64_t startIdx, uint64_t endIdx, uint64_t gunIdx);
+    void chapterUpdated(QString uuid, QString chapterName, ChapterTypes::ChapterType chapterType, uint64_t startIdx, uint64_t endIdx, uint64_t gunIdx);
     void chapterDeleted(QString uuid);
 
     void raceSelected(QString raceName, uint64_t startIdx, uint64_t endIdx);
@@ -220,11 +225,13 @@ private:
 
     RaceData *m_pCurrentRace = nullptr;
     uint64_t m_ulCurrentInstrDataIdx = 0;
+    QItemSelectionModel *m_selectionModel = nullptr;
 
+    void deleteItem(QModelIndex itemIndex);
     void deleteAllRaces();
     void computeStats();
-
     void startNetworkSimulator();
+    void selectFirstChapter();
 };
 
 
