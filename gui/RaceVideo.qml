@@ -56,6 +56,21 @@ Rectangle {
         anchors.margins: 20
 
         Button {
+            id: backOneMin
+            anchors.top: backOneSec.top
+            anchors.right: backOneSec.left
+            text: "<<"
+            onClicked: mediaplayer.moveByMs(-60 * 1000)
+        }
+        Button {
+            id: backOneSec
+            anchors.top: playButton.top
+            anchors.right: playButton.left
+            text: "<"
+            onClicked: mediaplayer.moveByMs(-1000)
+        }
+        Button {
+            id:playButton
             anchors.horizontalCenter: parent.horizontalCenter
             text: mediaplayer.playbackState ===  MediaPlayer.PlayingState ? qsTr("Pause") : qsTr("Play")
             onClicked: {
@@ -66,6 +81,21 @@ Rectangle {
                 }
             }
         }
+        Button {
+            id: forwardOneSec
+            anchors.top: playButton.top
+            anchors.left: playButton.right
+            text: ">"
+            onClicked: mediaplayer.moveByMs(1000)
+        }
+        Button {
+            id: forwardOneMin
+            anchors.top: forwardOneSec.top
+            anchors.left: forwardOneSec.right
+            text: ">>"
+            onClicked: mediaplayer.moveByMs(60 * 1000)
+        }
+
         Label {
             anchors.left: parent.left
             id: clipNameLabel
