@@ -30,10 +30,6 @@ private:
     enum GoProState
     {
         GoProStoppedState,
-        GoProWaitingForNewClipState,
-        GoProWaitingToLoadState,
-        GoProWaitingToStopAndLoadState,
-        GoProWaitingToPauseSeekAndPlayState,
         GoProPlayingState,
         GoProPausedState
     };
@@ -62,6 +58,11 @@ private slots:
     void processStateChanged(QMediaPlayer::PlaybackState playBackState);
     void processMediaStatusChanged(QMediaPlayer::MediaStatus status);
     void processPositionChanged(qint64 position);
+
+    static void processSourceChanged(const QUrl &media);
+    static void processBufferProgressChanged(float progress);
+    static void processPlayingChanged(bool playing);
+    static void processErrorOccurred(QMediaPlayer::Error error, const QString &errorString);
 };
 
 

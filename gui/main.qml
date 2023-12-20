@@ -325,7 +325,6 @@ ApplicationWindow {
                         id: raceVideo
                         raceModel: raceTreeModel
                     }
-
                 }
             }
         }

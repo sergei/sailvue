@@ -79,9 +79,9 @@ void NetworkSimulator::stopSimulator() {
 
 
 void NetworkSimulator::initN2k(tNMEA2000 &n2k) {
-    n2k.SetForwardStream(&m_n2kDebugStream);  // Debug output on idf monitor
-    n2k.SetForwardType(tNMEA2000::fwdt_Text); // Show in clear text
-    n2k.EnableForward(true);
+//    n2k.SetForwardStream(&m_n2kDebugStream);  // Debug output on idf monitor
+//    n2k.SetForwardType(tNMEA2000::fwdt_Text); // Show in clear text
+//    n2k.EnableForward(true);
 
     n2k.SetN2kCANMsgBufSize(8);
     n2k.SetN2kCANReceiveFrameBufSize(100);

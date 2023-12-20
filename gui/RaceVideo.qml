@@ -43,10 +43,10 @@ Rectangle {
 
     }
 
-    // VideoOutput {
-    //     id: videoOutput
-    //     anchors.fill: parent
-    // }
+    VideoOutput {
+        id: videoOutput
+        anchors.fill: parent
+    }
 
     Item {
         height: 50
