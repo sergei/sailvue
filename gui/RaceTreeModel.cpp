@@ -968,5 +968,31 @@ void RaceTreeModel::makeAnalytics() {
     emit layoutChanged();
 }
 
+qint64 RaceTreeModel::getIdxOffsetByMs(qint64 ms) const {
+    auto idx = qint64(m_ulCurrentInstrDataIdx);
+
+    if ( m_pCurrentRace == nullptr){
+        std::cerr << "No race is set " << std::endl;
+        return idx;
+    }
+
+    auto currentUtc = m_InstrDataVector[m_ulCurrentInstrDataIdx].utc.getUnixTimeMs();
+    uint64_t  targetUtc = currentUtc + ms;
+
+    if ( ms > 0 ){
+        for( ; idx < m_pCurrentRace->getEndIdx(); idx++){
+            if( m_InstrDataVector[idx].utc.getUnixTimeMs() >= targetUtc)
+                return idx;
+        }
+    }else if (ms < 0 ) {
+        for( ; idx >= m_pCurrentRace->getStartIdx(); idx--){
+            if( m_InstrDataVector[idx].utc.getUnixTimeMs() <= targetUtc)
+                return idx;
+        }
+    }
+    
+    return idx;
+}
+
 
 

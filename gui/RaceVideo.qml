@@ -110,8 +110,6 @@ Rectangle {
 
     }
 
-
-
     function seekTo(idx) {
         mediaplayer.seekTo(idx)
     }

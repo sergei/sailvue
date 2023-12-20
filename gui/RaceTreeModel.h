@@ -150,6 +150,7 @@ public:
     Q_INVOKABLE [[nodiscard]] bool isChapterSelected() const;
     Q_INVOKABLE [[nodiscard]] QString getSelectedName() const;
     Q_INVOKABLE [[nodiscard]] QString getTimeString(uint64_t idx) const;
+    Q_INVOKABLE [[nodiscard]] qint64 getIdxOffsetByMs(qint64 ms) const;
 
     std::list<GoProClipInfo> *getClipList()  {return &m_GoProClipInfoList;};
 

@@ -27,11 +27,7 @@ void GoProMediaPlayer::moveByMs(qint64 ms) {
     if(m_pRaceTreeModel == nullptr )
         return;
 
-    if( m_pCurrentClipInfo == nullptr )
-        return;
-
-    uint64_t ulUtcMs = m_pCurrentClipInfo->getClipStartUtcMs() + position() + ms;
-    qint64 idx = m_pRaceTreeModel->getIdxForUtc(ulUtcMs);
+    qint64 idx = m_pRaceTreeModel->getIdxOffsetByMs(ms);
     seekTo(idx);
 }
 
