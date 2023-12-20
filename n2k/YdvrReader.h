@@ -86,14 +86,8 @@ private:
         void processRudder(const Pgn *pPgn, const uint8_t *data, uint8_t len);
         void processAttitude(const Pgn *pPgn, const uint8_t *data, uint8_t len);
 
-    void ResetTime();
-
     void processProductInformationPgn(uint8_t  src, const Pgn *pPgn, const uint8_t *data, uint8_t len);
-
-    void UnrollTimeStamp(uint16_t ts);
-
-    void ResetEpoch();
-    void ProcessEpoch(std::ofstream &cache);
+    void ProcessEpoch();
 
 private:
     static bool m_sCanBoatInitialized;
@@ -111,12 +105,6 @@ private:
     // Use this map to accept PGNs coming from this source only
     std::map<uint32_t, uint8_t> m_mapSrcForPgn;
 
-    // Time maintenance for given file
-    uint64_t m_ulGpsFixUnixTimeMs = 0;  // Time of last GPS fix in Unix time (ms)
-    uint64_t m_ulGpsFixLocalTimeMs = 0; // Time of last GPS fix in local time (ms)
-    uint16_t m_usLastTsMs = 0;          // Last time stamp in ms
-    uint64_t m_ulUnrolledTsMs = 0;      // Unrolled local time (ms)
-
 
     uint64_t m_ulLatestGpsTimeMs = 0;  // Time of last GPS fix in Unix time (ms) unlike m_ulGpsFixUnixTimeMs it is carried from file to file
 
@@ -125,13 +113,17 @@ private:
     uint32_t m_ulEpochCount = 0;
 
     InstrumentInput m_epoch;
-    UtcTime m_prevEpochUtc = UtcTime::INVALID;
+    uint64_t m_ulPrevEpochUtcMs = 0;
+
+    std::list<InstrumentInput> m_epochBatch;
 
     std::list<DatFileInfo> m_listDatFiles;
     double m_dMagVarRad = 0;
     bool b_MagVarValid = false;
 
     void processMagneticVariation(const Pgn *pPgn, uint8_t *data, uint8_t len);
+
+    void ProcessEpochBatch(std::ofstream &cache);
 };
 
 

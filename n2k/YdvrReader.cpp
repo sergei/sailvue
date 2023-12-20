@@ -197,16 +197,12 @@ void YdvrReader::readDatFile(const std::string &ydvrFile, const std::filesystem:
 
             if( !memcmp(data, "YDVR", 4) ) {
                 std::cout << "Start of file service record" << std::endl;
-                ResetTime();
             } else if( data[0] == 'E') {
                 std::cout << "End of file  service record: " << data[0] << std::endl;
-                ResetTime();
             } else if ( data[0] == 'T'){
                 std::cout << "Time gap service record: " << data[0] << std::endl;
-                ResetTime();
             } else {
                 std::cout << "Unknown service record: " << std::endl;
-                ResetTime();
             }
         }else {
             YdvrMessage m;
@@ -214,7 +210,6 @@ void YdvrReader::readDatFile(const std::string &ydvrFile, const std::filesystem:
 
             if ( m.pgn < 59392 ){
                 std::cerr << "Invalid PGN: " << m.pgn << " file " << ydvrFile << " offset " << offset << std::endl;
-                ResetTime();
             }
             const Pgn * pgn = searchForPgn(int(m.pgn));
 
@@ -239,7 +234,6 @@ void YdvrReader::readDatFile(const std::string &ydvrFile, const std::filesystem:
 
                 if( m.len > FASTPACKET_MAX_SIZE ) {
                     std::cerr << "Invalid length: " << m.len <<  " offset " << offset << std::endl;
-                    ResetTime();
                     continue;
                 }
 
@@ -256,7 +250,6 @@ void YdvrReader::readDatFile(const std::string &ydvrFile, const std::filesystem:
                 offset += m.len;
             }
 //            std::cout << "PGN: " << m.pgn << " len: " << int(m.len) <<  " offset " << offset << std::endl;
-            UnrollTimeStamp(ts);
             ProcessPgn(m, cache);
         }
 
@@ -317,10 +310,11 @@ void YdvrReader::ProcessPgn(const YdvrMessage &msg, std::ofstream& cache)  {
             switch(pgn->pgn){
                 case 129029:
                     processGpsFixPgn(pgn, data, len);
+                    ProcessEpochBatch(cache);
                     break;
                 case 129025:
                     processPosRapidUpdate(pgn, data, len);
-                    ProcessEpoch(cache);
+                    ProcessEpoch();
                     break;
                 case 129026:
                     processCogSogPgn(pgn, data, len);
@@ -399,12 +393,7 @@ void YdvrReader::processGpsFixPgn(const Pgn *pgn, const uint8_t *data, size_t le
         int64_t time;
         extractNumberByOrder(pgn, 3, data, len, &time);
 
-        m_ulGpsFixUnixTimeMs = date * 86400 * 1000 + time / 10;
-        m_ulLatestGpsTimeMs = m_ulGpsFixUnixTimeMs;
-        // Make it integer number of 200ms intervals
-
-        m_ulGpsFixLocalTimeMs = m_ulUnrolledTsMs;
-
+        m_ulLatestGpsTimeMs = date * 86400 * 1000 + time / 10;;
         m_epoch.utc = UtcTime::fromUnixTimeMs(m_ulLatestGpsTimeMs);
 
         int64_t val;
@@ -424,14 +413,7 @@ void YdvrReader::processPosRapidUpdate(const Pgn *pgn, const uint8_t *data, uint
     extractNumberByOrder(pgn, 2, data, len, &val);
     double lon = double(val) *  RES_LL_32;
     m_epoch.loc = GeoLoc::fromDegrees(lat, lon, m_ulLatestGpsTimeMs);
-
-    // Infer epoch time using the last GPS fix time and the local time
-    // of the last received message
-    if( m_ulGpsFixUnixTimeMs > 0 && m_ulGpsFixLocalTimeMs > 0 ) {
-        uint64_t ulGpsFixTimeMs = m_ulGpsFixUnixTimeMs + (m_ulUnrolledTsMs - m_ulGpsFixLocalTimeMs);
-//        ulGpsFixTimeMs = uint64_t (ulGpsFixTimeMs / 100. + 0.5) * 100;
-        m_epoch.utc = UtcTime::fromUnixTimeMs(ulGpsFixTimeMs);
-    }
+    m_epoch.utc = UtcTime::INVALID;
 }
 
 
@@ -490,21 +472,6 @@ void YdvrReader::processMagneticVariation(const Pgn *pgn, uint8_t *data, uint8_t
     }
 }
 
-void YdvrReader::ResetTime() {
-    m_ulGpsFixUnixTimeMs = 0;  // Time of last GPS fix in Unix time (ms)
-    m_ulGpsFixLocalTimeMs = 0; // Time of last GPS fix in local time (ms)
-    m_usLastTsMs = 0;          // Last time stamp in ms
-
-}
-
-void YdvrReader::UnrollTimeStamp(uint16_t ts) {
-    int32_t tsDiff = int32_t(ts) - m_usLastTsMs;
-    m_usLastTsMs = ts;
-    if (tsDiff < 0) {
-        tsDiff += TS_WRAP;
-    }
-    m_ulUnrolledTsMs += tsDiff;
-}
 
 void YdvrReader::processProductInformationPgn(uint8_t  src, const Pgn *pgn, const uint8_t *data, uint8_t len)  {
 
@@ -536,30 +503,48 @@ void YdvrReader::processProductInformationPgn(uint8_t  src, const Pgn *pgn, cons
 
 }
 
-void YdvrReader::ResetEpoch() {
-    m_epoch = InstrumentInput(); // Reset
+void YdvrReader::ProcessEpoch() {
+    m_epochBatch.push_back(m_epoch);
 }
 
-void YdvrReader::ProcessEpoch(std::ofstream &cache) {
-    if( m_epoch.utc.isValid(m_ulGpsFixUnixTimeMs) ){
-        if ( m_ulStartGpsTimeMs == 0 )
-            m_ulStartGpsTimeMs = m_ulGpsFixUnixTimeMs;
-        m_ulEndGpsTimeMs = m_ulGpsFixUnixTimeMs;
-        m_ulEpochCount++;
+void YdvrReader::ProcessEpochBatch(std::ofstream &cache) {
+    auto thisEpochUtcMs = m_epoch.utc.getUnixTimeMs();
 
+    if( m_ulStartGpsTimeMs == 0 ){
+        m_ulStartGpsTimeMs = thisEpochUtcMs;
+    }
+    m_ulEndGpsTimeMs = thisEpochUtcMs;
 
-        // Now check if time didn't go backwards
-        if ( m_prevEpochUtc.isValid(m_ulGpsFixUnixTimeMs)) {
-            if ( m_prevEpochUtc.getUnixTimeMs() >= m_epoch.utc.getUnixTimeMs() ) {
-                std::cerr << "Time went backwards: " << m_prevEpochUtc.getUnixTimeMs() << " " << m_epoch.utc.getUnixTimeMs() << std::endl;
-                ResetEpoch();
-                return;
-            }
+    if( thisEpochUtcMs < m_ulPrevEpochUtcMs) {
+        std::cerr << "Out of order epoch " << std::endl;
+        m_ulPrevEpochUtcMs = 0;
+    }
+    if( (thisEpochUtcMs - m_ulPrevEpochUtcMs) > 10000 ){
+        std::cerr << "Too rage gaps between epochs" << std::endl;
+        m_ulPrevEpochUtcMs = 0;
+    }
+
+    if( m_ulPrevEpochUtcMs != 0) {
+        if( m_epochBatch.size() == 10 ){
+            m_epochBatch.pop_back();  // Let's assume last rapid position report is the same as first one on 10 Hz B&G system
         }
 
-        m_prevEpochUtc = m_epoch.utc;
-        cache << static_cast<std::string>(m_epoch) << std::endl;
+        // Go through all epochs obtained from rapid GPS  update and update their timestamps by spreading them uniformly
+        uint64_t updateRate = (thisEpochUtcMs - m_ulPrevEpochUtcMs) / (m_epochBatch.size() + 1);
+        uint64_t epochUtcMs = m_ulPrevEpochUtcMs + updateRate;
+        for( auto epoch: m_epochBatch ){
+            epoch.utc = UtcTime::fromUnixTimeMs(epochUtcMs);
+            m_ulEpochCount++;
+            cache << static_cast<std::string>(epoch) << std::endl;
+            epochUtcMs += updateRate;
+        }
     }
+
+    // Now write the epoch from full GPS update (one with valid utc time)
+    m_ulEpochCount++;
+    cache << static_cast<std::string>(m_epoch) << std::endl;
+    m_ulPrevEpochUtcMs = thisEpochUtcMs;
+    m_epochBatch.clear();
 }
 
 void YdvrReader::ReadPgnSrcTable(const std::string &csvFileName) {
@@ -641,4 +626,5 @@ void YdvrReader::getPgnData(std::map<uint32_t, std::vector<std::string>> &mapPgn
     std::cout << "---------------------------------------" << std::endl;
 
 }
+
 

@@ -17,7 +17,7 @@ public:
     [[nodiscard]] std::string toString(uint64_t utcMs) const {
         std::stringstream ss;
         if( isValid(utcMs))
-            ss << std::setprecision(7) << m_dLat << ";" << std::setprecision(7) << m_dLon << "";
+            ss << std::setprecision(7) << m_dLat << ";" << std::setprecision(8) << m_dLon << "";
         else
             ss << "";
         return ss.str();
