@@ -126,6 +126,8 @@ Rectangle {
         selectedChapterGunIdx = gunIdx
 
         chapterMapElements[selectedChapterUuid].selected = true
+        chapterMapElements[selectedChapterUuid].chapterType = chapterType
+
     }
 
     function onRacePathIdxChanged(idx) {
@@ -134,6 +136,7 @@ Rectangle {
 
     function updateChapter(chapterUuid, chapterName, chapterType, startIdx, endIdx, gunIdx) {
         chapterMapElements[chapterUuid].path = fullMapPath.slice(startIdx, endIdx)
+        chapterMapElements[chapterUuid].chapterType = chapterType
     }
 
     function onSelectedChapterStartIdxChanged(idx) {

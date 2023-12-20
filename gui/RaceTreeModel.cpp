@@ -275,17 +275,17 @@ Qt::ItemFlags RaceTreeModel::flags(const QModelIndex &index) const
     return QAbstractItemModel::flags(index) | Qt::ItemIsEditable;
 }
 
-bool RaceTreeModel::setData(const QModelIndex &index, const QVariant &value, int role) {
+bool RaceTreeModel::setData(const QModelIndex &dataIndex, const QVariant &value, int role) {
     std::cout << "setData: " << value.toString().toStdString() << std::endl;
 
-    if ( index.column() == 2){
-        deleteItem(index);
+    if (dataIndex.column() == 2){
+        deleteItem(dataIndex);
         return true;
     }
 
-    auto *item = static_cast<TreeItem*>(index.internalPointer());
+    auto *item = static_cast<TreeItem*>(dataIndex.internalPointer());
 
-    if ( item->setData(value, index.column()) )
+    if ( item->setData(value, dataIndex.column()) )
     {
         if( item->isRace() ){
 
@@ -293,8 +293,15 @@ bool RaceTreeModel::setData(const QModelIndex &index, const QVariant &value, int
             Chapter * chapter = item->getChapter();
             emit chapterUpdated(chapter->getUuid(), QString::fromStdString(chapter->getName()), chapter->getChapterType(),
                                 chapter->getStartIdx(), chapter->getEndIdx(), chapter->getGunIdx());
+
+            if (dataIndex.column() == 1) {
+                // Select the first column in row
+                QModelIndex newIdx = index(dataIndex.row(), 0, dataIndex.parent());
+                m_selectionModel->setCurrentIndex(newIdx, QItemSelectionModel::SelectCurrent);
+            }
+
         }
-        emit dataChanged(index, index);
+        emit dataChanged(dataIndex, dataIndex);
 
         m_project.raceDataChanged();
         emit isDirtyChanged();
@@ -902,6 +909,18 @@ void RaceTreeModel::detectManeuvers() {
     for( uint64_t i = m_pCurrentRace->getStartIdx(); i < m_pCurrentRace->getEndIdx(); i++){
         navStats.update(i, m_InstrDataVector[i]);
     }
+
+    // Redraw the chapters on a map
+    emit raceUnSelected();
+    // All chapter map elements are removed from the map now, so we need to add them back
+    for( Chapter *chapter: m_pCurrentRace->getChapters() ){
+        emit chapterAdded(chapter->getUuid(),QString::fromStdString(chapter->getName()),
+                          chapter->getChapterType(),chapter->getStartIdx(),chapter->getEndIdx(),
+                          chapter->getGunIdx());
+    }
+    emit raceSelected(QString::fromStdString(m_pCurrentRace->getName()),
+                      m_pCurrentRace->getStartIdx(), m_pCurrentRace->getEndIdx());
+
 
     m_project.raceDataChanged();
     emit isDirtyChanged();

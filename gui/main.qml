@@ -99,7 +99,7 @@ ApplicationWindow {
         }
 
         onChapterUpdated: function (uuid, chapterName, chapterType, startIdx, endIdx, gunIdx) {
-            console.log("Chapter changed: " + chapterName + " " + chapterType + " " + startIdx + " " + endIdx + " " + gunIdx)
+            console.log("onChapterUpdated: " + chapterName + " " + chapterType + " " + startIdx + " " + endIdx + " " + gunIdx)
             raceTimeLine.onChapterSelected(uuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
             raceMap.updateChapter(uuid, chapterName, chapterType, startIdx, endIdx, gunIdx)
         }
