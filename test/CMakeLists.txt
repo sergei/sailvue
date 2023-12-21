@@ -12,7 +12,9 @@ target_link_libraries(GTest::GTest INTERFACE gtest_main)
 add_executable (TestPolars
         ../navcomputer/polars.h
         ../navcomputer/polars.cpp
+        ../n2k//geo/Quantity.cpp
         test_polars.cpp
+        test_median.cpp
         )
 
 target_include_directories(TestPolars PUBLIC

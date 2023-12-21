@@ -1,7 +1,8 @@
 #ifndef SAILVUE_INSTRUMENTINPUT_H
 #define SAILVUE_INSTRUMENTINPUT_H
 
-
+#include <vector>
+#include <list>
 #include "n2k/geo/Angle.h"
 #include "n2k/geo/Direction.h"
 #include "n2k/geo/Speed.h"
@@ -97,6 +98,60 @@ public:
         }
 
         return ii;
+    }
+
+    static InstrumentInput median(const std::vector<InstrumentInput>::iterator &from, const std::vector<InstrumentInput>::iterator &to){
+        std::list<GeoLoc> locs;
+        std::list<Direction> cogs;
+        std::list<Speed> sogs;
+        std::list<Speed> awss;
+        std::list<Angle> awas;
+        std::list<Speed> twss;
+        std::list<Angle> twas;
+        std::list<Direction> mags;
+        std::list<Speed> sows;
+        std::list<Angle> rdrs;
+        std::list<Angle> cmdRdrs;
+        std::list<Angle> yaws;
+        std::list<Angle> pitches;
+        std::list<Angle> rolls;
+
+        for( auto it = from; it != to; it++){
+            InstrumentInput ii = *it;
+            locs.push_back(ii.loc);
+            cogs.push_back(ii.cog);
+            sogs.push_back(ii.sog);
+            awss.push_back(ii.aws);
+            awas.push_back(ii.awa);
+            twss.push_back(ii.tws);
+            twas.push_back(ii.twa);
+            mags.push_back(ii.mag);
+            sows.push_back(ii.sow);
+            rdrs.push_back(ii.rdr);
+            cmdRdrs.push_back(ii.cmdRdr);
+            yaws.push_back(ii.yaw);
+            pitches.push_back(ii.pitch);
+            rolls.push_back(ii.roll);
+        }
+
+        InstrumentInput median;
+        median.utc = from->utc;
+        median.loc = GeoLoc::median(locs, from->utc.getUnixTimeMs());
+        median.cog = Direction::median(cogs, from->utc.getUnixTimeMs());
+        median.sog = Speed::median(sogs, from->utc.getUnixTimeMs());
+        median.aws = Speed::median(awss, from->utc.getUnixTimeMs());
+        median.tws = Speed::median(twss, from->utc.getUnixTimeMs());
+        median.awa = Angle::median(awas, from->utc.getUnixTimeMs());
+        median.twa = Angle::median(twas, from->utc.getUnixTimeMs());
+        median.mag = Direction::median(mags, from->utc.getUnixTimeMs());
+        median.sow = Speed::median(sows, from->utc.getUnixTimeMs());
+        median.rdr = Angle::median(rdrs, from->utc.getUnixTimeMs());
+        median.cmdRdr = Angle::median(cmdRdrs, from->utc.getUnixTimeMs());
+        median.yaw = Angle::median(yaws, from->utc.getUnixTimeMs());
+        median.pitch = Angle::median(pitches, from->utc.getUnixTimeMs());
+        median.roll = Angle::median(rolls, from->utc.getUnixTimeMs());
+
+        return median;
     }
 
 };

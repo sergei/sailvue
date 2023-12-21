@@ -12,6 +12,8 @@ public:
     static GeoLoc fromDegrees(double lat, double lon, uint64_t utcMs) {
         return GeoLoc(lat, lon, utcMs);
     }
+    static GeoLoc median(const std::list<GeoLoc> &values, uint64_t utcMs);
+
     [[nodiscard]] double getLat() const { return m_dLat; }
     [[nodiscard]] double getLon() const { return m_dLon; }
     [[nodiscard]] std::string toString(uint64_t utcMs) const {

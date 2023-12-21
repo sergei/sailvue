@@ -15,6 +15,8 @@ public:
     static Speed fromKnots(double knots, uint64_t utcMs) {
         return Speed(knots, utcMs);
     }
+    static Speed median(const std::list<Speed> &values, uint64_t utcMs);
+
     [[nodiscard]] double getKnots() const { return m_dKnots; }
     [[nodiscard]] std::string toString(uint64_t utcMs) const {
         std::stringstream ss;

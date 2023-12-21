@@ -3,6 +3,7 @@
 
 
 #include <cmath>
+#include <list>
 #include "Quantity.h"
 
 class Angle : public Quantity {
@@ -16,10 +17,10 @@ public:
     static Angle fromDegrees(double degrees, uint64_t utcMs) {
         return Angle(degrees, utcMs);
     }
+    static Angle median(const std::list<Angle> &values, uint64_t utcMs);
+
     [[nodiscard]] double getDegrees() const { return m_dDegrees; }
     [[nodiscard]] double getRadians() const { return m_dDegrees * M_PI / 180.0; }
-
-
     [[nodiscard]] std::string toString(uint64_t utcMs) const {
         std::stringstream ss;
         if( isValid(utcMs) )
@@ -38,6 +39,7 @@ private:
         }
     };
     double m_dDegrees=0;
+
 };
 
 

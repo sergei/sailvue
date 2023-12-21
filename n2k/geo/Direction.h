@@ -16,7 +16,10 @@ public:
     static Direction fromDegrees(double degrees, uint64_t utcMs) {
         return Direction(degrees, utcMs);
     }
+    static Direction median(const std::list<Direction> &values, uint64_t utcMs);
+
     [[nodiscard]] double getDegrees() const { return m_dDegrees; }
+    [[nodiscard]] double getRadians() const { return m_dDegrees * M_PI / 180.0; }
     [[nodiscard]] std::string toString( uint64_t utcMs) const {
         std::stringstream ss;
         if( isValid(utcMs))
