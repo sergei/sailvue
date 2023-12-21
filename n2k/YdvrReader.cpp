@@ -337,6 +337,9 @@ void YdvrReader::ProcessPgn(const YdvrMessage &msg, std::ofstream& cache)  {
                 case 127258:
                     processMagneticVariation(pgn, data, len);
                     break;
+                case 127237:
+                    processHeadingControl(pgn, data, len);
+                    break;
             }
         }
     }
@@ -448,7 +451,21 @@ void YdvrReader::processWindData(const Pgn *pgn, const uint8_t *data, uint8_t le
 void YdvrReader::processRudder(const Pgn *pgn, const uint8_t *data, uint8_t len) {
     int64_t val;
     extractNumberByOrder(pgn, 5, data, len, &val);
-    m_epoch.rdr = val < 65532 ? Angle::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs) : Angle::INVALID;
+    m_epoch.rdr = val != 32767 ? Angle::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs) : Angle::INVALID;
+}
+
+void YdvrReader::processHeadingControl(const Pgn *pgn, uint8_t *data, uint8_t len) {
+    int64_t val;
+    extractNumberByOrder(pgn, 9, data, len, &val);  // "Commanded Rudder Direction"
+    int sign = 0;
+    if ( val < 7 ){
+        sign = (val == 1) ? 1: -1;
+        extractNumberByOrder(pgn, 10, data, len, &val);  // "Commanded Rudder Angle"
+        double rudderAngle = sign * double(val) * RES_RADIANS;
+        m_epoch.cmdRdr = val < 32767 ? Angle::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs) : Angle::INVALID;
+    }else{
+        m_epoch.cmdRdr = Angle::INVALID;
+    }
 }
 
 void YdvrReader::processAttitude(const Pgn *pgn, const uint8_t *data, uint8_t len) {
@@ -459,7 +476,6 @@ void YdvrReader::processAttitude(const Pgn *pgn, const uint8_t *data, uint8_t le
     m_epoch.pitch = val < 65532 ? Angle::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs) : Angle::INVALID;
     extractNumberByOrder(pgn, 4, data, len, &val);
     m_epoch.roll = val < 65532 ? Angle::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs) : Angle::INVALID;
-
 }
 
 void YdvrReader::processMagneticVariation(const Pgn *pgn, uint8_t *data, uint8_t len) {
@@ -626,5 +642,6 @@ void YdvrReader::getPgnData(std::map<uint32_t, std::vector<std::string>> &mapPgn
     std::cout << "---------------------------------------" << std::endl;
 
 }
+
 
 

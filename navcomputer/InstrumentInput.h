@@ -21,6 +21,7 @@ public:
     Direction mag = Direction::INVALID;
     Speed sow = Speed::INVALID;
     Angle rdr = Angle::INVALID;
+    Angle cmdRdr = Angle::INVALID;
     Angle yaw = Angle::INVALID;
     Angle pitch = Angle::INVALID;
     Angle roll = Angle::INVALID;
@@ -38,6 +39,7 @@ public:
               << ",mag," << mag.toString(utc.getUnixTimeMs())
               << ",sow," << sow.toString(utc.getUnixTimeMs())
               << ",rdr," << rdr.toString(utc.getUnixTimeMs())
+              << ",cmdRdr," << cmdRdr.toString(utc.getUnixTimeMs())
               << ",yaw," << yaw.toString(utc.getUnixTimeMs())
               << ",pitch," << pitch.toString(utc.getUnixTimeMs())
               << ",roll," << roll.toString(utc.getUnixTimeMs())
@@ -84,6 +86,8 @@ public:
                 ii.sow = Speed::fromKnots(std::stod(value), ulGpsTimeMs);
             else if( item == "rdr")
                 ii.rdr = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
+            else if( item == "cmdRdr")
+                ii.cmdRdr = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
             else if( item == "yaw")
                 ii.yaw = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
             else if( item == "pitch")

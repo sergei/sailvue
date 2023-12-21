@@ -55,6 +55,7 @@ const std::set<uint32_t> REQUIRED_PGNS({
     127245, // Rudder
     127257, // Attitude
     127258, // Magnetic Variation
+    127237, // Heading/Track Control
 });
 
 class YdvrReader : public InstrDataReader {
@@ -77,6 +78,8 @@ private:
     void ReadPgnSrcTable(const std::string &basicString);
 
     void ProcessPgn(const YdvrMessage &m, std::ofstream &cache) ;
+        void processProductInformationPgn(uint8_t  src, const Pgn *pPgn, const uint8_t *data, uint8_t len);
+
         void processGpsFixPgn(const Pgn *pgn, const uint8_t *data, size_t len);
         void processCogSogPgn(const Pgn *pgn, const uint8_t *data, size_t len);
         void processPosRapidUpdate(const Pgn *pgn, const uint8_t *data, uint8_t len);
@@ -85,9 +88,11 @@ private:
         void processWindData(const Pgn *pPgn, const uint8_t *data, uint8_t len);
         void processRudder(const Pgn *pPgn, const uint8_t *data, uint8_t len);
         void processAttitude(const Pgn *pPgn, const uint8_t *data, uint8_t len);
+        void processMagneticVariation(const Pgn *pgn, uint8_t *data, uint8_t len);
+        void processHeadingControl(const Pgn *pgn, uint8_t *data, uint8_t len);
 
-    void processProductInformationPgn(uint8_t  src, const Pgn *pPgn, const uint8_t *data, uint8_t len);
     void ProcessEpoch();
+    void ProcessEpochBatch(std::ofstream &cache);
 
 private:
     static bool m_sCanBoatInitialized;
@@ -120,10 +125,6 @@ private:
     std::list<DatFileInfo> m_listDatFiles;
     double m_dMagVarRad = 0;
     bool b_MagVarValid = false;
-
-    void processMagneticVariation(const Pgn *pPgn, uint8_t *data, uint8_t len);
-
-    void ProcessEpochBatch(std::ofstream &cache);
 };
 
 
