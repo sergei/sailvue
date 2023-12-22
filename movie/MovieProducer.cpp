@@ -12,7 +12,7 @@
 
 MovieProducer::MovieProducer(const std::string &path, const std::string &polarPath, std::list<GoProClipInfo> &clipsList,
                              std::vector<InstrumentInput> &instrDataVector,
-                             std::vector<Performance> &performanceVector,
+                             std::map<uint64_t, Performance> &performanceVector,
                              std::list<RaceData *> &raceList,
                              IProgressListener &rProgressListener)
 :m_moviePath(path)
@@ -128,9 +128,6 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
 
     std::cout << "Producing chapter " << chapter.getName() << " " << startUtcMs << ":" << stopUtcMs << std::endl;
 
-    overlayMaker.setChapter(chapter);
-    std::filesystem::path clipFulPathName = overlayMaker.getChapterFolder() / "clip.mp4";
-
     auto duration = float(stopUtcMs - startUtcMs) / 1000;
     float presentationDuration;
     bool changeDuration = false;
@@ -142,13 +139,6 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
     }
 
     m_totalRaceDuration += presentationDuration * 1000;
-
-    // Check if the chapter already exists
-    // Don't return until the m_totalRaceDuration is updated
-    if ( std::filesystem::is_regular_file(clipFulPathName) ){
-        return clipFulPathName;
-    }
-
 
     std::list<ClipFragment> goProclipFragments;
 
@@ -170,14 +160,37 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
         overlaysFps = float(totalCount / ulEpochStep) / presentationDuration;
     }
 
+    std::list<InstrumentInput> chapterEpochs;
+    for(auto epochIdx = chapter.getStartIdx(); epochIdx < chapter.getEndIdx(); epochIdx += ulEpochStep) {
+
+        InstrumentInput epoch;
+        if (ulEpochStep == 1) {
+            epoch = m_rInstrDataVector[epochIdx];
+        } else {
+            epoch = InstrumentInput::median(m_rInstrDataVector.begin() + epochIdx,
+                                            m_rInstrDataVector.begin() + epochIdx + ulEpochStep);
+        }
+        chapterEpochs.push_back(epoch);
+    }
+
+    std::filesystem::path chapterFolder = overlayMaker.setChapter(chapter, chapterEpochs);  // This call creates new chapter name
+    std::filesystem::path clipFulPathName = chapterFolder / "clip.mp4";
+    // Check if the chapter already exists
+    // Don't return until the m_totalRaceDuration is updated
+    if ( std::filesystem::is_regular_file(clipFulPathName) ){
+        return clipFulPathName;
+    }
+
+
+
     int count = 0;
-    for(auto epochIdx = chapter.getStartIdx(); epochIdx < chapter.getEndIdx(); epochIdx += ulEpochStep){
+    for(auto &epoch: chapterEpochs){
 
         if ( m_stopRequested ){
             return "";
         }
 
-        overlayMaker.addEpoch(int(epochIdx));
+        overlayMaker.addEpoch(epoch);
 
         int progress = count * 100 / totalCount;
         if ( progress != prevProgress){
@@ -187,13 +200,12 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
         count ++;
     }
 
-
     FFMpeg ffmpeg;
     float durationScale = presentationDuration / duration ;
     ffmpeg.setBackgroundClip(&goProclipFragments, changeDuration, durationScale);
 
     // Add  overlay
-    ffmpeg.addOverlayPngSequence(0, 0, overlaysFps, overlayMaker.getChapterFolder(),
+    ffmpeg.addOverlayPngSequence(0, 0, overlaysFps, chapterFolder,
                                  OverlayMaker::getFileNamePattern(chapter));
 
     uint64_t  clipDurationMs = presentationDuration * 1000;

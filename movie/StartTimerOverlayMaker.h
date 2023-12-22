@@ -9,8 +9,8 @@
 class StartTimerOverlayMaker : public OverlayElement {
 public:
     StartTimerOverlayMaker(std::vector<InstrumentInput> &instrData, int width, int height, int x, int y);
-    void addEpoch(QPainter &painter, int epochIdx) override;
-    void setChapter(Chapter &chapter) override;
+    void addEpoch(QPainter &painter, const InstrumentInput &epoch) override;
+    void setChapter(Chapter &chapter, const std::list<InstrumentInput> &chapterEpochs) override;
 
     [[nodiscard]] int getWidth() const { return m_width; }
 private:

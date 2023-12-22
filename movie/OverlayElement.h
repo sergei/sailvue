@@ -8,8 +8,8 @@
 class OverlayElement {
 public:
     OverlayElement(int width, int height, int x, int y) : m_width(width), m_height(height), m_x(x), m_y(y){}
-    virtual void addEpoch(QPainter &painter, int epochIdx) = 0;
-    virtual void setChapter(Chapter &chapter) {} ;
+    virtual void addEpoch(QPainter &painter, const InstrumentInput &epoch) = 0;
+    virtual void setChapter(Chapter &chapter, const std::list<InstrumentInput> &chapterEpochs) {} ;
     [[nodiscard]] int getWidth() const { return m_width; }
     [[nodiscard]] int getHeight() const { return m_height; }
     [[nodiscard]] int getX() const { return m_x; }

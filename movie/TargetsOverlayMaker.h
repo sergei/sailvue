@@ -9,24 +9,24 @@
 
 class Strip {
 public:
-    Strip(const std::string &label, int x, int y, int width, int height, int startIdx, int endIdx,
+    Strip(const std::string &label, int x, int y, int width, int height, uint64_t startTime, uint64_t endTime,
           double threshold, double floor, double ceiling);
-    void addSample(double value, bool isValid);
+    void addSample(uint64_t t, double value, bool isValid);
     void drawBackground(QPainter &painter);
-    void drawCurrent(QPainter &painter, int idx);
+    void drawCurrent(QPainter &painter, const InstrumentInput &epoch);
 
-    void setChapter(int startIdx, int endIdx);
+    void setChapter(uint64_t startTime, uint64_t endTime);
 
 private:
-    [[nodiscard]] QPoint toScreen(int idx, double y) const;
+    [[nodiscard]] QPoint toScreen(uint64_t idx, double y) const;
 private:
     const std::string &m_label;
     const int m_x0;
     const int m_y0;
     const int m_width;
     const int m_height;
-    const int m_startIdx;
-    const int m_endIdx;
+    const uint64_t m_startTime;
+    const uint64_t m_endTime;
     const double m_threshold;
     const double m_floor;
     const double m_ceiling;
@@ -35,10 +35,10 @@ private:
     double m_yScale=0;
     double m_maxValue = -100000;
     double m_minValue = 100000;
-    int m_chapterStartIdx = 0;
-    int m_chapterEndIdx = 0;
+    uint64_t m_chapterStartTime = 0;
+    uint64_t m_chapterEndTime = 0;
 
-    std::vector<double> m_values;
+    std::map<uint64_t,double> m_values;
     QFont m_labelFont;
     QPen m_labelPen = QPen(QColor(255, 255, 255, 220));
     QPen m_axisPen = QPen(QColor(200, 200, 200, 220));
@@ -55,8 +55,8 @@ class TargetsOverlayMaker : public  OverlayElement {
 public:
     TargetsOverlayMaker(Polars &polars, std::vector<InstrumentInput> &instrDataVector, int width, int height, int x, int y,
                         int startIdx, int endIdx);
-    void addEpoch(QPainter &painter, int epochIdx) override;
-    void setChapter(Chapter &chapter) override;
+    void addEpoch(QPainter &painter, const InstrumentInput &epoch) override;
+    void setChapter(Chapter &chapter, const std::list<InstrumentInput> &chapterEpochs) override;
 
     virtual ~TargetsOverlayMaker();
 

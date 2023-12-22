@@ -35,7 +35,7 @@ private:
 class MovieProducer  {
 public:
     MovieProducer(const std::string &path, const std::string &polarPath, std::list<GoProClipInfo> &clipsList,
-                  std::vector<InstrumentInput> &instrDataVector, std::vector<Performance> &performanceVector,
+                  std::vector<InstrumentInput> &instrDataVector, std::map<uint64_t, Performance> &performanceVector,
                   std::list<RaceData *> &raceList, IProgressListener &rProgressListener);
 
     void produce();
@@ -55,7 +55,7 @@ private:
     IProgressListener& m_rProgressListener;
     std::list<GoProClipInfo> &m_rGoProClipInfoList;
     std::vector<InstrumentInput> &m_rInstrDataVector;
-    std::vector<Performance> &m_rPerformanceVector;
+    std::map<uint64_t, Performance> &m_rPerformanceVector;
     std::list<RaceData *> &m_RaceDataList;
 
     Polars m_polars;

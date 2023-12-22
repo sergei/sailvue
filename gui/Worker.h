@@ -1,7 +1,7 @@
 #ifndef SAILVUE_WORKER_H
 #define SAILVUE_WORKER_H
 
-
+#include <map>
 #include <QObject>
 #include <iostream>
 #include <QGeoPath>
@@ -17,12 +17,12 @@ class Worker : public QObject, IProgressListener  {
 public:
     explicit Worker(std::list<GoProClipInfo> &rGoProClipInfoList,
                     std::vector<InstrumentInput> &rInstrDataVector,
-                    std::vector<Performance> &rPerformanceVector,
+                    std::map<uint64_t, Performance> &rPerformanceMap,
                     std::list<RaceData *> &raceDataList)
                     : m_rGoProClipInfoList(rGoProClipInfoList),
-                    m_rInstrDataVector(rInstrDataVector),
-                    m_rPerformanceVector(rPerformanceVector),
-                    m_RaceDataList(raceDataList)
+                      m_rInstrDataVector(rInstrDataVector),
+                      m_rPerformanceMap(rPerformanceMap),
+                      m_RaceDataList(raceDataList)
                     {}
     void progress(const std::string& state, int progress) override;
     bool stopRequested() override;
@@ -44,7 +44,7 @@ private:
     bool b_keepRunning = true;
     std::list<GoProClipInfo> &m_rGoProClipInfoList;
     std::vector<InstrumentInput> &m_rInstrDataVector;
-    std::vector<Performance> &m_rPerformanceVector;
+    std::map<uint64_t, Performance> &m_rPerformanceMap;
     std::list<RaceData *> &m_RaceDataList;
 
     void computeStats(const QString &polarUrl);

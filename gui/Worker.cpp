@@ -61,8 +61,7 @@ void Worker::readData(const QString &goproDir, const QString &nmeaDir, const QSt
     }
 
     // Make performance vector the same size as the instr data vector
-    m_rPerformanceVector.clear();
-    m_rPerformanceVector.resize(m_rInstrDataVector.size());
+    m_rPerformanceMap.clear();
 
     std::cout << "clipCount " << clipCount << std::endl;
     std::cout << "pointsCount " << pointsCount << std::endl;
@@ -95,7 +94,7 @@ void Worker::produce(const QString &moviePathUrl, const QString &polarUrl) {
 
     computeStats(polarUrl);
 
-    MovieProducer movieProducer(moviePath, polarPath, m_rGoProClipInfoList, m_rInstrDataVector, m_rPerformanceVector,
+    MovieProducer movieProducer(moviePath, polarPath, m_rGoProClipInfoList, m_rInstrDataVector, m_rPerformanceMap,
                                 m_RaceDataList, *this);
 
     movieProducer.produce();
@@ -108,8 +107,7 @@ void Worker::computeStats(const QString &polarUrl){
     Polars polars;
     polars.loadPolar(QUrl(polarUrl).toLocalFile().toStdString());
 
-    m_rPerformanceVector.clear();
-    m_rPerformanceVector.resize(m_rInstrDataVector.size());
+    m_rPerformanceMap.clear();
 
     int raceIdx = 0;
     TimeDeltaComputer timeDeltaComputer(polars, m_rInstrDataVector);
@@ -159,15 +157,16 @@ void Worker::computeStats(const QString &polarUrl){
                     }
                 }
 
-                m_rPerformanceVector[idx].raceIdx = raceIdx;
-                m_rPerformanceVector[idx].legIdx = chapterIdx;
+                auto utcMs = m_rInstrDataVector[idx].utc.getUnixTimeMs();
+                m_rPerformanceMap[utcMs].raceIdx = raceIdx;
+                m_rPerformanceMap[utcMs].legIdx = chapterIdx;
                 bool beforeStart = chapter->getChapterType() == ChapterTypes::ChapterType::START && idx < chapter->getGunIdx();
                 if ( beforeStart ){
-                    m_rPerformanceVector[idx].isValid = false;
-                    m_rPerformanceVector[idx].legDistLostToTargetMeters = 0;
-                    m_rPerformanceVector[idx].legTimeLostToTargetSec = 0;
+                    m_rPerformanceMap[utcMs].isValid = false;
+                    m_rPerformanceMap[utcMs].legDistLostToTargetMeters = 0;
+                    m_rPerformanceMap[utcMs].legTimeLostToTargetSec = 0;
                 }else{
-                    timeDeltaComputer.updatePerformance(idx, m_rPerformanceVector[idx], isFetch);
+                    timeDeltaComputer.updatePerformance(idx, m_rPerformanceMap[utcMs], isFetch);
                 }
             }
         }
@@ -185,9 +184,10 @@ void Worker::exportStats(const QString &polarUrl, const QString &path) {
     std::cout << "exporting stats to  " << csvName << std::endl;
     std::ofstream ofs(csvName);
 
-    for(uint64_t idx = 0; idx < m_rPerformanceVector.size(); idx++){
-        ofs <<  std::string(m_rInstrDataVector[idx]) << ",";
-        ofs << m_rPerformanceVector[idx].toString(m_rInstrDataVector[idx].utc) << ",";
+    for(auto & ii : m_rInstrDataVector){
+        auto utcMs = ii.utc.getUnixTimeMs();
+        ofs << std::string(ii) << ",";
+        ofs << m_rPerformanceMap[utcMs].toString(ii.utc) << ",";
         ofs << std::endl;
     }
 

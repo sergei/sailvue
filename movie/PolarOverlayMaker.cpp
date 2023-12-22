@@ -15,17 +15,17 @@ PolarOverlayMaker::~PolarOverlayMaker() {
     delete m_PolarCurveImage;
 }
 
-void PolarOverlayMaker::setChapter(Chapter &chapter) {
+void PolarOverlayMaker::setChapter(Chapter &chapter, const std::list<InstrumentInput> &chapterEpochs) {
     delete m_pBackgroundImage;
     m_pBackgroundImage = new QImage(m_width, m_height, QImage::Format_ARGB32);
     m_pBackgroundImage->fill(QColor(0, 0, 0, 0));
     delete m_PolarCurveImage;
     m_PolarCurveImage = new QImage(m_width, m_height, QImage::Format_ARGB32);
     m_PolarCurveImage->fill(QColor(0, 0, 0, 0));
-    setHistory((int)chapter.getStartIdx(), (int)chapter.getEndIdx());
+    setHistory(chapterEpochs);
 }
 
-void PolarOverlayMaker::addEpoch(QPainter &painter, int epochIdx) {
+void PolarOverlayMaker::addEpoch(QPainter &painter, const InstrumentInput &epoch) {
 
     if ( m_pBackgroundImage == nullptr ){
         std::cout << "PolarOverlayMaker::addEpoch() called before setChapter" << std::endl;
@@ -40,26 +40,34 @@ void PolarOverlayMaker::addEpoch(QPainter &painter, int epochIdx) {
     armPen.setWidth(4);
 
     // Show no more than HIST_DISPLAY_LEN_MS of history
-    int lastHistIdx = epochIdx - m_startIdx;
+    uint64_t epochUtcMs = epoch.utc.getUnixTimeMs();
+    int lastHistIdx;
+    for( lastHistIdx =0; lastHistIdx < m_TimeStamps.size(); lastHistIdx++)
+        if ( m_TimeStamps[lastHistIdx] >= epochUtcMs )
+            break;
+
     int firstHistoryIdx;
-    uint64_t epochUtcMs = m_rInstrDataVector[epochIdx].utc.getUnixTimeMs();
-    for( firstHistoryIdx = lastHistIdx; firstHistoryIdx >= 0; firstHistoryIdx--){
-        uint64_t histUtcMs = m_rInstrDataVector[firstHistoryIdx + m_startIdx].utc.getUnixTimeMs();
+    for( firstHistoryIdx = lastHistIdx; firstHistoryIdx > 0; firstHistoryIdx--){
+        uint64_t histUtcMs = m_TimeStamps[firstHistoryIdx];
         if ( epochUtcMs - histUtcMs > HIST_DISPLAY_LEN_MS ){
             break;
         }
     }
 
     int shownHistoryLen = lastHistIdx - firstHistoryIdx;
+    if (shownHistoryLen == 0) shownHistoryLen = 1;
+
     int minAlpha = 64;
     for (int i=firstHistoryIdx; i <= lastHistIdx; i++){
         double r = double(i - firstHistoryIdx) / shownHistoryLen; // 0 to 1
         int alpha = minAlpha + int((255 - minAlpha)  * r);
 
-        if ( isnan(m_history[i].first) || isnan(m_history[i].second))
+        auto utcMs = m_TimeStamps[i];
+
+        if ( isnan(m_history[utcMs].first) || isnan(m_history[utcMs].second))
             continue;
 
-        QPoint p = toScreen(m_history[i]);
+        QPoint p = toScreen(m_history[utcMs]);
         auto historyColor = QColor(255, 0, 0, alpha);
         painter.setBrush(historyColor);
 
@@ -78,19 +86,19 @@ void PolarOverlayMaker::addEpoch(QPainter &painter, int epochIdx) {
     painter.drawImage(0, 0, *m_PolarCurveImage);
 }
 
-void PolarOverlayMaker::setHistory(int startIdx, int endIdx) {
+void PolarOverlayMaker::setHistory(const std::list<InstrumentInput> &chapterEpochs) {
     m_history.clear();
+    m_TimeStamps.clear();
 
     float twsSum = 0;
 
     m_maxSpeedKts = 0;
     m_minSpeedKts = 100;
-    m_startIdx = startIdx;
 
-    for(int i=startIdx; i<endIdx; i++) {
-        InstrumentInput &instrData = m_rInstrDataVector[i];
-
-        if (instrData.twa.isValid(instrData.utc.getUnixTimeMs()) && instrData.sow.isValid(instrData.utc.getUnixTimeMs())) {
+    int iTwsCount = 0;
+    for(auto &instrData: chapterEpochs) {
+        auto utcMs = instrData.utc.getUnixTimeMs();
+        if (instrData.twa.isValid(utcMs) && instrData.sow.isValid(utcMs)) {
 
             m_minTwa = std::min(m_minTwa, abs(instrData.twa.getDegrees()));
             m_maxTwa = std::max(m_maxTwa, abs(instrData.twa.getDegrees()));
@@ -101,14 +109,16 @@ void PolarOverlayMaker::setHistory(int startIdx, int endIdx) {
             m_minSpeedKts = (int)lround(std::min(float(m_minSpeedKts), sowKts));
             twsSum += (float)instrData.tws.getKnots();
             std::pair<float, float> xy = polToCart(sowKts, - twaRad);
-            m_history.push_back(xy);
+            m_history[utcMs]= xy;
+            iTwsCount ++;
         } else {
             std::pair<float, float> xy = {nanf(""), nanf("")};
-            m_history.push_back(xy);
+            m_history[utcMs]= xy;
         }
+        m_TimeStamps.push_back(utcMs);
     }
 
-    float meanTws = twsSum / float(endIdx - startIdx);
+    float meanTws = iTwsCount > 0 ? twsSum / float(iTwsCount) : 0;
 
     // Check case when the polar curve speed exceeds the max speed
     for( int twaDeg =0; twaDeg <= 180; twaDeg += 1 ) {

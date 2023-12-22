@@ -145,7 +145,7 @@ RaceTreeModel::RaceTreeModel(QObject *parent)
  m_project(m_RaceDataList) {
     rootItem = new TreeItem();
 
-    auto *worker = new Worker(m_GoProClipInfoList, m_InstrDataVector, m_PerformanceVector, m_RaceDataList);
+    auto *worker = new Worker(m_GoProClipInfoList, m_InstrDataVector, m_PerformanceMap, m_RaceDataList);
     worker->moveToThread(&workerThread);
     connect(&workerThread, &QThread::finished, worker, &QObject::deleteLater);
 

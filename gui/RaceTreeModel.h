@@ -2,6 +2,7 @@
 #ifndef SAILVUE_RACETREEMODEL_H
 #define SAILVUE_RACETREEMODEL_H
 
+#include <map>
 #include <qqml.h>
 #include <QAbstractItemModel>
 #include <QThread>
@@ -217,7 +218,7 @@ private:
 
     std::list<GoProClipInfo> m_GoProClipInfoList;
     std::vector<InstrumentInput> m_InstrDataVector;
-    std::vector<Performance> m_PerformanceVector;
+    std::map<uint64_t, Performance> m_PerformanceMap;
 
     std::list<RaceData *> m_RaceDataList;
 

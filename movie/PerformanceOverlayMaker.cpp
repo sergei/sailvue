@@ -1,8 +1,8 @@
 #include "PerformanceOverlayMaker.h"
 
-PerformanceOverlayMaker::PerformanceOverlayMaker(std::vector<Performance> &rPerformanceVector, int width, int height, int x, int y)
+PerformanceOverlayMaker::PerformanceOverlayMaker(std::map<uint64_t, Performance> &rPerformanceMap, int width, int height, int x, int y)
  : OverlayElement(width, height, x, y),  m_height(height),
-   m_rPerformanceVector(rPerformanceVector)
+   m_rPerformanceVector(rPerformanceMap)
 {
     int fontPointSize;
     QFont font = QFont(FONT_FAMILY_TIME);
@@ -23,12 +23,12 @@ PerformanceOverlayMaker::PerformanceOverlayMaker(std::vector<Performance> &rPerf
     m_labelTimeFont = QFont(FONT_FAMILY_TIME, fontPointSize / 2);
 }
 
-void PerformanceOverlayMaker::addEpoch(QPainter &painter, int epochIdx) {
+void PerformanceOverlayMaker::addEpoch(QPainter &painter, const InstrumentInput &epoch) {
 
-
-    if( m_rPerformanceVector[epochIdx].isValid ){
-        auto thisLegDeltaMs = int64_t(m_rPerformanceVector[epochIdx].legTimeLostToTargetSec * 1000);
-        auto thisRaceDeltaMs = int64_t(m_rPerformanceVector[epochIdx].raceTimeLostToTargetSec * 1000);
+    auto utcMs = epoch.utc.getUnixTimeMs();
+    if( m_rPerformanceVector[utcMs].isValid ){
+        auto thisLegDeltaMs = int64_t(m_rPerformanceVector[utcMs].legTimeLostToTargetSec * 1000);
+        auto thisRaceDeltaMs = int64_t(m_rPerformanceVector[utcMs].raceTimeLostToTargetSec * 1000);
 
         painter.setFont(m_labelTimeFont);
         painter.setPen(m_labelPen);

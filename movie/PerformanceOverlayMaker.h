@@ -13,15 +13,15 @@ static const char *const FONT_FAMILY_TIME = "Courier";
 
 class PerformanceOverlayMaker : public OverlayElement {
 public:
-    PerformanceOverlayMaker(std::vector<Performance> &rPerformanceVector, int width, int height, int x, int y);
-    void addEpoch(QPainter &painter, int epochIdx) override;
+    PerformanceOverlayMaker(std::map<uint64_t, Performance> &rPerformanceMap, int width, int height, int x, int y);
+    void addEpoch(QPainter &painter, const InstrumentInput &epoch) override;
 
 private:
     static QString formatTime(int64_t ms);
 private:
     const int m_height;
 
-    std::vector<Performance> &m_rPerformanceVector;
+    std::map<uint64_t, Performance> &m_rPerformanceVector;
 
 private:
     QFont m_labelTimeFont;

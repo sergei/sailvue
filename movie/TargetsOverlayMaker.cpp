@@ -4,8 +4,12 @@ TargetsOverlayMaker::TargetsOverlayMaker(Polars &polars, std::vector<InstrumentI
                                          int width, int height, int x, int y, int startIdx, int endIdx)
  :OverlayElement(width, height, x, y)
  ,m_rInstrDataVector(instrDataVector),m_polars(polars)
- ,m_speedStrip("SPD", 0, 0, m_width, m_height/2-10, startIdx, endIdx, 90 , 50, 150)
- ,m_vmgStrip("VMG", 0, m_height/2 + 5, m_width, m_height/2-10, startIdx, endIdx, 90 , 50, 150)
+ ,m_speedStrip("SPD", 0, 0, m_width, m_height/2-10,
+               instrDataVector[startIdx].utc.getUnixTimeMs(), instrDataVector[endIdx].utc.getUnixTimeMs(),
+               90 , 50, 150)
+ ,m_vmgStrip("VMG", 0, m_height/2 + 5, m_width, m_height/2-10,
+             instrDataVector[startIdx].utc.getUnixTimeMs(), instrDataVector[endIdx].utc.getUnixTimeMs(),
+             90 , 50, 150)
  {
     m_pBackgroundImage = new QImage(m_width, m_height, QImage::Format_ARGB32);
     m_pBackgroundImage->fill(QColor(0, 0, 0, 0));
@@ -19,12 +23,14 @@ TargetsOverlayMaker::~TargetsOverlayMaker() {
     delete m_pHighLightImage;
 }
 
-void TargetsOverlayMaker::setChapter(Chapter &chapter) {
-    m_speedStrip.setChapter(chapter.getStartIdx(), chapter.getEndIdx());
-    m_vmgStrip.setChapter(chapter.getStartIdx(), chapter.getEndIdx());
+void TargetsOverlayMaker::setChapter(Chapter &chapter, const std::list<InstrumentInput> &chapterEpochs) {
+    uint64_t startTime = chapterEpochs.front().utc.getUnixTimeMs();
+    uint64_t endTime = chapterEpochs.back().utc.getUnixTimeMs();
+    m_speedStrip.setChapter(startTime, endTime);
+    m_vmgStrip.setChapter(startTime, endTime);
 }
 
-void TargetsOverlayMaker::addEpoch(QPainter &painter, int epochIdx) {
+void TargetsOverlayMaker::addEpoch(QPainter &painter, const InstrumentInput &epoch) {
 
     if ( m_pBackgroundImage == nullptr ){
         std::cout << "PolarOverlayMaker::addEpoch() called after destructor" << std::endl;
@@ -34,8 +40,8 @@ void TargetsOverlayMaker::addEpoch(QPainter &painter, int epochIdx) {
     QImage image = m_pBackgroundImage->copy();
     painter.drawImage(0, 0, image);
 
-    m_speedStrip.drawCurrent(painter, epochIdx);
-    m_vmgStrip.drawCurrent(painter, epochIdx);
+    m_speedStrip.drawCurrent(painter, epoch);
+    m_vmgStrip.drawCurrent(painter, epoch);
 }
 
 
@@ -45,20 +51,21 @@ void TargetsOverlayMaker::makeBaseImage(int startIdx, int endIdx){
     for( int i = startIdx; i < endIdx; i++){
 
         InstrumentInput &instr = m_rInstrDataVector[i];
-        bool spdIsValid = instr.sow.isValid(instr.utc.getUnixTimeMs())
-                && instr.twa.isValid(instr.utc.getUnixTimeMs())
-                && instr.tws.isValid(instr.utc.getUnixTimeMs());
+        auto utcMs = instr.utc.getUnixTimeMs();
+        bool spdIsValid = instr.sow.isValid(utcMs)
+                          && instr.twa.isValid(utcMs)
+                          && instr.tws.isValid(utcMs);
         if ( spdIsValid) {
             double spd = instr.sow.getKnots();
             double vmg = abs(spd * cos(instr.twa.getRadians()));
             double targetSpeed = m_polars.getSpeed(instr.twa.getDegrees(), instr.tws.getKnots());
             std::pair<double, double> targets =  m_polars.getTargets(instr.tws.getKnots(), instr.twa.getDegrees() < 90);
             double targetVmg = abs(targets.second);
-            m_speedStrip.addSample(spd / targetSpeed * 100, true);
-            m_vmgStrip.addSample(vmg / targetVmg * 100, true);
+            m_speedStrip.addSample(utcMs, spd / targetSpeed * 100, true);
+            m_vmgStrip.addSample(utcMs, vmg / targetVmg * 100, true);
         }else{
-            m_speedStrip.addSample(0, false);
-            m_vmgStrip.addSample(0, false);
+            m_speedStrip.addSample(utcMs, 0, false);
+            m_vmgStrip.addSample(utcMs, 0, false);
         }
     }
 
@@ -66,9 +73,9 @@ void TargetsOverlayMaker::makeBaseImage(int startIdx, int endIdx){
     m_vmgStrip.drawBackground(painter);
 }
 
-Strip::Strip(const std::string &label, int x, int y, int width, int height, int startIdx, int endIdx,
+Strip::Strip(const std::string &label, int x, int y, int width, int height, uint64_t startTime, uint64_t endTime,
              double threshold, double floor, double ceiling)
-        :m_label(label), m_x0(x), m_y0(y), m_width(width), m_height(height), m_startIdx(startIdx), m_endIdx(endIdx),
+        :m_label(label), m_x0(x), m_y0(y), m_width(width), m_height(height), m_startTime(startTime), m_endTime(endTime),
         m_threshold(threshold), m_floor(floor), m_ceiling(ceiling)
 {
     int fontPointSize;
@@ -85,7 +92,7 @@ Strip::Strip(const std::string &label, int x, int y, int width, int height, int 
     }
     m_labelFont.setPointSize(fontPointSize);
 
-    int ptsNum = endIdx - startIdx;
+    uint64_t ptsNum = endTime - startTime;
     m_xScale = double(m_width - m_labelWidth * 2) / double(ptsNum);
 
     m_maxValue = threshold;
@@ -97,15 +104,15 @@ Strip::Strip(const std::string &label, int x, int y, int width, int height, int 
     m_tickPen.setWidth(6);
 }
 
-void Strip::addSample(double value, bool isValid) {
+void Strip::addSample(uint64_t t, double value, bool isValid) {
     if( isValid ) {
         value = std::min(value, m_ceiling);
         value = std::max(value, m_floor);
         m_maxValue = std::max(m_maxValue, value);
         m_minValue = std::min(m_minValue, value);
-        m_values.push_back(value);
+        m_values[t] = value;
     } else {
-        m_values.push_back(nan(""));
+        m_values[t] = nan("");
     }
 }
 
@@ -119,32 +126,34 @@ void Strip::drawBackground(QPainter &painter) {
 
     painter.setPen(m_axisPen);
     // Draw 100% lne
-    QPoint from = toScreen(m_startIdx, 100);
-    QPoint to = toScreen(m_endIdx, 100);
+    QPoint from = toScreen(m_startTime, 100);
+    QPoint to = toScreen(m_endTime, 100);
     painter.drawLine(from, to);
 
     // Draw threshold horizontal line
-    from = toScreen(m_startIdx, m_threshold);
-    to = toScreen(m_endIdx, m_threshold);
+    from = toScreen(m_startTime, m_threshold);
+    to = toScreen(m_endTime, m_threshold);
     painter.drawLine(from, to);
 
-    for( int idx = m_startIdx; idx < m_endIdx; idx++) {
-        double val = m_values[idx - m_startIdx];
+    for(auto & mapEntry : m_values) {
+        double val = mapEntry.second;
+        uint64_t t = mapEntry.first;
         QPen *pen = val < m_threshold ? &m_badPen : &m_okPen;
         if (val >=100 ) pen = &m_goodPen;
         painter.setPen(*pen );
-        QPoint p = toScreen(idx, val);
+        QPoint p = toScreen(t, val);
         painter.drawPoint(p);
     }
 
 }
 
-void Strip::drawCurrent(QPainter &painter, int idx) {
+void Strip::drawCurrent(QPainter &painter, const InstrumentInput &epoch) {
 
     // Draw value
     painter.setFont(m_labelFont);
     painter.setPen(m_labelPen);
-    double val = m_values[idx - m_startIdx];
+    auto utcMs = epoch.utc.getUnixTimeMs();
+    double val = m_values[utcMs];
     if ( std::isnan(val) ){
         painter.drawText(m_x0 + m_width - m_labelWidth, m_y0 + m_height, "--");
     } else {
@@ -153,33 +162,32 @@ void Strip::drawCurrent(QPainter &painter, int idx) {
     }
 
     // Draw tick mark
-    QPoint from = toScreen(idx, m_maxValue);
-    QPoint to = toScreen(idx, m_minValue);
+    QPoint from = toScreen(utcMs, m_maxValue);
+    QPoint to = toScreen(utcMs, m_minValue);
     painter.setPen(m_tickPen);
     painter.drawLine(from, to);
 
     // Shade out of chapter area
     painter.setPen(m_outOfChapterPen);
     painter.setBrush(m_outOfChapterBrush);
-    QPoint ul = toScreen(m_startIdx, m_maxValue);
-    QPoint lr = toScreen(m_chapterStartIdx, m_minValue);
+    QPoint ul = toScreen(m_startTime, m_maxValue);
+    QPoint lr = toScreen(m_chapterStartTime, m_minValue);
     QRect rect(ul, lr);
     painter.drawRect(rect);
-    ul = toScreen(m_chapterEndIdx, m_maxValue);
-    lr = toScreen(m_endIdx, m_minValue);
+    ul = toScreen(m_chapterEndTime, m_maxValue);
+    lr = toScreen(m_endTime, m_minValue);
     rect = QRect(ul, lr);
     painter.drawRect(rect);
 
 }
 
-QPoint Strip::toScreen(int idx, double y) const {
-    int sx = m_x0 + m_labelWidth + int((idx - m_startIdx) * m_xScale);
+QPoint Strip::toScreen(uint64_t idx, double y) const {
+    int sx = m_x0 + m_labelWidth + int((idx - m_startTime) * m_xScale);
     int sy = m_y0 + int( (m_maxValue - y) * m_yScale);
     return {sx, sy};
 }
 
-void Strip::setChapter(int startIdx, int endIdx) {
-    m_chapterStartIdx = startIdx;
-    m_chapterEndIdx = endIdx;
-
+void Strip::setChapter(uint64_t startTime, uint64_t endTime) {
+    m_chapterStartTime = startTime;
+    m_chapterEndTime = endTime;
 }

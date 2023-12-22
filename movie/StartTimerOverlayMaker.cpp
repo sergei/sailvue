@@ -21,17 +21,17 @@ StartTimerOverlayMaker::StartTimerOverlayMaker(std::vector<InstrumentInput>  &in
     m_timeStampFont.setPointSize(fontPointSize);
 }
 
-void StartTimerOverlayMaker::setChapter(Chapter &chapter) {
+void StartTimerOverlayMaker::setChapter(Chapter &chapter, const std::list<InstrumentInput> &chapterEpochs) {
     m_isStart = chapter.getChapterType() == ChapterTypes::START;
     m_gunUtcTimeMs = m_rInstrDataVector[chapter.getGunIdx()].utc.getUnixTimeMs();
 }
 
-void StartTimerOverlayMaker::addEpoch(QPainter &painter, int epochIdx) {
+void StartTimerOverlayMaker::addEpoch(QPainter &painter, const InstrumentInput &epoch) {
     if ( ! m_isStart ){
         return;
     }
 
-    int64_t timeToStartSec = (int64_t(m_gunUtcTimeMs) - int64_t(m_rInstrDataVector[epochIdx].utc.getUnixTimeMs())) / 1000;
+    int64_t timeToStartSec = (int64_t(m_gunUtcTimeMs) - int64_t(epoch.utc.getUnixTimeMs())) / 1000;
 
     if ( timeToStartSec < 0 ){
         painter.setPen(m_afterStartPen);

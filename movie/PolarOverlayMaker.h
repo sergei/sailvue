@@ -14,12 +14,12 @@ class PolarOverlayMaker : public  OverlayElement{
 public:
     PolarOverlayMaker(Polars &polars, std::vector<InstrumentInput> &instrDataVector, int width, int height, int x, int y);
     virtual ~PolarOverlayMaker();
-    void addEpoch(QPainter &painter, int epochIdx) override;
-    void setChapter(Chapter &chapter) override;
+    void addEpoch(QPainter &painter, const InstrumentInput &epoch) override;
+    void setChapter(Chapter &chapter, const std::list<InstrumentInput> &chapterEpochs) override;
 
 private:
     [[nodiscard]] QPoint toScreen(const std::pair<float, float> &xy) const;
-    void setHistory(int startIdx, int endIdx);
+    void setHistory(const std::list<InstrumentInput> &chapterEpochs);
 private:
     std::vector<InstrumentInput> &m_rInstrDataVector;
     const int m_dotRadius = 10;
@@ -41,9 +41,8 @@ private:
     float m_xScale=1;
     float m_yScale=1;
 
-    int m_startIdx=0;
-
-    std::vector<std::pair<float, float>> m_history;
+    std::map<uint64_t, std::pair<float, float>> m_history;
+    std::vector<uint64_t> m_TimeStamps;
 
     static std::pair<float, float> polToCart(float kts, float rad);
     Polars &m_polars;

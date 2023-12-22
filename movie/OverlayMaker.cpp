@@ -9,7 +9,7 @@ OverlayMaker::OverlayMaker(const std::filesystem::path &folder, int width, int h
     std::filesystem::create_directories(m_workDir);
 }
 
-void OverlayMaker::setChapter(Chapter &chapter) {
+std::filesystem::path & OverlayMaker::setChapter(Chapter &chapter, const std::list<InstrumentInput> &chapterEpochs) {
     std::ostringstream oss;
     oss <<  "chapter_" << std::setw(3) << std::setfill('0') << m_ChapterCount;
     m_OverlayCount = 0;
@@ -18,15 +18,17 @@ void OverlayMaker::setChapter(Chapter &chapter) {
     std::filesystem::create_directories(m_ChapterFolder);
 
     for (auto &element : m_elements) {
-        element->setChapter(chapter);
+        element->setChapter(chapter, chapterEpochs);
     }
+
+    return m_ChapterFolder;
 }
 
 std::string OverlayMaker::getFileNamePattern(Chapter &chapter) {
     return {"overlay_%05d.png"};
 }
 
-void OverlayMaker::addEpoch(int epochIdx) {
+void OverlayMaker::addEpoch(const InstrumentInput &epoch) {
     std::ostringstream oss;
     oss <<  "overlay_" << std::setw(5) << std::setfill('0') << m_OverlayCount << ".png";
     m_OverlayCount ++;
@@ -44,7 +46,7 @@ void OverlayMaker::addEpoch(int epochIdx) {
         QImage elementImage(element->getWidth(), element->getHeight(), QImage::Format_ARGB32);
         elementImage.fill(QColor(0, 0, 0, 0));
         QPainter elementPainter(&elementImage);
-        element->addEpoch(elementPainter, epochIdx);
+        element->addEpoch(elementPainter, epoch);
         auto x = element->getX();
         if ( x < 0 ){
             x = m_width - (x+1) - element->getWidth();

@@ -32,7 +32,7 @@ private:
 class InstrOverlayMaker : public OverlayElement{
 public:
     InstrOverlayMaker(std::vector<InstrumentInput> &instrDataVector, int width, int height, int x, int y);
-    void addEpoch(QPainter &painter, int epochIdx);
+    void addEpoch(QPainter &painter, const InstrumentInput &epoch);
 private:
     void chooseTimeStampFont(int timeStampHeight);
     static std::string formatSpeed(const Speed& speed, const UtcTime& utc);

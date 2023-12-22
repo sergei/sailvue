@@ -101,8 +101,7 @@ void InstrOverlayMaker::chooseTimeStampFont(int timeStampHeight) {
     m_copyrightFont = QFont(FONT_FAMILY_TIMESTAMP, fontPointSize);
 }
 
-void InstrOverlayMaker::addEpoch(QPainter &painter, int epochIdx) {
-    InstrumentInput instrData = m_instrDataVector[epochIdx];
+void InstrOverlayMaker::addEpoch(QPainter &painter, const InstrumentInput &instrData) {
     painter.setPen(QColor(0x32, 0x32, 0x32, 0x80));
     painter.setBrush(QColor(0x32, 0x32, 0x32, 0x80));
     painter.drawRect(0, 0, m_width, m_height);
