@@ -15,7 +15,7 @@ public:
         return Distance(meters, utcMs);
     }
 
-    [[nodiscard]] double getKnots() const { return m_ulMeters; }
+    [[nodiscard]] uint32_t getMeters() const { return m_ulMeters; }
     [[nodiscard]] std::string toString(uint64_t utcMs) const {
         std::stringstream ss;
         if( isValid(utcMs))

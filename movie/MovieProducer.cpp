@@ -99,12 +99,7 @@ void MovieProducer::produce() {
 
             // Add entry to the description file
             auto sec = m_totalRaceDuration / 1000;
-            auto min = sec / 60;
-            sec = sec % 60;
-            std::ostringstream oss;
-            df <<  std::setw(2) << std::setfill('0') << min << ":" << std::setw(2) << std::setfill('0') << sec;
-            df << " " << chapter->getName();
-            df << std::endl;
+            makeChapterDescription(df, chapter, sec);
 
             std::string chapterClipName = produceChapter(overlayMaker, *chapter);
             chapterClips.push_back(chapterClipName);
@@ -120,6 +115,44 @@ void MovieProducer::produce() {
         raceCount ++;
         df.close();
     }
+}
+
+void MovieProducer::makeChapterDescription(std::ofstream &df, const Chapter *chapter, uint64_t sec) {
+
+    // Time stamp
+    auto min = sec / 60;
+    sec = sec % 60;
+    df <<  std::setw(2) << std::setfill('0') << min << ":" << std::setw(2) << std::setfill('0') << sec;
+
+    // Name
+    df << " " << chapter->getName();
+
+    if( chapter->getChapterType() == ChapterTypes::MARK_ROUNDING ) {
+        uint64_t startUtcMs = m_rInstrDataVector[chapter->getStartIdx()].utc.getUnixTimeMs();
+        df << " (";
+        // Median TWS
+        InstrumentInput median = InstrumentInput::median(m_rInstrDataVector.begin() + long(chapter->getStartIdx()),
+                                        m_rInstrDataVector.begin() + long(chapter->getEndIdx()));
+
+        if ( median.tws.isValid(startUtcMs) ){
+            df << "TWS " << std::setprecision(0) << median.tws.getKnots() << " kts, ";
+        }
+
+        // Distance sailed
+        uint32_t ulDistSailedMeters = m_rInstrDataVector[chapter->getEndIdx()].log.getMeters()
+                                      - m_rInstrDataVector[chapter->getStartIdx()].log.getMeters();
+        df <<  ulDistSailedMeters << " meters, ";
+
+        // Time sailed
+        uint64_t ulTimeSailedSeconds = (m_rInstrDataVector[chapter->getEndIdx()].utc.getUnixTimeMs()
+                                        - m_rInstrDataVector[chapter->getStartIdx()].utc.getUnixTimeMs()) / 1000;
+
+        df << ulTimeSailedSeconds << " seconds";
+
+        df << ")";
+    }
+
+    df << std::endl;
 }
 
 std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &chapter) {
@@ -153,7 +186,6 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
     if ( overlaysFps > 10 ){
         // We  don't want to have too many frames
         // let's skip some epochs
-        // TODO do some filtering before decimation
         int targetFps = 10;
         ulEpochStep = totalCount / u_int64_t(presentationDuration) / targetFps;
         // Recompute overlay FPS
@@ -180,8 +212,6 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
     if ( std::filesystem::is_regular_file(clipFulPathName) ){
         return clipFulPathName;
     }
-
-
 
     int count = 0;
     for(auto &epoch: chapterEpochs){
