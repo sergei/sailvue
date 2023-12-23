@@ -44,6 +44,7 @@ set(N2K_SRC
         n2k/InitCanBoat.h
         n2k/geo/Quantity.h
         n2k/geo/Angle.h
+        n2k/geo/Distance.h
         n2k/geo/Quantity.cpp
         n2k/geo/Direction.h
         n2k/geo/Speed.h

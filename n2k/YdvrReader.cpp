@@ -340,6 +340,9 @@ void YdvrReader::ProcessPgn(const YdvrMessage &msg, std::ofstream& cache)  {
                 case 127237:
                     processHeadingControl(pgn, data, len);
                     break;
+                case 128275:
+                    processDistanceLog(pgn, data, len);
+                    break;
             }
         }
     }
@@ -486,6 +489,12 @@ void YdvrReader::processMagneticVariation(const Pgn *pgn, uint8_t *data, uint8_t
         m_dMagVarRad = double(val) * RES_RADIANS;
         b_MagVarValid = true;
     }
+}
+
+void YdvrReader::processDistanceLog(const Pgn *pgn, uint8_t *data, uint8_t len) {
+    int64_t val;
+    extractNumberByOrder(pgn, 3, data, len, &val);
+    m_epoch.log = Distance::fromMeters(val, m_ulLatestGpsTimeMs);
 }
 
 
@@ -642,6 +651,7 @@ void YdvrReader::getPgnData(std::map<uint32_t, std::vector<std::string>> &mapPgn
     std::cout << "---------------------------------------" << std::endl;
 
 }
+
 
 
 

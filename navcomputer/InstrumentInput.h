@@ -8,6 +8,7 @@
 #include "n2k/geo/Speed.h"
 #include "n2k/geo/UtcTime.h"
 #include "n2k/geo/GeoLoc.h"
+#include "n2k/geo/Distance.h"
 
 class InstrumentInput {
 public:
@@ -26,6 +27,7 @@ public:
     Angle yaw = Angle::INVALID;
     Angle pitch = Angle::INVALID;
     Angle roll = Angle::INVALID;
+    Distance log = Distance::INVALID;
 
     explicit operator std::string() const {
         std::stringstream ss;
@@ -44,6 +46,7 @@ public:
               << ",yaw," << yaw.toString(utc.getUnixTimeMs())
               << ",pitch," << pitch.toString(utc.getUnixTimeMs())
               << ",roll," << roll.toString(utc.getUnixTimeMs())
+              << ",log," << log.toString(utc.getUnixTimeMs())
               ;
         return ss.str();
     }
@@ -95,6 +98,8 @@ public:
                 ii.pitch = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
             else if( item == "roll")
                 ii.roll = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
+            else if( item == "log")
+                ii.log = Distance::fromMeters(std::stod(value), ulGpsTimeMs);
         }
 
         return ii;
@@ -150,6 +155,7 @@ public:
         median.yaw = Angle::median(yaws, from->utc.getUnixTimeMs());
         median.pitch = Angle::median(pitches, from->utc.getUnixTimeMs());
         median.roll = Angle::median(rolls, from->utc.getUnixTimeMs());
+        median.log = from->log;
 
         return median;
     }

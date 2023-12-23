@@ -5,12 +5,14 @@
 #include "Speed.h"
 #include "UtcTime.h"
 #include "GeoLoc.h"
+#include "Distance.h"
 
 Angle Angle::INVALID = Angle();
 Direction Direction::INVALID = Direction();
 Speed Speed::INVALID = Speed();
 UtcTime UtcTime::INVALID = UtcTime();
 GeoLoc GeoLoc::INVALID = GeoLoc();
+Distance Distance::INVALID = Distance();
 
 double Quantity::medianValue(std::vector<double> &vals) {
     std::sort(vals.begin(), vals.end());

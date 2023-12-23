@@ -56,6 +56,7 @@ const std::set<uint32_t> REQUIRED_PGNS({
     127257, // Attitude
     127258, // Magnetic Variation
     127237, // Heading/Track Control
+    128275, // Distance Log
 });
 
 class YdvrReader : public InstrDataReader {
@@ -125,6 +126,8 @@ private:
     std::list<DatFileInfo> m_listDatFiles;
     double m_dMagVarRad = 0;
     bool b_MagVarValid = false;
+
+    void processDistanceLog(const Pgn *pgn, uint8_t *data, uint8_t len);
 };
 
 
