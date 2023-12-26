@@ -19,7 +19,10 @@ public:
 
 private:
     [[nodiscard]] QPoint toScreen(const std::pair<float, float> &xy) const;
+    static std::pair<float, float> polToCart(float kts, float rad);
     void setHistory(const std::list<InstrumentInput> &chapterEpochs);
+    QPoint drawGrid();
+    void drawPolarCurve(float tws);
 private:
     std::vector<InstrumentInput> &m_rInstrDataVector;
     const int m_dotRadius = 10;
@@ -44,16 +47,12 @@ private:
     std::map<uint64_t, std::pair<float, float>> m_history;
     std::vector<uint64_t> m_TimeStamps;
 
-    static std::pair<float, float> polToCart(float kts, float rad);
     Polars &m_polars;
 
     QImage *m_pBackgroundImage = nullptr;
     QImage *m_PolarCurveImage = nullptr;
     QPoint m_origin;
 
-    QPoint drawGrid();
-
-    void drawPolarCurve(float tws);
 };
 
 

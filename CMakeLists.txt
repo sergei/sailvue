@@ -126,6 +126,8 @@ set (NAV_SRC
         net_sim/NMEA2000_UDP.h
         net_sim/N2kDebugStream.cpp
         net_sim/N2kDebugStream.h
+        movie/RudderOverlayMaker.cpp
+        movie/RudderOverlayMaker.h
 )
 
 qt_add_executable(sailvue WIN32 MACOSX_BUNDLE

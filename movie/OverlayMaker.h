@@ -10,7 +10,7 @@ public:
     OverlayMaker(const std::filesystem::path &folder, int width, int height);
     void addOverlayElement(OverlayElement &element){m_elements.push_back(&element);}
     std::filesystem::path & setChapter(Chapter &chapter, const std::list<InstrumentInput> &chapterEpochs);
-    void addEpoch(const InstrumentInput &epoch);
+    void addEpoch(const InstrumentInput &epoch, bool ignoreCache=false);
     static std::string getFileNamePattern(Chapter &chapter);
 private:
     std::list<OverlayElement *> m_elements;

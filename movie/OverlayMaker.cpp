@@ -28,13 +28,13 @@ std::string OverlayMaker::getFileNamePattern(Chapter &chapter) {
     return {"overlay_%05d.png"};
 }
 
-void OverlayMaker::addEpoch(const InstrumentInput &epoch) {
+void OverlayMaker::addEpoch(const InstrumentInput &epoch, bool ignoreCache) {
     std::ostringstream oss;
     oss <<  "overlay_" << std::setw(5) << std::setfill('0') << m_OverlayCount << ".png";
     m_OverlayCount ++;
     std::filesystem::path pngName =  m_ChapterFolder / oss.str();
 
-    if ( std::filesystem::is_regular_file(pngName) ){
+    if ( std::filesystem::is_regular_file(pngName) && !ignoreCache ){
         return ;
     }
     QImage fullImage(m_width, m_height, QImage::Format_ARGB32);

@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include "../navcomputer/Polars.h"
 #include <libInterpolate/Interpolate.hpp>
+#include <QGuiApplication>
 
 TEST(PolarTests, InterpolatorTest)
 {
@@ -148,6 +149,8 @@ TEST(PolarTests, PolarsPolTargetTest)
 
 int main(int argc, char** argv)
 {
+    QGuiApplication app(argc, argv);
+
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
