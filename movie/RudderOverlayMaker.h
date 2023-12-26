@@ -28,7 +28,9 @@ private:
     QFont m_RudderFont;
     QFont m_AutoFont;
     QPen m_RudderPen = QPen(QColor(255, 255, 0, 128));
+    QPen m_RudderFontPen = QPen(QColor(255, 255, 0, 200));
     QPen m_AutoPen = QPen(QColor(255, 0, 0, 128));
+    QPen m_AutoFontPen = QPen(QColor(255, 0, 0, 200));
 
     int m_rudderY0=0;
     int m_rudderX0=0;

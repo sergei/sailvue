@@ -9,6 +9,7 @@
 #include "utils/Caffeine.h"
 #include "PerformanceOverlayMaker.h"
 #include "OverlayMaker.h"
+#include "RudderOverlayMaker.h"
 
 MovieProducer::MovieProducer(const std::string &path, const std::string &polarPath, std::list<GoProClipInfo> &clipsList,
                              std::vector<InstrumentInput> &instrDataVector,
@@ -55,6 +56,10 @@ void MovieProducer::produce() {
         int instrOvlHeight = 128;
 
         int polar_ovl_width = 400;
+        int polar_ovl_height = polar_ovl_width;
+
+        int rudder_ovl_width = 400;
+        int rudder_ovl_height = 200;
 
         int startIdx = (int)chapterList.front()->getStartIdx();
         int endIdx = (int)chapterList.back()->getEndIdx();
@@ -76,7 +81,9 @@ void MovieProducer::produce() {
 
         InstrOverlayMaker instrOverlayMaker(m_rInstrDataVector, instr_ovl_width, instrOvlHeight, 0, movieHeight - instrOvlHeight);
 
-        PolarOverlayMaker polarOverlayMaker(m_polars, m_rInstrDataVector, polar_ovl_width, polar_ovl_width, 0, 0);
+        PolarOverlayMaker polarOverlayMaker(m_polars, m_rInstrDataVector, polar_ovl_width, polar_ovl_height, 0, 0);
+
+        RudderOverlayMaker rudderOverlayMaker(rudder_ovl_width, rudder_ovl_height, 0, polar_ovl_height);
 
         StartTimerOverlayMaker startTimerOverlayMaker(m_rInstrDataVector, timerHeight, timerHeight, timerX, 0);
 
@@ -89,6 +96,7 @@ void MovieProducer::produce() {
         overlayMaker.addOverlayElement(instrOverlayMaker);
         overlayMaker.addOverlayElement(targetsOverlayMaker);
         overlayMaker.addOverlayElement(polarOverlayMaker);
+        overlayMaker.addOverlayElement(rudderOverlayMaker);
         overlayMaker.addOverlayElement(startTimerOverlayMaker);
         overlayMaker.addOverlayElement(performanceOverlayMaker);
 

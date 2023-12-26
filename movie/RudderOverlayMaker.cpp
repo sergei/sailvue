@@ -48,7 +48,7 @@ RudderOverlayMaker::~RudderOverlayMaker() {
 void RudderOverlayMaker::setChapter(Chapter &chapter, const std::list<InstrumentInput> &chapterEpochs) {
     delete m_pBackgroundImage;
     m_pBackgroundImage = new QImage(m_width, m_height, QImage::Format_ARGB32);
-    m_pBackgroundImage->fill(QColor(0, 12, 0, 255));
+    m_pBackgroundImage->fill(QColor(0, 0, 0, 0));
     setHistory(chapterEpochs);
     drawGrid();
 }
@@ -93,8 +93,14 @@ std::pair<QPoint, QPoint> RudderOverlayMaker::toScreen(const float angleRad) con
     float x = float(m_rudderBoxWidth) / 2 - float(m_rudderY0) * tg;
     QPoint top(int(x), 0);
 
-    x = float(m_rudderBoxWidth) / 2 + float(m_rudderBoxHeight - m_rudderY0) * tg;
-    QPoint bottom(int(x), m_rudderBoxHeight);
+    // Flat bottom
+//    x = float(m_rudderBoxWidth) / 2 + float(m_rudderBoxHeight - m_rudderY0) * tg;
+//    QPoint bottom(int(x), m_rudderBoxHeight);
+
+    // Curved bottom
+    x = float(m_rudderBoxWidth) / 2 + float(m_rudderBoxHeight - m_rudderY0) * sin(angleRad);
+    float y = float(m_rudderBoxHeight - m_rudderY0) * cos(angleRad) + float(m_rudderY0);
+    QPoint bottom((int)x, (int)y);
 
     return {top, bottom};
 }
@@ -130,29 +136,34 @@ void RudderOverlayMaker::addEpoch(QPainter &painter, const InstrumentInput &epoc
     painter.drawImage(0, 0, image);
 
     if( epoch.rdr.isValid(epoch.utc.getUnixTimeMs()) && epoch.cmdRdr.isValid(epoch.utc.getUnixTimeMs())){
-        painter.setFont(m_RudderFont);
-        painter.setPen(m_RudderPen);
         std::ostringstream ossRdr;
         ossRdr << "RUDDER " << std::setw(2) << std::setfill(' ') << std::fixed << std::setprecision(0) << abs(epoch.rdr.getDegrees()) << "°";
+        painter.setFont(m_RudderFont);
+        painter.setPen(m_RudderFontPen);
         painter.drawText(QRect(m_textX0, m_textY0, m_textBoxWidth/ 2 - m_textPad , m_textBoxWidth), QString::fromStdString(ossRdr.str()));
+
         auto rudderTick = toScreen(float(epoch.rdr.getRadians()));
+        painter.setPen(m_RudderPen);
         painter.drawLine(rudderTick.first, rudderTick.second);
 
-        painter.setFont(m_AutoFont);
-        painter.setPen(m_AutoPen);
         std::ostringstream ossAuto;
         ossAuto  << "AUTO " <<  std::setw(2) << std::setfill(' ') << std::fixed << std::setprecision(0) << abs(epoch.cmdRdr.getDegrees()) << "°";
+        painter.setFont(m_AutoFont);
+        painter.setPen(m_AutoFontPen);
         painter.drawText(QRect(m_textX0 +  m_textBoxWidth/ 2 + m_textPad, m_textY0, m_textBoxWidth/ 2 - m_textPad , m_textBoxWidth), QString::fromStdString(ossAuto.str()));
+
         auto autoTick = toScreen(float(epoch.cmdRdr.getRadians()));
+        painter.setPen(m_AutoPen);
         painter.drawLine(autoTick.first, autoTick.second);
     } else {  // Rudder only
         std::ostringstream oss;
-        painter.setFont(m_RudderOnlyFont);
-        painter.setPen(m_RudderPen);
         oss  << "RUDDER " <<  std::setw(2) << std::setfill(' ') << std::fixed << std::setprecision(0) << abs(epoch.rdr.getDegrees()) << "°";
+        painter.setFont(m_RudderOnlyFont);
+        painter.setPen(m_RudderFontPen);
         painter.drawText(QRect(m_textX0, m_textY0, m_textBoxWidth, m_textBoxWidth), QString::fromStdString(oss.str()));
 
         auto rudderTick = toScreen(float(epoch.rdr.getRadians()));
+        painter.setPen(m_RudderPen);
         painter.drawLine(rudderTick.first, rudderTick.second);
     }
 
