@@ -142,6 +142,7 @@ void PolarOverlayMaker::setHistory(const std::list<InstrumentInput> &chapterEpoc
         m_height = int( m_yScale * float(m_maxSpeedKts - m_minSpeedKts) + float(m_yPad) * 2);
         m_showBottomHalf = true;
     }else {  // Full circle
+        m_height = m_width;
         m_y0 = m_height / 2 - m_yPad;
         m_showTopHalf = true;
         m_showBottomHalf = true;
