@@ -16,7 +16,7 @@ private:
     [[nodiscard]] std::pair<QPoint, QPoint> toScreen(const float angle) const;
     void setHistory(const std::list<InstrumentInput> &chapterEpochs);
     void drawGrid();
-    int getFontSize(const char *fontFamily, const char *text, int width) const;
+    int getFontSize(const char *fontFamily, const char *text, int width, int height) const;
 
 private:
     std::map<uint64_t, float> m_history;
@@ -24,11 +24,10 @@ private:
     QImage *m_pBackgroundImage = nullptr;
     const QColor m_gridColor = QColor(255, 255, 255, 127);
 
-    QFont m_RudderOnlyFont;
     QFont m_RudderFont;
-    QFont m_AutoFont;
+    QFont m_PilotFont;
     QPen m_RudderPen = QPen(QColor(255, 255, 0, 128));
-    QPen m_RudderFontPen = QPen(QColor(255, 255, 0, 200));
+    QPen m_RudderFontPen = QPen(QColor(255, 255, 255, 255));
     QPen m_AutoPen = QPen(QColor(255, 0, 0, 128));
     QPen m_AutoFontPen = QPen(QColor(255, 0, 0, 200));
 
@@ -38,10 +37,9 @@ private:
     int m_maxAngleDeg = 30;
     int m_rudderBoxWidth;
     int m_rudderBoxHeight;
-    int m_textBoxWidth;
-    int m_textBoxHeight;
-    int m_textY0=0;
-    int m_textX0=0;
+
+    QRect m_rudderTextRect;
+    QRect m_pilotTextRect;
 
     const int m_yPad = 0;
     const int m_xPad = 0;

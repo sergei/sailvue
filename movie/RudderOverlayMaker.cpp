@@ -7,16 +7,25 @@ static const char *const FONT_FAMILY = "Courier";
 RudderOverlayMaker::RudderOverlayMaker(int width, int height, int x, int y)
 :OverlayElement(width, height, x, y)
 {
-    m_textBoxWidth = width;
-    m_textBoxHeight = 50;
-    m_rudderBoxWidth = width;
-    m_rudderBoxHeight = height - m_textBoxHeight;
-    m_textY0 = m_rudderBoxHeight + 5;
-    m_textX0 = 0;
+    int rudderTextBoxWidth = width / 4;
+    int rudderTextBoxHeight = 50;
+    int rudderTextY0 = 50;
+    int rudderTextX0 = (width - rudderTextBoxWidth) / 2;
 
-    m_RudderOnlyFont = QFont(FONT_FAMILY, getFontSize(FONT_FAMILY, "RUDDER 33º", m_textBoxWidth));
-    m_RudderFont = QFont(FONT_FAMILY, getFontSize(FONT_FAMILY, "RUDDER 22º", m_textBoxWidth / 2 - m_textPad));
-    m_AutoFont = m_RudderFont;
+    int pilotTextBoxWidth = width;
+    int pilotTextBoxHeight = 50;
+
+    m_rudderBoxWidth = width;
+    m_rudderBoxHeight = height - pilotTextBoxHeight;
+
+    int m_pilotTextY0 = m_rudderBoxHeight + 5;
+    int m_pilotTextX0 = 0;
+
+    m_rudderTextRect = QRect(rudderTextX0, rudderTextY0, rudderTextBoxWidth, rudderTextBoxHeight);
+    m_pilotTextRect = QRect(m_pilotTextX0, m_pilotTextY0, pilotTextBoxWidth, pilotTextBoxHeight);
+
+    m_RudderFont = QFont(FONT_FAMILY, getFontSize(FONT_FAMILY, "◄33º", rudderTextBoxWidth, rudderTextBoxHeight));
+    m_PilotFont = QFont(FONT_FAMILY, getFontSize(FONT_FAMILY, "PILOT 33º►", pilotTextBoxWidth, pilotTextBoxHeight));
 
     m_RudderPen.setWidth(15);
     m_RudderPen.setCapStyle(Qt::RoundCap);
@@ -25,7 +34,7 @@ RudderOverlayMaker::RudderOverlayMaker(int width, int height, int x, int y)
     m_AutoPen.setCapStyle(Qt::RoundCap);
 }
 
-int RudderOverlayMaker::getFontSize(const char *fontFamily, const char *text, int width) const {
+int RudderOverlayMaker::getFontSize(const char *fontFamily, const char *text, int width, int height) const {
     int fontPointSize;
     QFont font = QFont(fontFamily);
     for(int fs=1; fs < 100; fs ++){
@@ -33,7 +42,7 @@ int RudderOverlayMaker::getFontSize(const char *fontFamily, const char *text, in
         font.setPointSize(fs);
         QFontMetrics fm(font);
         QRect rect = fm.boundingRect(text);
-        if(rect.height() > m_textBoxHeight || rect.width() > width){
+        if(rect.height() > height || rect.width() > width){
             fontPointSize = fs - 4;
             break;
         }
@@ -120,6 +129,15 @@ void RudderOverlayMaker::drawGrid() {
         auto tick = toScreen(angle * M_PI / 180);
         painter.drawLine(tick.first, tick.second);
     }
+
+    // Erase  angle rectangle on to of them
+//    painter.setPen(m_RudderPen);
+    painter.save();
+    painter.setCompositionMode(QPainter::CompositionMode_Clear);
+    painter.eraseRect(m_rudderTextRect);
+    painter.restore();
+
+    painter.drawRect(m_rudderTextRect);
 }
 
 
@@ -135,36 +153,42 @@ void RudderOverlayMaker::addEpoch(QPainter &painter, const InstrumentInput &epoc
     QImage image = m_pBackgroundImage->copy();
     painter.drawImage(0, 0, image);
 
-    if( epoch.rdr.isValid(epoch.utc.getUnixTimeMs()) && epoch.cmdRdr.isValid(epoch.utc.getUnixTimeMs())){
-        std::ostringstream ossRdr;
-        ossRdr << "RUDDER " << std::setw(2) << std::setfill(' ') << std::fixed << std::setprecision(0) << abs(epoch.rdr.getDegrees()) << "°";
-        painter.setFont(m_RudderFont);
-        painter.setPen(m_RudderFontPen);
-        painter.drawText(QRect(m_textX0, m_textY0, m_textBoxWidth/ 2 - m_textPad , m_textBoxWidth), QString::fromStdString(ossRdr.str()));
+    auto rudderTick = toScreen(float(epoch.rdr.getRadians()));
+    painter.setPen(m_RudderPen);
+    painter.drawLine(rudderTick.first, rudderTick.second);
 
-        auto rudderTick = toScreen(float(epoch.rdr.getRadians()));
-        painter.setPen(m_RudderPen);
-        painter.drawLine(rudderTick.first, rudderTick.second);
-
+    if( epoch.cmdRdr.isValid(epoch.utc.getUnixTimeMs())){
         std::ostringstream ossAuto;
-        ossAuto  << "AUTO " <<  std::setw(2) << std::setfill(' ') << std::fixed << std::setprecision(0) << abs(epoch.cmdRdr.getDegrees()) << "°";
-        painter.setFont(m_AutoFont);
+
+        ossAuto  << "PILOT " ;
+        if ( epoch.cmdRdr.getDegrees() < -0.5 ){
+            ossAuto  << "◄";
+        }
+        ossAuto <<  std::setw(2) << std::setfill(' ') << std::fixed << std::setprecision(0) << abs(epoch.cmdRdr.getDegrees()) << "°";
+        if ( epoch.cmdRdr.getDegrees() > 0.5 ){
+            ossAuto  << "►";
+        }
+
+        painter.setFont(m_PilotFont);
         painter.setPen(m_AutoFontPen);
-        painter.drawText(QRect(m_textX0 +  m_textBoxWidth/ 2 + m_textPad, m_textY0, m_textBoxWidth/ 2 - m_textPad , m_textBoxWidth), QString::fromStdString(ossAuto.str()));
+        painter.drawText(m_pilotTextRect, Qt::AlignCenter, QString::fromStdString(ossAuto.str()));
 
         auto autoTick = toScreen(float(epoch.cmdRdr.getRadians()));
         painter.setPen(m_AutoPen);
         painter.drawLine(autoTick.first, autoTick.second);
-    } else {  // Rudder only
-        std::ostringstream oss;
-        oss  << "RUDDER " <<  std::setw(2) << std::setfill(' ') << std::fixed << std::setprecision(0) << abs(epoch.rdr.getDegrees()) << "°";
-        painter.setFont(m_RudderOnlyFont);
-        painter.setPen(m_RudderFontPen);
-        painter.drawText(QRect(m_textX0, m_textY0, m_textBoxWidth, m_textBoxWidth), QString::fromStdString(oss.str()));
-
-        auto rudderTick = toScreen(float(epoch.rdr.getRadians()));
-        painter.setPen(m_RudderPen);
-        painter.drawLine(rudderTick.first, rudderTick.second);
     }
+
+    std::ostringstream oss;
+    if ( epoch.rdr.getDegrees() < -0.5 ){
+        oss  << "◄";
+    }
+    oss  << std::setw(2) << std::setfill(' ') << std::fixed << std::setprecision(0) << abs(epoch.rdr.getDegrees()) << "°";
+    if ( epoch.rdr.getDegrees() > 0.5 ){
+        oss  << "►";
+    }
+
+    painter.setFont(m_RudderFont);
+    painter.setPen(m_RudderFontPen);
+    painter.drawText(m_rudderTextRect, Qt::AlignCenter, QString::fromStdString(oss.str()));
 
 }
