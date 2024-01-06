@@ -24,6 +24,7 @@ public:
     Speed sow = Speed::INVALID;
     Angle rdr = Angle::INVALID;
     Angle cmdRdr = Angle::INVALID;
+    Direction hdgToSteer = Direction::INVALID;
     Angle yaw = Angle::INVALID;
     Angle pitch = Angle::INVALID;
     Angle roll = Angle::INVALID;
@@ -43,6 +44,7 @@ public:
               << ",sow," << sow.toString(utc.getUnixTimeMs())
               << ",rdr," << rdr.toString(utc.getUnixTimeMs())
               << ",cmdRdr," << cmdRdr.toString(utc.getUnixTimeMs())
+              << ",hdgToSteer," << hdgToSteer.toString(utc.getUnixTimeMs())
               << ",yaw," << yaw.toString(utc.getUnixTimeMs())
               << ",pitch," << pitch.toString(utc.getUnixTimeMs())
               << ",roll," << roll.toString(utc.getUnixTimeMs())
@@ -92,6 +94,8 @@ public:
                 ii.rdr = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
             else if( item == "cmdRdr")
                 ii.cmdRdr = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
+            else if( item == "hdgToSteer")
+                ii.hdgToSteer = Direction::fromDegrees(std::stod(value), ulGpsTimeMs);
             else if( item == "yaw")
                 ii.yaw = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
             else if( item == "pitch")
@@ -117,6 +121,7 @@ public:
         std::list<Speed> sows;
         std::list<Angle> rdrs;
         std::list<Angle> cmdRdrs;
+        std::list<Direction> hdgsToSteer;
         std::list<Angle> yaws;
         std::list<Angle> pitches;
         std::list<Angle> rolls;
@@ -134,6 +139,7 @@ public:
             sows.push_back(ii.sow);
             rdrs.push_back(ii.rdr);
             cmdRdrs.push_back(ii.cmdRdr);
+            hdgsToSteer.push_back(ii.hdgToSteer);
             yaws.push_back(ii.yaw);
             pitches.push_back(ii.pitch);
             rolls.push_back(ii.roll);
@@ -152,6 +158,7 @@ public:
         median.sow = Speed::median(sows, from->utc.getUnixTimeMs());
         median.rdr = Angle::median(rdrs, from->utc.getUnixTimeMs());
         median.cmdRdr = Angle::median(cmdRdrs, from->utc.getUnixTimeMs());
+        median.hdgToSteer = Direction::median(hdgsToSteer, from->utc.getUnixTimeMs());
         median.yaw = Angle::median(yaws, from->utc.getUnixTimeMs());
         median.pitch = Angle::median(pitches, from->utc.getUnixTimeMs());
         median.roll = Angle::median(rolls, from->utc.getUnixTimeMs());

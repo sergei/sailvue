@@ -460,14 +460,21 @@ void YdvrReader::processRudder(const Pgn *pgn, const uint8_t *data, uint8_t len)
 void YdvrReader::processHeadingControl(const Pgn *pgn, uint8_t *data, uint8_t len) {
     int64_t val;
     extractNumberByOrder(pgn, 9, data, len, &val);  // "Commanded Rudder Direction"
-    int sign = 0;
     if ( val < 7 ){
-        sign = (val == 1) ? 1: -1;
         extractNumberByOrder(pgn, 10, data, len, &val);  // "Commanded Rudder Angle"
-        double rudderAngle = sign * double(val) * RES_RADIANS;
         m_epoch.cmdRdr = val < 32767 ? Angle::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs) : Angle::INVALID;
     }else{
         m_epoch.cmdRdr = Angle::INVALID;
+    }
+
+    extractNumberByOrder(pgn, 11, data, len, &val);  // "Heading-To-Steer"
+    if ( val < 65532 ){
+        double rad = double(val) *  RES_RADIANS;
+        // Convert to magnetic
+        m_epoch.hdgToSteer = b_MagVarValid ? Direction::fromRadians(rad - m_dMagVarRad, m_ulLatestGpsTimeMs)
+                                        : Direction::INVALID;
+    }else{
+        m_epoch.hdgToSteer = Direction::INVALID;
     }
 }
 
