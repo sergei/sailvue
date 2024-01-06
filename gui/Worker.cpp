@@ -184,12 +184,16 @@ void Worker::exportStats(const QString &polarUrl, const QString &path) {
     std::cout << "exporting stats to  " << csvName << std::endl;
     std::ofstream ofs(csvName);
 
+    ofs << m_rInstrDataVector[0].toCsv(true);
+    ofs << m_rPerformanceMap[0].toCsv(true, m_rInstrDataVector[0].utc);
+    ofs << std::endl;
     for(auto & ii : m_rInstrDataVector){
+        ofs << ii.toCsv(false);
         auto utcMs = ii.utc.getUnixTimeMs();
-        ofs << std::string(ii) << ",";
-        ofs << m_rPerformanceMap[utcMs].toString(ii.utc) << ",";
+        ofs << m_rPerformanceMap[utcMs].toCsv(false, ii.utc);
         ofs << std::endl;
     }
 
     ofs.close();
+    std::cout << "Export complete" << std::endl;
 }

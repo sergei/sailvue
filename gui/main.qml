@@ -151,7 +151,7 @@ ApplicationWindow {
             }
 
             Action {
-                text: qsTr("&Export Stats...")
+                text: qsTr("&Export CSV...")
                 onTriggered: statsFileDialog.open()
                 enabled: raceTreeModel.projectName !== "Untitled"
             }

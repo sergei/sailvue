@@ -30,6 +30,32 @@ public:
     Angle roll = Angle::INVALID;
     Distance log = Distance::INVALID;
 
+
+    [[nodiscard]] std::string toCsv(bool isHeader) const {
+        std::stringstream ss;
+        std::istringstream tokenStream(std::string(*this));
+
+        std::string item;
+        int count = 0;
+
+        if ( isHeader ) {
+            ss << "utc,";
+        }
+
+        while (std::getline(tokenStream, item, ',')) {
+            bool isName  = (count % 2) != 0;
+            bool isValue = (count % 2) == 0;
+            bool doPrint = (isName && isHeader) || (isValue && !isHeader);
+            if ( doPrint ){
+                ss << item;
+                ss << ",";
+            }
+           count ++;
+        }
+
+        return ss.str();
+    }
+
     explicit operator std::string() const {
         std::stringstream ss;
         ss << static_cast<std::string>(utc)

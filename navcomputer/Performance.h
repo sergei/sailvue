@@ -21,7 +21,7 @@ public:
     double raceDistLostToTargetMeters=0;
     double raceTimeLostToTargetSec=0;
 
-    std::string toString(UtcTime utc) const {
+    std::string toString(UtcTime &utc) const {
         std::stringstream ss;
         ss << "r_idx," << raceIdx
            << ",l_idx," << legIdx
@@ -37,6 +37,29 @@ public:
                 ;
         return ss.str();
     }
+
+    [[nodiscard]] std::string toCsv(bool isHeader, UtcTime &utc) const {
+        std::stringstream ss;
+        std::istringstream tokenStream(toString(utc));
+
+        std::string item;
+        int count = 0;
+
+        while (std::getline(tokenStream, item, ',')) {
+            bool isName  = (count % 2) == 0;
+            bool isValue = (count % 2) != 0;
+            bool doPrint = (isName && isHeader) || (isValue && !isHeader);
+            if ( doPrint ){
+                ss << item;
+                ss << ",";
+            }
+            count ++;
+        }
+
+        return ss.str();
+    }
+
+
 };
 
 
