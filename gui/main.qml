@@ -169,6 +169,114 @@ ApplicationWindow {
             }
         }
         Menu {
+            title: qsTr("&Edit")
+            delegate: MenuItem {
+                id: control
+
+                contentItem: Item {
+                    anchors.centerIn: parent
+
+                    Text {
+                        text: control.text
+                        anchors.left: parent.left
+                        color: "white"
+                    }
+
+                    Text {
+                        text: control.action.shortcut
+                        anchors.right: parent.right
+                        color: "white"
+                    }
+                }
+            }
+
+            Action {
+                text: qsTr("Chapter In -10 sec")
+                shortcut: "a"
+                onTriggered: moveChapterStartIdx(-10000)
+            }
+            Action {
+                text: qsTr("Chapter In -1 sec")
+                shortcut: "z"
+                onTriggered: moveChapterStartIdx(-1000)
+            }
+            Action {
+                text: qsTr("Chapter In +1 sec")
+                shortcut: "x"
+                onTriggered: moveChapterStartIdx(1000)
+            }
+            Action {
+                text: qsTr("Chapter In +10 sec")
+                shortcut: "s"
+                onTriggered: moveChapterStartIdx(10000)
+            }
+
+            MenuSeparator {
+                padding: 0
+                topPadding: 12
+                bottomPadding: 12
+                contentItem: Rectangle {
+                    implicitWidth: 200
+                    implicitHeight: 1
+                    color: "#1E000000"
+                }
+            }
+
+            Action {
+                text: qsTr("Chapter Out -10 sec")
+                shortcut: ";"
+                onTriggered: moveChapterEndIdx(-10000)
+            }
+            Action {
+                text: qsTr("Chapter Out -1 sec")
+                shortcut: "."
+                onTriggered: moveChapterEndIdx(-1000)
+            }
+            Action {
+                text: qsTr("Chapter Out +1 sec")
+                shortcut: "/"
+                onTriggered: moveChapterEndIdx(1000)
+            }
+            Action {
+                text: qsTr("Chapter Out +10 sec")
+                shortcut: "'"
+                onTriggered: moveChapterEndIdx(10000)
+            }
+
+            MenuSeparator {
+                padding: 0
+                topPadding: 12
+                bottomPadding: 12
+                contentItem: Rectangle {
+                    implicitWidth: 200
+                    implicitHeight: 1
+                    color: "#1E000000"
+                }
+            }
+
+            Action {
+                text: qsTr("Chapter Gun -10 sec")
+                shortcut: "d"
+                onTriggered: moveChapterGunIdx(-10000)
+            }
+            Action {
+                text: qsTr("Chapter Gun -1 sec")
+                shortcut: "c"
+                onTriggered: moveChapterGunIdx(-1000)
+            }
+            Action {
+                text: qsTr("Chapter Gun +1 sec")
+                shortcut: "f"
+                onTriggered: moveChapterGunIdx(1000)
+            }
+            Action {
+                text: qsTr("Chapter Gun +10 sec")
+                shortcut: "v"
+                onTriggered: moveChapterGunIdx(10000)
+            }
+
+        }
+        Menu {
             title: qsTr("&Tools")
             Action {
                 text: qsTr("&Options...")
@@ -342,28 +450,55 @@ ApplicationWindow {
                 player: raceVideo
 
                 onChapterStartIdxChanged: {
+                    console.log('On start change', chapterStartIdx)
                     let idx = Math.round(chapterStartIdx)
-                    raceMap.onSelectedChapterStartIdxChanged(idx)
-                    raceTreeModel.seekToRacePathIdx(idx)
-                    raceTreeModel.updateChapterStartIdx(idx)
+                    broadcastChapterStartIdx(idx)
                 }
 
                 onChapterEndIdxChanged: {
                     let idx = Math.round(chapterEndIdx)
-                    raceMap.onSelectedChapterEndIdxChanged(idx)
-                    raceTreeModel.seekToRacePathIdx(idx)
-                    raceTreeModel.updateChapterEndIdx(idx)
+                    broadcastChapterEndIdx(idx)
                 }
 
                 onChapterGunIdxChanged: {
                     let idx = Math.round(chapterGunIdx)
-                    raceMap.onSelectedChapterGunIdxChanged(idx)
-                    raceTreeModel.seekToRacePathIdx(idx)
-                    raceTreeModel.updateChapterGunIdx(idx)
+                    broadcastChapterGunIdx(idx)
                 }
             }
         }
     }
+
+    function moveChapterStartIdx(ms) {
+        raceTimeLine.chapterStartIdx = raceTreeModel.moveIdxByMs(raceTimeLine.chapterStartIdx, ms)
+    }
+    function moveChapterEndIdx(ms) {
+        raceTimeLine.chapterEndIdx = raceTreeModel.moveIdxByMs(raceTimeLine.chapterEndIdx, ms)
+    }
+    function moveChapterGunIdx(ms) {
+        raceTimeLine.chapterGunIdx = raceTreeModel.moveIdxByMs(raceTimeLine.chapterGunIdx, ms)
+    }
+
+    function broadcastChapterStartIdx(idx) {
+        raceMap.onSelectedChapterStartIdxChanged(idx)
+        raceTreeModel.seekToRacePathIdx(idx)
+        raceTreeModel.updateChapterStartIdx(idx)
+        raceVideo.seekTo(idx)
+    }
+
+    function broadcastChapterEndIdx(idx) {
+        raceMap.onSelectedChapterEndIdxChanged(idx)
+        raceTreeModel.seekToRacePathIdx(idx)
+        raceTreeModel.updateChapterEndIdx(idx)
+        raceVideo.seekTo(idx)
+    }
+    function broadcastChapterGunIdx(idx) {
+        raceMap.onSelectedChapterGunIdxChanged(idx)
+        raceTreeModel.seekToRacePathIdx(idx)
+        raceTreeModel.updateChapterGunIdx(idx)
+        raceVideo.seekTo(idx)
+    }
+
+
 
 
 }

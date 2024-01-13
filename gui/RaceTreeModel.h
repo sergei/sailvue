@@ -152,6 +152,7 @@ public:
     Q_INVOKABLE [[nodiscard]] QString getSelectedName() const;
     Q_INVOKABLE [[nodiscard]] QString getTimeString(uint64_t idx) const;
     Q_INVOKABLE [[nodiscard]] qint64 getIdxOffsetByMs(qint64 ms) const;
+    Q_INVOKABLE [[nodiscard]] qint64 moveIdxByMs(qint64 idx, qint64 ms) const;
 
     std::list<GoProClipInfo> *getClipList()  {return &m_GoProClipInfoList;};
 

@@ -994,5 +994,32 @@ qint64 RaceTreeModel::getIdxOffsetByMs(qint64 ms) const {
     return idx;
 }
 
+qint64 RaceTreeModel::moveIdxByMs(qint64 idx, qint64 ms) const {
+
+    if ( m_pCurrentRace == nullptr){
+        std::cerr << "No race is set " << std::endl;
+        return idx;
+    }
+
+    std::cerr << "Move idx " << idx << " by " << ms <<  " ms" << std::endl;
+
+    auto currentUtc = m_InstrDataVector[idx].utc.getUnixTimeMs();
+    uint64_t  targetUtc = currentUtc + ms;
+
+    if ( ms > 0 ){
+        for( ; idx < m_pCurrentRace->getEndIdx(); idx++){
+            if( m_InstrDataVector[idx].utc.getUnixTimeMs() >= targetUtc)
+                return idx;
+        }
+    }else if (ms < 0 ) {
+        for( ; idx >= m_pCurrentRace->getStartIdx(); idx--){
+            if( m_InstrDataVector[idx].utc.getUnixTimeMs() <= targetUtc)
+                return idx;
+        }
+    }
+
+    return idx;
+}
+
 
 

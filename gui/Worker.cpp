@@ -177,6 +177,9 @@ void Worker::computeStats(const QString &polarUrl){
 
 
 void Worker::exportStats(const QString &polarUrl, const QString &path) {
+
+    std::cout << "Computing stats" << std::endl;
+
     computeStats(polarUrl);
 
     // Store stats as a CSV file
