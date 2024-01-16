@@ -43,16 +43,19 @@ void Test(const std::string& stYdvrDir, const std::string& stGoProDir, const std
 }
 
 int main(int argc, char** argv) {
-    if (! FFMpeg::setBinDir("./ffmpeg/bin/osx") ){
-        std::cerr << "FFMpeg::setBinDir failed" << std::endl;
-        exit(1);
-    }
 
     QCoreApplication::setOrganizationName("Santa Cruz Instruments");
     QCoreApplication::setOrganizationDomain("www.santacruzinstruments.com");
     QCoreApplication::setApplicationName("sailvue");
 
     QGuiApplication app(argc, argv);
+
+    QString appPath = QCoreApplication::applicationDirPath();
+    if (! FFMpeg::setBinDir(appPath.toStdString()) ){
+        std::cerr << "FFMpeg::setBinDir failed" << std::endl;
+        exit(1);
+    }
+
     QQmlApplicationEngine engine;
     QLoggingCategory::setFilterRules(QStringLiteral("qt.qml.binding.removal.info=true"));
     engine.load(QUrl(QStringLiteral("qrc:/gui/main.qml")));
