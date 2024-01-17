@@ -42,12 +42,28 @@ public:
             ss << "utc,";
         }
 
+        bool isLocValue = false;
         while (std::getline(tokenStream, item, ',')) {
             bool isName  = (count % 2) != 0;
             bool isValue = (count % 2) == 0;
             bool doPrint = (isName && isHeader) || (isValue && !isHeader);
+            if ( item == "loc" )
+                isLocValue = true;
             if ( doPrint ){
-                ss << item;
+                // Special treatment of location object to make uniform CSV
+                // Replace ; with ,
+                if (  isLocValue ){
+                    isLocValue = false;
+                    // Replace ; with '
+                    std::replace( item.begin(), item.end(), ';', ',');
+                }
+                // Replace loc with lat,lon
+                if ( item == "loc"){
+                    ss << "lat,lon";
+                }else{
+                    ss << item;
+                }
+
                 ss << ",";
             }
            count ++;

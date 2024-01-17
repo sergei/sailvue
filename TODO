@@ -1,5 +1,4 @@
-TODO Add distance log PGN processing
-TODO Show the time and distance traveled for each leg in description
+TODO add progress dialog for CSV export
 TODO add PGN filter setting to the project to make sure the cache is being rebuild using the same settings
 TODO add hash of cache to the project file and rebuild cach if it's out of sync
 TODO Run multiple threads when creating the overlays
