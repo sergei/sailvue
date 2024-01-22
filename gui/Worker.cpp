@@ -104,6 +104,16 @@ void Worker::produce(const QString &moviePathUrl, const QString &polarUrl) {
 
 
 void Worker::computeStats(const QString &polarUrl){
+
+    int totalLen = 0;
+    for ( auto *r: m_RaceDataList) {
+        for (auto chapter: r->getChapters()) {
+            totalLen += int(chapter->getEndIdx() - chapter->getStartIdx());
+        }
+    }
+    int prevPerc = 0;
+    int count = 0;
+
     Polars polars;
     polars.loadPolar(QUrl(polarUrl).toLocalFile().toStdString());
 
@@ -111,6 +121,7 @@ void Worker::computeStats(const QString &polarUrl){
 
     int raceIdx = 0;
     TimeDeltaComputer timeDeltaComputer(polars, m_rInstrDataVector);
+
     for ( RaceData *race: m_RaceDataList) {
 
         // Go through the list of chapters and determine if they are fetches or not
@@ -142,6 +153,16 @@ void Worker::computeStats(const QString &polarUrl){
 
             timeDeltaComputer.startLeg();
             for( uint64_t idx= chapter->getStartIdx(); idx < chapter->getEndIdx(); idx++){
+                int perc = count * 100 / int(totalLen);
+                if( perc != prevPerc){
+                    progress("Computing stats", perc);
+                    if ( stopRequested() ){
+                        break;
+                    }
+                    prevPerc = perc;
+                }
+                count ++;
+
                 // In case of mark rounding we decide separately if we are fetching or not before and after the mark
                 // depending on the previous and next chapters are fetches or not
                 bool isFetch = chapter->isFetch();
@@ -179,8 +200,12 @@ void Worker::computeStats(const QString &polarUrl){
 void Worker::exportStats(const QString &polarUrl, const QString &path) {
 
     std::cout << "Computing stats" << std::endl;
+    emit produceStarted();
+    progress("Computing stats", 0);
 
     computeStats(polarUrl);
+
+    progress("Exporting CSV", 0);
 
     // Store stats as a CSV file
     std::string csvName = QUrl(path).toLocalFile().toStdString();
@@ -190,13 +215,29 @@ void Worker::exportStats(const QString &polarUrl, const QString &path) {
     ofs << m_rInstrDataVector[0].toCsv(true);
     ofs << m_rPerformanceMap[0].toCsv(true, m_rInstrDataVector[0].utc);
     ofs << std::endl;
+
+    auto totalLen = m_rInstrDataVector.size();
+    int prevPerc = 0;
+    int count = 0;
     for(auto & ii : m_rInstrDataVector){
+        int perc = count * 100 / int(totalLen);
+        if( perc != prevPerc){
+            progress("Exporting CSV", perc);
+            if ( stopRequested() ){
+                break;
+            }
+            prevPerc = perc;
+        }
         ofs << ii.toCsv(false);
         auto utcMs = ii.utc.getUnixTimeMs();
         ofs << m_rPerformanceMap[utcMs].toCsv(false, ii.utc);
         ofs << std::endl;
+        count ++;
     }
 
     ofs.close();
+    emit produceFinished();
+
+    progress("Exporting CSV", 100);
     std::cout << "Export complete" << std::endl;
 }

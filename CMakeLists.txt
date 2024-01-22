@@ -29,6 +29,14 @@ set(ffprobe_bin ffmpeg/bin/osx/ffprobe)
 set_source_files_properties(${ffprobe_bin} PROPERTIES
         MACOSX_PACKAGE_LOCATION "MacOS")
 
+execute_process(
+        COMMAND git rev-parse --short HEAD
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        OUTPUT_VARIABLE GIT_HASH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+add_definitions("-DGIT_HASH=\"${GIT_HASH}\"")
+
 
 find_package(Qt6 COMPONENTS Core)
 find_package(Qt6 COMPONENTS Gui)

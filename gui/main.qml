@@ -283,6 +283,13 @@ ApplicationWindow {
                 onTriggered: options.open()
             }
         }
+        Menu {
+            title: qsTr("&Help")
+            Action {
+                text: qsTr("&About sailvue...")
+                onTriggered: aboutDialog.open()
+            }
+        }
     }
 
     // --------------------------------------------------
@@ -376,6 +383,15 @@ ApplicationWindow {
         id: options
     }
 
+    Dialog {
+        id: aboutDialog
+        visible: false
+        title: qsTr("About")
+
+        Label {
+            text: "GIT hash: " + raceTreeModel.gitHash
+        }
+    }
 
     // --------------------------------------------------
     // Widgets

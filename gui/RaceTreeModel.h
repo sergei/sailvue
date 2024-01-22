@@ -58,6 +58,7 @@ class RaceTreeModel  : public QAbstractItemModel {
     Q_PROPERTY(QString nmeaPath READ nmeaPath WRITE setNmeaPath NOTIFY nmeaPathChanged)
     Q_PROPERTY(QString polarPath READ polarPath WRITE setPolarPath NOTIFY polarPathChanged)
     Q_PROPERTY(float twaOffset READ twaOffset WRITE setTwaOffset NOTIFY twaOffsetChanged)
+    Q_PROPERTY(QString gitHash READ gitHash )
 
 
 public:
@@ -123,6 +124,7 @@ public:
     [[nodiscard]] QString nmeaPath() const{ return m_project.nmeaPath(); }
     [[nodiscard]] QString polarPath() const{ return m_project.polarPath(); }
     [[nodiscard]] double twaOffset() const{ return m_project.twaOffset(); }
+    [[nodiscard]] QString gitHash() const { return GIT_HASH; }
 
     Q_INVOKABLE void setSelectionModel(QItemSelectionModel *selectionModel) { m_selectionModel = selectionModel;}
     Q_INVOKABLE void load(const QString &path);
