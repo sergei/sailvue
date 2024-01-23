@@ -30,7 +30,7 @@ jobs:
         target: 'desktop'
         arch: 'clang_64'
         install-deps: 'true'
-        modules: 'qtlocation qtmultimedia qtimageformats qtquick3d'
+        modules: 'qtpositioning qtlocation qtmultimedia qtimageformats qtquick3d'
         cache: 'false'
         cache-key-prefix: 'install-qt-action'
         setup-python: 'true'
