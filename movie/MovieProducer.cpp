@@ -101,6 +101,7 @@ void MovieProducer::produce() {
         overlayMaker.addOverlayElement(performanceOverlayMaker);
 
         int chapterCount = 0;
+        int numChapters = chapterList.size();
         m_totalRaceDuration = 0;
         std::list<std::string> chapterClips;
         for( Chapter *chapter: chapterList){
@@ -109,9 +110,9 @@ void MovieProducer::produce() {
             auto sec = m_totalRaceDuration / 1000;
             makeChapterDescription(df, chapter, sec);
 
-            std::string chapterClipName = produceChapter(overlayMaker, *chapter);
-            chapterClips.push_back(chapterClipName);
             chapterCount ++;
+            std::string chapterClipName = produceChapter(overlayMaker, *chapter, chapterCount, numChapters);
+            chapterClips.push_back(chapterClipName);
             if ( m_stopRequested ){
                 return;
             }
@@ -163,11 +164,14 @@ void MovieProducer::makeChapterDescription(std::ofstream &df, const Chapter *cha
     df << std::endl;
 }
 
-std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &chapter) {
+std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &chapter, int chapterNum, int totalChapters) {
     uint64_t startUtcMs = m_rInstrDataVector[chapter.getStartIdx()].utc.getUnixTimeMs();
     uint64_t stopUtcMs = m_rInstrDataVector[chapter.getEndIdx()].utc.getUnixTimeMs();
 
     std::cout << "Producing chapter " << chapter.getName() << " " << startUtcMs << ":" << stopUtcMs << std::endl;
+
+    std::string chapterWithNum = "Chapter " +  chapter.getName() + " (" + std::to_string(chapterNum) + "/"  + std::to_string(totalChapters)  + ")";
+
 
     auto duration = float(stopUtcMs - startUtcMs) / 1000;
     float presentationDuration;
@@ -232,7 +236,7 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
 
         int progress = count * 100 / totalCount;
         if ( progress != prevProgress){
-            m_rProgressListener.progress(chapter.getName() + " Overlay", progress);
+            m_rProgressListener.progress(chapterWithNum + " Overlay", progress);
             prevProgress = progress;
         }
         count ++;
@@ -247,7 +251,7 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
                                  OverlayMaker::getFileNamePattern(chapter));
 
     uint64_t  clipDurationMs = presentationDuration * 1000;
-    EncodingProgressListener progressListener("Chapter " + chapter.getName(), clipDurationMs, m_rProgressListener);
+    EncodingProgressListener progressListener(chapterWithNum, clipDurationMs, m_rProgressListener);
 
     ffmpeg.makeClip(clipFulPathName, progressListener);
     m_stopRequested = progressListener.isStopRequested();

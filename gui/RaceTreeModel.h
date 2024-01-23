@@ -169,7 +169,7 @@ public slots:
     void handleProgress(const QString &state, int progress);
 
     void handleProduceStarted();
-    void handleProduceFinished();
+    void handleProduceFinished(const QString &message);
 
 signals:
 #pragma clang diagnostic push
@@ -201,9 +201,10 @@ signals:
     // Production related signals
     void produce(const QString &produceFolder, const QString &polarFile);
     void produceStarted();
-    void produceFinished();
+    void produceFinished(const QString &message);
 
     void exportStats(const QString &polarUrl, const QString &path);
+    void exportGpx(const QString &path);
     void beginSimulation(const QString &addr, uint16_t port);
     void endSimulation();
 

@@ -41,7 +41,7 @@ public:
     void produce();
 
 private:
-    std::string produceChapter(OverlayMaker &overlayMaker, Chapter &chapter);
+    std::string produceChapter(OverlayMaker &overlayMaker, Chapter &chapter, int chapterNum, int totalChapters);
     void findGoProClipFragments(std::list<ClipFragment> &clipFragments, uint64_t startUtcMs, uint64_t stopUtcMs);
     void makeRaceVideo(const std::filesystem::path &raceFolder, std::list<std::string> &chaptersList);
     void makeChapterDescription(std::ofstream &df, const Chapter *chapter, uint64_t sec) ;

@@ -159,6 +159,7 @@ RaceTreeModel::RaceTreeModel(QObject *parent)
     connect(worker, &Worker::produceFinished, this, &RaceTreeModel::handleProduceFinished);
 
     connect(this, &RaceTreeModel::exportStats, worker, &Worker::exportStats);
+    connect(this, &RaceTreeModel::exportGpx, worker, &Worker::exportGpx);
 
     workerThread.start();
 
@@ -887,8 +888,8 @@ void RaceTreeModel::handleProduceStarted() {
     emit produceStarted();
 }
 
-void RaceTreeModel::handleProduceFinished() {
-    emit produceFinished();
+void RaceTreeModel::handleProduceFinished(const QString &message) {
+    emit produceFinished(message);
 }
 
 void RaceTreeModel::detectManeuvers() {

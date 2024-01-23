@@ -99,7 +99,7 @@ void Worker::produce(const QString &moviePathUrl, const QString &polarUrl) {
 
     movieProducer.produce();
 
-    emit produceFinished();
+    emit produceFinished("Production complete");
 }
 
 
@@ -196,6 +196,74 @@ void Worker::computeStats(const QString &polarUrl){
 
 }
 
+void Worker::exportGpx(const QString &path) {
+    std::string gpxName = QUrl(path).toLocalFile().toStdString();
+    QFile gpxFile(QUrl(path).toLocalFile());
+    if (!gpxFile.open(QIODevice::WriteOnly | QIODevice::Text)){
+        std::cerr << "Failed to open  " << gpxName << std::endl;
+        return;
+    }
+    int totalLen = 0;
+    for ( auto *r: m_RaceDataList) {
+        totalLen += int(r->getEndIdx() - r->getStartIdx());
+    }
+    int prevPerc = 0;
+    int count = 0;
+
+    std::cout << "exporting GPX to  " << gpxName << std::endl;
+
+    progress("Exporting GPX", 0);
+    emit produceStarted();
+    QXmlStreamWriter s(&gpxFile);
+    s.setAutoFormatting(true);
+    s.writeStartDocument();
+
+    s.writeStartElement("gpx");
+    s.writeAttribute("xmlns", "http://www.topografix.com/GPX/1/1");
+    for ( auto *race: m_RaceDataList) {
+        s.writeStartElement("trk");
+        s.writeTextElement("name", race->getName());
+        s.writeStartElement("trkseg");
+
+        for(auto idx = race->getStartIdx(); idx < race->getEndIdx(); idx ++){
+            int perc = count * 100 / int(totalLen);
+            if( perc != prevPerc){
+                progress("Exporting GPX", perc);
+                if ( stopRequested() ){
+                    break;
+                }
+                prevPerc = perc;
+            }
+            count ++;
+
+            auto  ii = m_rInstrDataVector[idx];
+            s.writeStartElement("trkpt");
+            char acBuff[80];
+            sprintf(acBuff,"%.5f", ii.loc.getLat());
+            s.writeAttribute("lat", acBuff);
+            sprintf(acBuff,"%.5f", ii.loc.getLon());
+            s.writeAttribute("lon", acBuff);
+
+            QDateTime time = QDateTime::fromMSecsSinceEpoch(qint64(ii.utc.getUnixTimeMs())).toUTC();
+            QString txt = time.toString("yyyy-MM-ddThh:mm:ssZ");
+            s.writeTextElement("time", txt);
+
+            s.writeEndElement();  // </trkpt>
+        }
+
+        s.writeEndElement(); // </trkseg>
+        s.writeEndElement(); // </trk>
+    }
+
+    s.writeEndElement();
+
+    s.writeEndDocument();
+    gpxFile.close();
+
+    progress("Exporting GPX", 100);
+    std::cout << "Export complete" << std::endl;
+    emit produceFinished("GPX export complete");
+}
 
 void Worker::exportStats(const QString &polarUrl, const QString &path) {
 
@@ -236,7 +304,7 @@ void Worker::exportStats(const QString &polarUrl, const QString &path) {
     }
 
     ofs.close();
-    emit produceFinished();
+    emit produceFinished("CSV export complete");
 
     progress("Exporting CSV", 100);
     std::cout << "Export complete" << std::endl;

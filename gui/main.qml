@@ -113,8 +113,10 @@ ApplicationWindow {
             fileProgressDialog.open()
         }
 
-        onProduceFinished: function () {
+        onProduceFinished: function (message) {
             fileProgressDialog.close()
+            finishedDialogText.text = message
+            finishedDialog.open()
         }
 
     }
@@ -153,6 +155,12 @@ ApplicationWindow {
             Action {
                 text: qsTr("&Export CSV...")
                 onTriggered: statsFileDialog.open()
+                enabled: raceTreeModel.projectName !== "Untitled"
+            }
+
+            Action {
+                text: qsTr("&Export GPX...")
+                onTriggered: gpxFileDialog.open()
                 enabled: raceTreeModel.projectName !== "Untitled"
             }
 
@@ -335,6 +343,17 @@ ApplicationWindow {
         }
     }
 
+    FileDialog {
+        id: gpxFileDialog
+        visible: false
+        title: "Export GPX file"
+        fileMode: FileDialog.SaveFile
+        nameFilters: ["GPX files (*.gpx)"]
+        onAccepted: {
+            raceTreeModel.exportGpx(currentFile)
+        }
+    }
+
     FolderDialog {
         id: produceFolderDialog
         visible: false
@@ -376,6 +395,25 @@ ApplicationWindow {
         onRejected: {
             console.log("Stopping processing")
             raceTreeModel.stopDataProcessing()
+        }
+    }
+
+    Dialog {
+        id: finishedDialog
+        anchors.centerIn: Overlay.overlay
+        title: "Done"
+        modal: true
+        contentItem: ColumnLayout {
+            Text {
+                id: finishedDialogText
+                Layout.alignment: Qt.AlignCenter
+                text: "Done"
+                color: "white"
+            }
+        }
+        standardButtons: Dialog.Ok
+        onAccepted: {
+            close()
         }
     }
 

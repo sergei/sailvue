@@ -32,13 +32,14 @@ public slots:
     void stopWork() ;
     void produce(const QString &moviePathUrl, const QString &polarUrl);
     void exportStats(const QString &polarUrl, const QString &path);
+    void exportGpx(const QString &path);
 signals:
     void ProgressStatus(const QString &state, int progress);
     void pathAvailable();
 
     // Production related signals
     void produceStarted();
-    void produceFinished();
+    void produceFinished(const QString &message);
 
 private:
     bool b_keepRunning = true;
