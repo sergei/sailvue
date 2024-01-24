@@ -66,3 +66,11 @@ jobs:
     - name: Make DMG
       working-directory: ${{github.workspace}}
       run: macdeployqt build/sailvue.app -qmldir=gui -dmg
+
+    - name: Show results
+      run: ls -lt ${{github.workspace}}/build
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: sailvue.dmg
+        path: ${{github.workspace}}/build/sailvue.dmg
