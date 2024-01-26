@@ -363,7 +363,6 @@ void YdvrReader::processCogSogPgn(const Pgn *pgn, const uint8_t *data, size_t le
         }else { // Invalid
             m_epoch.cog =  Direction::INVALID;
         }
-        m_epoch.cog = Direction::fromRadians(rad, m_ulLatestGpsTimeMs);
     }else{
         m_epoch.cog =  Direction::INVALID;
     }
