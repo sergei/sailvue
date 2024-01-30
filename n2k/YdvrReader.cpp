@@ -309,8 +309,12 @@ void YdvrReader::ProcessPgn(const YdvrMessage &msg, std::ofstream& cache)  {
         {
             switch(pgn->pgn){
                 case 129029:
-                    processGpsFixPgn(pgn, data, len);
-                    ProcessEpochBatch(cache);
+                    if ( processGpsFixPgn(pgn, data, len) ) {
+                        ProcessEpochBatch(cache);
+                    }else{
+                        // Start accumulating over
+                        m_epochBatch.clear();
+                    }
                     break;
                 case 129025:
                     processPosRapidUpdate(pgn, data, len);
@@ -385,7 +389,7 @@ void YdvrReader::processVesselHeading(const Pgn *pgn, const uint8_t *data, uint8
 }
 
 /// GNSS Position Data
-void YdvrReader::processGpsFixPgn(const Pgn *pgn, const uint8_t *data, size_t len) {
+bool YdvrReader::processGpsFixPgn(const Pgn *pgn, const uint8_t *data, size_t len) {
     int64_t fixQuality;
     extractNumberByOrder(pgn, 8, data, len, &fixQuality);
     if( fixQuality > 0 ){
@@ -393,12 +397,17 @@ void YdvrReader::processGpsFixPgn(const Pgn *pgn, const uint8_t *data, size_t le
         extractNumberByOrder(pgn, 2, data, len, &date);
         if( date > 40000){
             std::cerr << "Invalid date: " << date << std::endl;
-            return;
+            return false;
         }
         int64_t time;
         extractNumberByOrder(pgn, 3, data, len, &time);
 
-        m_ulLatestGpsTimeMs = date * 86400 * 1000 + time / 10;;
+        auto ulGpsTime = date * 86400 * 1000 + time / 10;
+        if ( ulGpsTime <= m_ulLatestGpsTimeMs ){
+            std::cout << "GPS time went backward";
+            return false;
+        }
+        m_ulLatestGpsTimeMs = ulGpsTime;
         m_epoch.utc = UtcTime::fromUnixTimeMs(m_ulLatestGpsTimeMs);
 
         int64_t val;
@@ -407,6 +416,7 @@ void YdvrReader::processGpsFixPgn(const Pgn *pgn, const uint8_t *data, size_t le
         extractNumberByOrder(pgn, 5, data, len, &val);
         double lon = double(val) * RES_LL_64;
         m_epoch.loc = GeoLoc::fromDegrees(lat, lon, m_ulLatestGpsTimeMs);
+        return true;
     }
 }
 

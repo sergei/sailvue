@@ -81,7 +81,7 @@ private:
     void ProcessPgn(const YdvrMessage &m, std::ofstream &cache) ;
         void processProductInformationPgn(uint8_t  src, const Pgn *pPgn, const uint8_t *data, uint8_t len);
 
-        void processGpsFixPgn(const Pgn *pgn, const uint8_t *data, size_t len);
+        bool processGpsFixPgn(const Pgn *pgn, const uint8_t *data, size_t len);
         void processCogSogPgn(const Pgn *pgn, const uint8_t *data, size_t len);
         void processPosRapidUpdate(const Pgn *pgn, const uint8_t *data, uint8_t len);
         void processVesselHeading(const Pgn *pPgn, const uint8_t *data, uint8_t len);
