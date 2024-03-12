@@ -20,7 +20,7 @@ public:
 private:
     [[nodiscard]] QPoint toScreen(uint64_t idx, double y) const;
 private:
-    const std::string &m_label;
+    const std::string m_label;
     const int m_x0;
     const int m_y0;
     const int m_width;

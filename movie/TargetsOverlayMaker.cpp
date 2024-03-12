@@ -90,6 +90,7 @@ Strip::Strip(const std::string &label, int x, int y, int width, int height, uint
             break;
         }
     }
+
     m_labelFont.setPointSize(fontPointSize);
 
     uint64_t ptsNum = endTime - startTime;
@@ -122,7 +123,12 @@ void Strip::drawBackground(QPainter &painter) {
     // Draw label
     painter.setFont(m_labelFont);
     painter.setPen(m_labelPen);
-    painter.drawText(m_x0, m_y0 + m_height, QString::fromStdString(m_label));
+    int labelX = m_x0;
+    int labelY = m_y0 + m_height;
+    painter.drawText(labelX, labelY, QString::fromStdString(m_label));
+
+//    std::cout << "Painting label with font " << m_labelFont.toString().toStdString() << std::endl;
+//    std::cout << "Painting label [" << m_label << "] at x= " << labelX << ", y=" << labelY << std::endl;
 
     painter.setPen(m_axisPen);
     // Draw 100% lne

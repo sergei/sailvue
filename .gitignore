@@ -1,3 +1,6 @@
 /cmake-build-debug/
 /cmake-build-release/
+/test/overlays_targets/
+/test/overlays_rudder/
 /test/overlays/
+/test/overlays_perf/

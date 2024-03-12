@@ -21,6 +21,7 @@ add_executable (TestPolars
         ../movie/OverlayMaker.cpp
         ../movie/PolarOverlayMaker.cpp
         ../movie/RudderOverlayMaker.cpp
+        ../movie/TargetsOverlayMaker.cpp
 
         test_polars.cpp
         test_median.cpp
