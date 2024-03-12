@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="Black">
+    <option name="sdkName" value="Python 3.8" />
+  </component>
+  <component name="CMakeWorkspace" PROJECT_DIR="$PROJECT_DIR$" />
+  <component name="CidrRootsConfiguration">
+    <excludeRoots>
+      <file path="$PROJECT_DIR$/data" />
+      <file path="$PROJECT_DIR$/ffmpeg/bin" />
+      <file path="$PROJECT_DIR$/test/data" />
+      <file path="$PROJECT_DIR$/test/overlays" />
+      <file path="$PROJECT_DIR$/test/overlays_perf" />
+      <file path="$PROJECT_DIR$/test/overlays_rudder" />
+      <file path="$PROJECT_DIR$/test/overlays_targets" />
+    </excludeRoots>
+  </component>
+</project>
