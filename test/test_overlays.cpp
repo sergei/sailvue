@@ -126,3 +126,11 @@ TEST(MedianTests, TargetsOverlayTest) {
     }
 
 }
+
+TEST(MedianTests, DescriptionFormatTest) {
+    std::stringstream ss;
+    double tws;
+    tws = 10.1;
+    ss << "TWS " << std::fixed << std::setprecision(0) << tws;
+    ASSERT_EQ(ss.str(), "TWS 10");
+}

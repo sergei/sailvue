@@ -144,7 +144,7 @@ void MovieProducer::makeChapterDescription(std::ofstream &df, const Chapter *cha
                                         m_rInstrDataVector.begin() + long(chapter->getEndIdx()));
 
         if ( median.tws.isValid(startUtcMs) ){
-            df << "TWS " << std::setprecision(0) << median.tws.getKnots() << " kts, ";
+            df << "TWS " << std::fixed << std::setprecision(0) << median.tws.getKnots() << " kts, ";
         }
 
         // Distance sailed
