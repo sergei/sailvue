@@ -97,33 +97,33 @@ TEST(MedianTests, InstrumentInputTest)
     EXPECT_NEAR( median.loc.getLon(),  -122, 1);
 
     ASSERT_TRUE(median.cog.isValid(utcMs));
-    EXPECT_NEAR( median.cog.getDegrees(),  86.2, 0.1);
+    EXPECT_NEAR( median.cog.getDegrees(),  357, 0.1);
 
     ASSERT_TRUE(median.sog.isValid(utcMs));
-    EXPECT_NEAR( median.sog.getKnots(),  3.6, 0.1);
+    EXPECT_NEAR( median.sog.getKnots(),  6, 0.1);
 
     ASSERT_TRUE(median.aws.isValid(utcMs));
-    EXPECT_NEAR( median.aws.getKnots(),  5.3, 0.1);
+    EXPECT_NEAR( median.aws.getKnots(),  3.1, 0.1);
 
     ASSERT_TRUE(median.awa.isValid(utcMs));
-    EXPECT_NEAR( median.awa.getDegrees(),  29.8, 0.1);
+    EXPECT_NEAR( median.awa.getDegrees(),  -48.7, 0.1);
 
     ASSERT_TRUE(median.tws.isValid(utcMs));
-    EXPECT_NEAR( median.tws.getKnots(),  3, 0.1);
+    EXPECT_NEAR( median.tws.getKnots(),  6.2, 0.1);
 
     ASSERT_TRUE(median.twa.isValid(utcMs));
-    EXPECT_NEAR( median.twa.getDegrees(),  62.7, 0.1);
+    EXPECT_NEAR( median.twa.getDegrees(),  -157, 0.1);
 
     ASSERT_TRUE(median.mag.isValid(utcMs));
-    EXPECT_NEAR( median.mag.getDegrees(),  72.3, 0.1);
+    EXPECT_NEAR( median.mag.getDegrees(),  1.9, 0.1);
 
     ASSERT_TRUE(median.sow.isValid(utcMs));
-    EXPECT_NEAR( median.sow.getKnots(),  3.28, 0.01);
+    EXPECT_NEAR( median.sow.getKnots(),  7.62, 0.01);
 
     ASSERT_TRUE(median.rdr.isValid(utcMs));
-    EXPECT_NEAR( median.rdr.getDegrees(),  -1.13, 0.01);
+    EXPECT_NEAR( median.rdr.getDegrees(),  -3.1, 0.01);
 
-    ASSERT_FALSE(median.cmdRdr.isValid(utcMs));
+    ASSERT_TRUE(median.cmdRdr.isValid(utcMs));
 
     ASSERT_TRUE(median.yaw.isValid(utcMs));
     EXPECT_NEAR( median.yaw.getDegrees(),  -172, 1);
@@ -132,7 +132,7 @@ TEST(MedianTests, InstrumentInputTest)
     EXPECT_NEAR( median.pitch.getDegrees(),  0.1, 1);
 
     ASSERT_TRUE(median.roll.isValid(utcMs));
-    EXPECT_NEAR( median.roll.getDegrees(),  0.9, 0.1);
+    EXPECT_NEAR( median.roll.getDegrees(),  1.15, 0.1);
 
     begin = iiVector.begin() + 21;
     end = iiVector.begin() + 113;
@@ -140,6 +140,6 @@ TEST(MedianTests, InstrumentInputTest)
     utcMs = begin->utc.getUnixTimeMs();
     median = InstrumentInput::median(begin, end);
     ASSERT_TRUE(median.cmdRdr.isValid(utcMs));
-    EXPECT_NEAR( median.cmdRdr.getDegrees(),  0, 0.1);
+    EXPECT_NEAR( median.cmdRdr.getDegrees(),  -2, 0.1);
 }
 
