@@ -359,9 +359,10 @@ void YdvrReader::processCogSogPgn(const Pgn *pgn, const uint8_t *data, size_t le
     extractNumberByOrder(pgn, 2, data, len, &type);
     extractNumberByOrder(pgn, 4, data, len, &val);
     double rad = double(val) *  RES_RADIANS;
-    if ( rad < 7 ){
+    bool isCogValid = isUint16Valid(val);
+    if (isCogValid){
         if ( type == 0) {  // True ( convert to magnetic
-            m_epoch.cog =  b_MagVarValid ? Direction::fromRadians(rad - m_dMagVarRad, m_ulLatestGpsTimeMs) : Direction::INVALID;
+            m_epoch.cog =  m_magVar.isValid(m_ulLatestGpsTimeMs) ? Direction::fromRadians(rad - m_magVar.getRadians(), m_ulLatestGpsTimeMs) : Direction::INVALID;
         }else if ( type == 1) { // Magnetic ( no need to convert)
             m_epoch.cog =  Direction::fromRadians(rad, m_ulLatestGpsTimeMs);
         }else { // Invalid
@@ -372,19 +373,20 @@ void YdvrReader::processCogSogPgn(const Pgn *pgn, const uint8_t *data, size_t le
     }
 
     extractNumberByOrder(pgn, 5, data, len, &val);
-    m_epoch.sog = val < 65532 ? Speed::fromMetersPerSecond(double(val) * RES_MPS, m_ulLatestGpsTimeMs) : Speed::INVALID;
+    m_epoch.sog = isUint16Valid(val) ? Speed::fromMetersPerSecond(double(val) * RES_MPS, m_ulLatestGpsTimeMs) : Speed::INVALID;
 }
 
 void YdvrReader::processVesselHeading(const Pgn *pgn, const uint8_t *data, uint8_t len) {
     int64_t val;
     extractNumberByOrder(pgn, 2, data, len, &val);
+    bool isHeadingValid = isUint16Valid(val);
     double rad = double(val) * RES_RADIANS;
 
     extractNumberByOrder(pgn, 5, data, len, &val);
-    if ( val == 1 && rad < 7) { // Magnetic
+    if ( val == 1 && isHeadingValid) { // Magnetic
         m_epoch.mag = Direction::fromRadians(rad, m_ulLatestGpsTimeMs);
-    }else if( val == 0 && rad < 7) { // true
-        m_epoch.mag = b_MagVarValid ? Direction::fromRadians(rad - m_dMagVarRad, m_ulLatestGpsTimeMs) : Direction::INVALID;
+    }else if( val == 0 && isHeadingValid ) { // true
+        m_epoch.mag = m_magVar.isValid(m_ulLatestGpsTimeMs) ? Direction::fromRadians(rad - m_magVar.getRadians(), m_ulLatestGpsTimeMs) : Direction::INVALID;
     }
 }
 
@@ -418,6 +420,7 @@ bool YdvrReader::processGpsFixPgn(const Pgn *pgn, const uint8_t *data, size_t le
         m_epoch.loc = GeoLoc::fromDegrees(lat, lon, m_ulLatestGpsTimeMs);
         return true;
     }
+    return false;
 }
 
 /// Position, Rapid Update
@@ -435,20 +438,18 @@ void YdvrReader::processPosRapidUpdate(const Pgn *pgn, const uint8_t *data, uint
 void YdvrReader::processBoatSpeed(const Pgn *pgn, const uint8_t *data, uint8_t len) {
     int64_t val;
     extractNumberByOrder(pgn, 2, data, len, &val);
-    m_epoch.sow = val < 65532 ? Speed::fromMetersPerSecond(double(val) * RES_MPS, m_ulLatestGpsTimeMs) : Speed::INVALID;
+    m_epoch.sow = isUint16Valid(val) ? Speed::fromMetersPerSecond(double(val) * RES_MPS, m_ulLatestGpsTimeMs) : Speed::INVALID;
 
     extractNumberByOrder(pgn, 3, data, len, &val);
     extractNumberByOrder(pgn, 4, data, len, &val);
-
-
 }
 
 void YdvrReader::processWindData(const Pgn *pgn, const uint8_t *data, uint8_t len) {
     int64_t val;
     extractNumberByOrder(pgn, 2, data, len, &val);
-    Speed windSpeed = val < 65532 ? Speed::fromMetersPerSecond(double(val) * RES_MPS, m_ulLatestGpsTimeMs) : Speed::INVALID;
+    Speed windSpeed = isUint16Valid(val) ? Speed::fromMetersPerSecond(double(val) * RES_MPS, m_ulLatestGpsTimeMs) : Speed::INVALID;
     extractNumberByOrder(pgn, 3, data, len, &val);
-    Angle windAngle = val < 65532 ? Angle::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs) : Angle::INVALID;
+    Angle windAngle = isUint16Valid(val) ? Angle::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs) : Angle::INVALID;
     extractNumberByOrder(pgn, 4, data, len, &val);
     if( val == 2 ){  // Apparent Wind (relative to the vessel centerline)
         m_epoch.awa = windAngle;
@@ -463,7 +464,7 @@ void YdvrReader::processWindData(const Pgn *pgn, const uint8_t *data, uint8_t le
 void YdvrReader::processRudder(const Pgn *pgn, const uint8_t *data, uint8_t len) {
     int64_t val;
     extractNumberByOrder(pgn, 5, data, len, &val);
-    m_epoch.rdr = val != 32767 ? Angle::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs) : Angle::INVALID;
+    m_epoch.rdr = isInt16Valid(val) ? Angle::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs) : Angle::INVALID;
 }
 
 void YdvrReader::processHeadingControl(const Pgn *pgn, uint8_t *data, uint8_t len) {
@@ -471,16 +472,16 @@ void YdvrReader::processHeadingControl(const Pgn *pgn, uint8_t *data, uint8_t le
     extractNumberByOrder(pgn, 9, data, len, &val);  // "Commanded Rudder Direction"
     if ( val < 7 ){
         extractNumberByOrder(pgn, 10, data, len, &val);  // "Commanded Rudder Angle"
-        m_epoch.cmdRdr = val < 32767 ? Angle::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs) : Angle::INVALID;
+        m_epoch.cmdRdr = isInt16Valid(val) ? Angle::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs) : Angle::INVALID;
     }else{
         m_epoch.cmdRdr = Angle::INVALID;
     }
 
     extractNumberByOrder(pgn, 11, data, len, &val);  // "Heading-To-Steer"
-    if ( val < 65532 ){
+    if ( isUint16Valid(val) ){
         double rad = double(val) *  RES_RADIANS;
         // Convert to magnetic
-        m_epoch.hdgToSteer = b_MagVarValid ? Direction::fromRadians(rad - m_dMagVarRad, m_ulLatestGpsTimeMs)
+        m_epoch.hdgToSteer = m_magVar.isValid(m_ulLatestGpsTimeMs) ? Direction::fromRadians(rad - m_magVar.getRadians(), m_ulLatestGpsTimeMs)
                                         : Direction::INVALID;
     }else{
         m_epoch.hdgToSteer = Direction::INVALID;
@@ -490,22 +491,24 @@ void YdvrReader::processHeadingControl(const Pgn *pgn, uint8_t *data, uint8_t le
 void YdvrReader::processAttitude(const Pgn *pgn, const uint8_t *data, uint8_t len) {
     int64_t val;
     extractNumberByOrder(pgn, 2, data, len, &val);
-    m_epoch.yaw = val < 65532 ? Angle::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs) : Angle::INVALID;
+    m_epoch.yaw = isUint16Valid(val) ? Angle::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs) : Angle::INVALID;
     extractNumberByOrder(pgn, 3, data, len, &val);
-    m_epoch.pitch = val < 65532 ? Angle::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs) : Angle::INVALID;
+    m_epoch.pitch = isUint16Valid(val) ? Angle::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs) : Angle::INVALID;
     extractNumberByOrder(pgn, 4, data, len, &val);
-    m_epoch.roll = val < 65532 ? Angle::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs) : Angle::INVALID;
+    m_epoch.roll = isUint16Valid(val) ? Angle::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs) : Angle::INVALID;
 }
 
 void YdvrReader::processMagneticVariation(const Pgn *pgn, uint8_t *data, uint8_t len) {
     int64_t val;
     extractNumberByOrder(pgn, 5, data, len, &val);
-    if ( val < 65532 ){
+    if (isInt16Valid(val)){
         // Positive value is easterly
-        m_dMagVarRad = double(val) * RES_RADIANS;
-        b_MagVarValid = true;
+        double rad = double(val) * RES_RADIANS;
+        m_magVar = Angle::fromRadians(rad, m_ulLatestGpsTimeMs);
+        m_epoch.magVar = m_magVar;
     }
 }
+
 
 void YdvrReader::processDistanceLog(const Pgn *pgn, uint8_t *data, uint8_t len) {
     int64_t val;

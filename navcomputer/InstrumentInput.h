@@ -10,6 +10,24 @@
 #include "n2k/geo/GeoLoc.h"
 #include "n2k/geo/Distance.h"
 
+static const char *const ITEM_LOC = "loc";
+static const char *const ITEM_COG = "cog";
+static const char *const ITEM_SOG = "sog";
+static const char *const ITEM_AWS = "aws";
+static const char *const ITEM_AWA = "awa";
+static const char *const ITEM_TWS = "tws";
+static const char *const ITEM_TWA = "twa";
+static const char *const ITEM_MAG = "mag";
+static const char *const ITEM_SOW = "sow";
+static const char *const ITEM_RDR = "rdr";
+static const char *const ITEM_CMD_RDR = "cmdRdr";
+static const char *const ITEM_HDG_TO_STEER = "hdgToSteer";
+static const char *const ITEM_YAW = "yaw";
+static const char *const ITEM_PITCH = "pitch";
+static const char *const ITEM_ROLL = "roll";
+static const char *const ITEM_LOG = "log";
+static const char *const ITEM_MAG_VAR = "mag_var_deg";
+
 class InstrumentInput {
 public:
     UtcTime utc = UtcTime::INVALID;
@@ -29,6 +47,7 @@ public:
     Angle pitch = Angle::INVALID;
     Angle roll = Angle::INVALID;
     Distance log = Distance::INVALID;
+    Angle magVar = Angle::INVALID;
 
 
     [[nodiscard]] std::string toCsv(bool isHeader) const {
@@ -47,7 +66,7 @@ public:
             bool isName  = (count % 2) != 0;
             bool isValue = (count % 2) == 0;
             bool doPrint = (isName && isHeader) || (isValue && !isHeader);
-            if ( item == "loc" )
+            if (item == ITEM_LOC)
                 isLocValue = true;
             if ( doPrint ){
                 // Special treatment of location object to make uniform CSV
@@ -58,7 +77,7 @@ public:
                     std::replace( item.begin(), item.end(), ';', ',');
                 }
                 // Replace loc with lat,lon
-                if ( item == "loc"){
+                if (item == ITEM_LOC){
                     ss << "lat,lon";
                 }else{
                     ss << item;
@@ -75,22 +94,23 @@ public:
     explicit operator std::string() const {
         std::stringstream ss;
         ss << static_cast<std::string>(utc)
-              << ",loc," << loc.toString(utc.getUnixTimeMs())
-              << ",cog," << cog.toString(utc.getUnixTimeMs())
-              << ",sog," << sog.toString(utc.getUnixTimeMs())
-              << ",aws," << aws.toString(utc.getUnixTimeMs())
-              << ",awa," << awa.toString(utc.getUnixTimeMs())
-              << ",tws," << tws.toString(utc.getUnixTimeMs())
-              << ",twa," << twa.toString(utc.getUnixTimeMs())
-              << ",mag," << mag.toString(utc.getUnixTimeMs())
-              << ",sow," << sow.toString(utc.getUnixTimeMs())
-              << ",rdr," << rdr.toString(utc.getUnixTimeMs())
-              << ",cmdRdr," << cmdRdr.toString(utc.getUnixTimeMs())
-              << ",hdgToSteer," << hdgToSteer.toString(utc.getUnixTimeMs())
-              << ",yaw," << yaw.toString(utc.getUnixTimeMs())
-              << ",pitch," << pitch.toString(utc.getUnixTimeMs())
-              << ",roll," << roll.toString(utc.getUnixTimeMs())
-              << ",log," << log.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_LOC << "," << loc.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_COG << "," << cog.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_SOG << "," << sog.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_AWS << "," << aws.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_AWA << "," << awa.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_TWS << "," << tws.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_TWA << "," << twa.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_MAG << "," << mag.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_SOW << "," << sow.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_RDR << "," << rdr.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_CMD_RDR << "," << cmdRdr.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_HDG_TO_STEER << "," << hdgToSteer.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_YAW << "," << yaw.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_PITCH << "," << pitch.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_ROLL << "," << roll.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_LOG << "," << log.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_MAG_VAR << "," << magVar.toString(utc.getUnixTimeMs())
               ;
         return ss.str();
     }
@@ -110,42 +130,44 @@ public:
             if ( value.empty() )
                 continue;
 
-            if( item == "loc") {
+            if(item == ITEM_LOC) {
                 std::stringstream ss(value);
                 std::string lat, lon;
                 std::getline(ss, lat, ';');
                 std::getline(ss, lon );
                 ii.loc = GeoLoc::fromDegrees(std::stod(lat), std::stod(lon), ulGpsTimeMs);
-            } else if( item == "cog")
+            } else if(item == ITEM_COG)
                 ii.cog = Direction::fromDegrees(std::stod(value), ulGpsTimeMs);
-            else if( item == "sog")
+            else if(item == ITEM_SOG)
                 ii.sog = Speed::fromKnots(std::stod(value), ulGpsTimeMs);
-            else if( item == "aws")
+            else if(item == ITEM_AWS)
                 ii.aws = Speed::fromKnots(std::stod(value), ulGpsTimeMs);
-            else if( item == "awa")
+            else if(item == ITEM_AWA)
                 ii.awa = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
-            else if( item == "tws")
+            else if(item == ITEM_TWS)
                 ii.tws = Speed::fromKnots(std::stod(value), ulGpsTimeMs);
-            else if( item == "twa")
+            else if(item == ITEM_TWA)
                 ii.twa = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
-            else if( item == "mag")
+            else if(item == ITEM_MAG)
                 ii.mag = Direction::fromDegrees(std::stod(value), ulGpsTimeMs);
-            else if( item == "sow")
+            else if(item == ITEM_SOW)
                 ii.sow = Speed::fromKnots(std::stod(value), ulGpsTimeMs);
-            else if( item == "rdr")
+            else if(item == ITEM_RDR)
                 ii.rdr = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
-            else if( item == "cmdRdr")
+            else if(item == ITEM_CMD_RDR)
                 ii.cmdRdr = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
-            else if( item == "hdgToSteer")
+            else if(item == ITEM_HDG_TO_STEER)
                 ii.hdgToSteer = Direction::fromDegrees(std::stod(value), ulGpsTimeMs);
-            else if( item == "yaw")
+            else if(item == ITEM_YAW)
                 ii.yaw = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
-            else if( item == "pitch")
+            else if(item == ITEM_PITCH)
                 ii.pitch = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
-            else if( item == "roll")
+            else if(item == ITEM_ROLL)
                 ii.roll = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
-            else if( item == "log")
+            else if(item == ITEM_LOG)
                 ii.log = Distance::fromMeters(std::stod(value), ulGpsTimeMs);
+            else if(item == ITEM_MAG_VAR)
+                ii.magVar = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
         }
 
         return ii;

@@ -59,6 +59,7 @@ const std::set<uint32_t> REQUIRED_PGNS({
     128275, // Distance Log
 });
 
+
 class YdvrReader : public InstrDataReader {
 public:
     YdvrReader(const std::string& stYdvrDir, const std::string& stCacheDir, const std::string& stPgnSrcCsv,
@@ -91,9 +92,12 @@ private:
         void processAttitude(const Pgn *pPgn, const uint8_t *data, uint8_t len);
         void processMagneticVariation(const Pgn *pgn, uint8_t *data, uint8_t len);
         void processHeadingControl(const Pgn *pgn, uint8_t *data, uint8_t len);
+        void processDistanceLog(const Pgn *pgn, uint8_t *data, uint8_t len);
 
     void ProcessEpoch();
     void ProcessEpochBatch(std::ofstream &cache);
+    bool isUint16Valid(int64_t val) const { return val < 65532; }
+    bool isInt16Valid(int64_t val) const { return val != 32767; }
 
 private:
     static bool m_sCanBoatInitialized;
@@ -124,10 +128,8 @@ private:
     std::list<InstrumentInput> m_epochBatch;
 
     std::list<DatFileInfo> m_listDatFiles;
-    double m_dMagVarRad = 0;
-    bool b_MagVarValid = false;
+    Angle m_magVar = Angle::INVALID;
 
-    void processDistanceLog(const Pgn *pgn, uint8_t *data, uint8_t len);
 };
 
 
