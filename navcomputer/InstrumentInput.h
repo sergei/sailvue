@@ -10,23 +10,27 @@
 #include "n2k/geo/GeoLoc.h"
 #include "n2k/geo/Distance.h"
 
+static const char *const ITEM_UTC = "utc_unix_ms";
 static const char *const ITEM_LOC = "loc";
-static const char *const ITEM_COG = "cog";
-static const char *const ITEM_SOG = "sog";
-static const char *const ITEM_AWS = "aws";
-static const char *const ITEM_AWA = "awa";
-static const char *const ITEM_TWS = "tws";
-static const char *const ITEM_TWA = "twa";
-static const char *const ITEM_MAG = "mag";
-static const char *const ITEM_SOW = "sow";
-static const char *const ITEM_RDR = "rdr";
-static const char *const ITEM_CMD_RDR = "cmdRdr";
-static const char *const ITEM_HDG_TO_STEER = "hdgToSteer";
-static const char *const ITEM_YAW = "yaw";
-static const char *const ITEM_PITCH = "pitch";
-static const char *const ITEM_ROLL = "roll";
-static const char *const ITEM_LOG = "log";
+static const char *const ITEMS_LAT_LON = "lat_deg,lon_deg";
+static const char *const ITEM_COG = "cog_deg_mag";
+static const char *const ITEM_SOG = "sog_kts";
+static const char *const ITEM_AWS = "aws_kts";
+static const char *const ITEM_AWA = "awa_deg";
+static const char *const ITEM_TWS = "tws_kts";
+static const char *const ITEM_TWA = "twa_deg";
+static const char *const ITEM_MAG = "hdg_deg_mag";
+static const char *const ITEM_SOW = "sow_kts";
+static const char *const ITEM_RDR = "rdr_deg";
+static const char *const ITEM_CMD_RDR = "cmd_rdr_deg";
+static const char *const ITEM_HDG_TO_STEER = "hdg_to_steer_deg";
+static const char *const ITEM_YAW = "yaw_deg";
+static const char *const ITEM_PITCH = "pitch_deg";
+static const char *const ITEM_ROLL = "roll_deg";
+static const char *const ITEM_LOG = "log_meters";
 static const char *const ITEM_MAG_VAR = "mag_var_deg";
+
+
 
 class InstrumentInput {
 public:
@@ -58,7 +62,7 @@ public:
         int count = 0;
 
         if ( isHeader ) {
-            ss << "utc,";
+            ss << ITEM_UTC << ",";
         }
 
         bool isLocValue = false;
@@ -78,7 +82,7 @@ public:
                 }
                 // Replace loc with lat,lon
                 if (item == ITEM_LOC){
-                    ss << "lat,lon";
+                    ss << ITEMS_LAT_LON;
                 }else{
                     ss << item;
                 }

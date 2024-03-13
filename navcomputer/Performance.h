@@ -25,15 +25,15 @@ public:
         std::stringstream ss;
         ss << "r_idx," << raceIdx
            << ",l_idx," << legIdx
-           << ",t_sow," << targetSpeed.toString(utc.getUnixTimeMs())
-           << ",t_twa," << targetTwa.toString(utc.getUnixTimeMs())
-           << ",t_vmg," << targetVmg.toString(utc.getUnixTimeMs())
-           << ",vmg," << ourVmg.toString(utc.getUnixTimeMs())
-           << ",fetch," << (isValid ? std::to_string(isFetching) : "")
-           << ",ldlt," <<  (isValid ? std::to_string(legDistLostToTargetMeters) : "" )
-           << ",ltlt," <<  (isValid ? std::to_string(legTimeLostToTargetSec) : "" )
-           << ",rdlt," <<  (isValid ? std::to_string(raceDistLostToTargetMeters) : "" )
-           << ",rtlt," <<  (isValid ? std::to_string(raceTimeLostToTargetSec) : "" )
+           << ",t_sow_kts," << targetSpeed.toString(utc.getUnixTimeMs())
+           << ",t_twa_deg," << targetTwa.toString(utc.getUnixTimeMs())
+           << ",t_vmg_kts," << targetVmg.toString(utc.getUnixTimeMs())
+           << ",vmg_kts," << ourVmg.toString(utc.getUnixTimeMs())
+           << ",is_fetch," << (isValid ? std::to_string(isFetching) : "")
+           << ",ldlt_meters," <<  (isValid ? std::to_string(int(legDistLostToTargetMeters)) : "" )
+           << ",ltlt_sec," <<  (isValid ? std::to_string(int(legTimeLostToTargetSec)) : "" )
+           << ",rdlt_meters," <<  (isValid ? std::to_string(int(raceDistLostToTargetMeters)) : "" )
+           << ",rtlt_sec," <<  (isValid ? std::to_string(int(raceTimeLostToTargetSec)) : "" )
                 ;
         return ss.str();
     }
