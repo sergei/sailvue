@@ -30,9 +30,9 @@ public:
            << ",t_vmg_kts," << targetVmg.toString(utc.getUnixTimeMs())
            << ",vmg_kts," << ourVmg.toString(utc.getUnixTimeMs())
            << ",is_fetch," << (isValid ? std::to_string(isFetching) : "")
-           << ",ldlt_meters," <<  (isValid ? std::to_string(int(legDistLostToTargetMeters)) : "" )
+           << ",ldlt_m," <<  (isValid ? std::to_string(int(legDistLostToTargetMeters)) : "" )
            << ",ltlt_sec," <<  (isValid ? std::to_string(int(legTimeLostToTargetSec)) : "" )
-           << ",rdlt_meters," <<  (isValid ? std::to_string(int(raceDistLostToTargetMeters)) : "" )
+           << ",rdlt_m," <<  (isValid ? std::to_string(int(raceDistLostToTargetMeters)) : "" )
            << ",rtlt_sec," <<  (isValid ? std::to_string(int(raceTimeLostToTargetSec)) : "" )
                 ;
         return ss.str();
