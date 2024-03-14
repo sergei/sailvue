@@ -347,6 +347,9 @@ void YdvrReader::ProcessPgn(const YdvrMessage &msg, std::ofstream& cache)  {
                 case 128275:
                     processDistanceLog(pgn, data, len);
                     break;
+                case 128267:
+                    processWaterDepth(pgn, data, len);
+                    break;
             }
         }
     }
@@ -516,6 +519,24 @@ void YdvrReader::processDistanceLog(const Pgn *pgn, uint8_t *data, uint8_t len) 
     m_epoch.log = Distance::fromMeters(val, m_ulLatestGpsTimeMs);
 }
 
+void YdvrReader::processWaterDepth(const Pgn *pgn, uint8_t *data, uint8_t len) {
+    int64_t val;
+
+    // Offset
+    // Positive values - distance form transducer to waterline
+    // Negative values - distance from the transducer to the keel
+    extractNumberByOrder(pgn, 3, data, len, &val);
+    int16_t offsetMm = 0;
+    if ( isInt16Valid(val) ){
+        offsetMm = val;
+    }
+
+    // Water Depth, Transducer
+    extractNumberByOrder(pgn, 2, data, len, &val);
+    uint32_t depthMm = val * 10;
+    m_epoch.depth = isUint32Valid(val) ? Distance::fromMillimeters(depthMm + offsetMm, m_ulLatestGpsTimeMs) : Distance::INVALID;
+}
+
 
 void YdvrReader::processProductInformationPgn(uint8_t  src, const Pgn *pgn, const uint8_t *data, uint8_t len)  {
 
@@ -670,6 +691,7 @@ void YdvrReader::getPgnData(std::map<uint32_t, std::vector<std::string>> &mapPgn
     std::cout << "---------------------------------------" << std::endl;
 
 }
+
 
 
 

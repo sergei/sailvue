@@ -14,21 +14,25 @@ public:
     static Distance fromMeters(uint32_t meters, uint64_t utcMs) {
         return Distance(meters, utcMs);
     }
+    static Distance fromMillimeters(uint32_t mm, uint64_t utcMs) {
+        return Distance(mm / 1000., utcMs);
+    }
 
-    [[nodiscard]] uint32_t getMeters() const { return m_ulMeters; }
+    [[nodiscard]] uint32_t getMeters() const { return lround(m_dMeters); }
+    [[nodiscard]] uint32_t getMillimeters() const { return lround(m_dMeters * 1000 ); }
     [[nodiscard]] std::string toString(uint64_t utcMs) const {
         std::stringstream ss;
         if( isValid(utcMs))
-            ss << m_ulMeters;
+            ss << std::fixed << std::setprecision(3) << m_dMeters;
         else
             ss << "";
         return ss.str();
     }
 private:
-    explicit Distance(uint32_t meters, uint64_t utcMs): Quantity(true, utcMs){
-        m_ulMeters = meters;
+    explicit Distance(double meters, uint64_t utcMs): Quantity(true, utcMs){
+        m_dMeters = meters;
     };
-    uint32_t m_ulMeters=0;
+    double m_dMeters=0;
 };
 
 

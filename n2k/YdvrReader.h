@@ -57,6 +57,7 @@ const std::set<uint32_t> REQUIRED_PGNS({
     127258, // Magnetic Variation
     127237, // Heading/Track Control
     128275, // Distance Log
+    128267, // Water depth
 });
 
 
@@ -97,6 +98,7 @@ private:
     void ProcessEpoch();
     void ProcessEpochBatch(std::ofstream &cache);
     bool isUint16Valid(int64_t val) const { return val < 65532; }
+    bool isUint32Valid(int64_t val) const { return val < 4294967293; }
     bool isInt16Valid(int64_t val) const { return val != 32767; }
 
 private:
@@ -130,6 +132,7 @@ private:
     std::list<DatFileInfo> m_listDatFiles;
     Angle m_magVar = Angle::INVALID;
 
+    void processWaterDepth(const Pgn *pgn, uint8_t *data, uint8_t len);
 };
 
 

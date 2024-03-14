@@ -27,8 +27,9 @@ static const char *const ITEM_HDG_TO_STEER = "hdg_to_steer_deg";
 static const char *const ITEM_YAW = "yaw_deg";
 static const char *const ITEM_PITCH = "pitch_deg";
 static const char *const ITEM_ROLL = "roll_deg";
-static const char *const ITEM_LOG = "log_meters";
+static const char *const ITEM_LOG = "log_m";
 static const char *const ITEM_MAG_VAR = "mag_var_deg";
+static const char *const ITEM_DEPTH = "depth_m";
 
 
 
@@ -52,6 +53,7 @@ public:
     Angle roll = Angle::INVALID;
     Distance log = Distance::INVALID;
     Angle magVar = Angle::INVALID;
+    Distance depth = Distance::INVALID;
 
 
     [[nodiscard]] std::string toCsv(bool isHeader) const {
@@ -115,6 +117,7 @@ public:
               <<  "," << ITEM_ROLL << "," << roll.toString(utc.getUnixTimeMs())
               <<  "," << ITEM_LOG << "," << log.toString(utc.getUnixTimeMs())
               <<  "," << ITEM_MAG_VAR << "," << magVar.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_DEPTH << "," << depth.toString(utc.getUnixTimeMs())
               ;
         return ss.str();
     }
@@ -172,6 +175,8 @@ public:
                 ii.log = Distance::fromMeters(std::stod(value), ulGpsTimeMs);
             else if(item == ITEM_MAG_VAR)
                 ii.magVar = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
+            else if(item == ITEM_DEPTH)
+                ii.depth = Distance::fromMillimeters(std::stod(value) * 1000, ulGpsTimeMs);
         }
 
         return ii;
@@ -231,6 +236,8 @@ public:
         median.pitch = Angle::median(pitches, from->utc.getUnixTimeMs());
         median.roll = Angle::median(rolls, from->utc.getUnixTimeMs());
         median.log = from->log;
+        median.magVar = from->magVar;
+        median.depth = from->depth;
 
         return median;
     }
