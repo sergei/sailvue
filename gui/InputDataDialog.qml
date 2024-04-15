@@ -41,8 +41,26 @@ Dialog {
             text: raceTreeModel.nmeaPath
         }
 
+        Label {
+            text: "Instrument logs type"
+        }
+
+        ComboBox {
+            model: ["YDVR", "Expedition"]
+            onActivated: function (idx) {
+                if( idx == 0 ) {
+                    selectFolder.text = "Select YDVR logs folder"
+                    raceTreeModel.logsType = "YDVR"
+                } else{
+                    selectFolder.text = "Select Expedition Logs folder"
+                    raceTreeModel.logsType = "EXPEDITION"
+                }
+            }
+        }
+
         Button {
-            text: "Select NMEA folder"
+            id: selectFolder
+            text: "Select YDVR logs folder"
             onClicked: nmeaFolderDialog.open()
         }
 

@@ -56,6 +56,7 @@ class RaceTreeModel  : public QAbstractItemModel {
     Q_PROPERTY(bool isDirty READ isDirty NOTIFY isDirtyChanged)
     Q_PROPERTY(QString goproPath READ goproPath WRITE setGoProPath NOTIFY goProPathChanged)
     Q_PROPERTY(QString nmeaPath READ nmeaPath WRITE setNmeaPath NOTIFY nmeaPathChanged)
+    Q_PROPERTY(QString logsType READ logsType WRITE setLogsType NOTIFY logsTypeChanged)
     Q_PROPERTY(QString polarPath READ polarPath WRITE setPolarPath NOTIFY polarPathChanged)
     Q_PROPERTY(float twaOffset READ twaOffset WRITE setTwaOffset NOTIFY twaOffsetChanged)
     Q_PROPERTY(QString gitHash READ gitHash )
@@ -108,6 +109,12 @@ public:
         emit isDirtyChanged();
     }
 
+    void setLogsType(const QString &logsType){
+        m_project.setLogsType(logsType);
+        emit logsTypeChanged();
+        emit isDirtyChanged();
+    }
+
     void setPolarPath(const QString &path){
         m_project.setPolarPath(path);
         emit polarPathChanged();
@@ -122,6 +129,7 @@ public:
     [[nodiscard]] bool isDirty() const { return m_project.isDirty(); }
     [[nodiscard]] QString goproPath() const{ return m_project.goproPath(); }
     [[nodiscard]] QString nmeaPath() const{ return m_project.nmeaPath(); }
+    [[nodiscard]] QString logsType() const{ return m_project.logsType(); }
     [[nodiscard]] QString polarPath() const{ return m_project.polarPath(); }
     [[nodiscard]] double twaOffset() const{ return m_project.twaOffset(); }
     [[nodiscard]] QString gitHash() const { return GIT_HASH; }
@@ -178,10 +186,11 @@ signals:
     void isDirtyChanged();
     void projectNameChanged();
     void nmeaPathChanged();
+    void logsTypeChanged();
     void polarPathChanged();
     void twaOffsetChanged();
 
-    void readData(const QString &goproDir, const QString &nmeaDir, const QString &polarFile, bool ignoreCache);
+    void readData(const QString &goproDir, const QString &logsType, const QString &nmeaDir, const QString &polarFile, bool ignoreCache);
     void stop();
     void progressStatus(const QString &state, int progress);
     void fullPathReady(const QGeoPath fullPath);

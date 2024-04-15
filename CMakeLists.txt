@@ -79,7 +79,9 @@ set(N2K_SRC
         n2k/geo/Speed.h
         n2k/geo/UtcTime.h
         n2k/geo/GeoLoc.h
-)
+        n2k/ExpeditionReader.cpp
+        n2k/ExpeditionReader.h
+        )
 
 set(NMEA2000_SRC
         n2k/NMEA2000/src/NMEA2000.cpp
@@ -157,6 +159,10 @@ set (NAV_SRC
         net_sim/N2kDebugStream.h
         movie/RudderOverlayMaker.cpp
         movie/RudderOverlayMaker.h
+
+        magnetic/wmm.c
+        magnetic/GeomagnetismLibrary.c
+        magnetic/mem_file.c
 )
 
 qt_add_executable(sailvue WIN32 MACOSX_BUNDLE

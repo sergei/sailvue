@@ -34,6 +34,10 @@ void Project::fromJson(const QJsonObject &json){
         setNmeaPath(v.toString());
     }
 
+    if(  QJsonValue v = json["logsType"]; v.isString()){
+        setLogsType(v.toString());
+    }
+
     if(  QJsonValue v = json["races"]; v.isArray()){
         QJsonArray racesArray = v.toArray();
         for( QJsonValue raceJson: racesArray  ){
@@ -73,6 +77,7 @@ QJsonObject Project::toJson() const {
     QJsonObject json;
     json["goproPath"] = goproPath();
     json["nmeaPath"] = nmeaPath();
+    json["logsType"] = logsType();
 
     QJsonArray racesArray;
 

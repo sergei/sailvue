@@ -29,6 +29,12 @@ public:
         std::cout << "set nmea path to " << path.toStdString() << std::endl;
     }
 
+    void setLogsType(const QString &logsType){
+        m_logsType = logsType;
+        m_isDirty = true;
+        std::cout << "set log type to " << m_logsType.toStdString() << std::endl;
+    }
+
     void setPolarPath(const QString &path);
 
     [[nodiscard]] QString projectName() const{
@@ -45,6 +51,10 @@ public:
 
     [[nodiscard]] QString nmeaPath() const{
         return m_nmeaPath;
+    }
+
+    [[nodiscard]] QString logsType() const{
+        return m_logsType;
     }
 
     [[nodiscard]] QString polarPath() const{
@@ -71,6 +81,7 @@ private:
     QString m_projectName = "Untitled";
     QString m_goproPath = "";
     QString m_nmeaPath = "";
+    QString m_logsType = "";
     QString m_polarPath = "";
     bool m_isDirty = false;
 

@@ -10,9 +10,11 @@
 #include "navcomputer/TimeDeltaComputer.h"
 #include "Project.h"
 #include "navcomputer/Calibration.h"
+#include "n2k/ExpeditionReader.h"
 
-void Worker::readData(const QString &goproDir, const QString &nmeaDir, const QString &polarFile, bool bIgnoreCache){
+void Worker::readData(const QString &goproDir, const QString &logsType, const QString &nmeaDir, const QString &polarFile, bool bIgnoreCache){
     std::cout << "goproDir " + goproDir.toStdString() << std::endl;
+    std::cout << "logsType " + nmeaDir.toStdString() << std::endl;
     std::cout << "nmeaDir " + nmeaDir.toStdString() << std::endl;
     std::cout << "polarFile " + polarFile.toStdString() << std::endl;
 
@@ -42,8 +44,16 @@ void Worker::readData(const QString &goproDir, const QString &nmeaDir, const QSt
         std::filesystem::remove_all(stCacheDir);
     }
 
-    YdvrReader ydvrReader(stYdvrDir, stCacheDir, stPgnSrcCsv, bSummaryOnly, bMappingOnly,  *this);
-    GoPro goPro(stGoProDir, stCacheDir, ydvrReader, *this);
+    InstrDataReader * reader = nullptr;
+    bool useExpedition = logsType == "EXPEDITION";
+    if ( useExpedition ){
+        ExpeditionReader *expReader = new ExpeditionReader(stYdvrDir, stCacheDir,   *this);
+        reader = expReader;
+    }else{
+        YdvrReader *ydvrReader = new YdvrReader(stYdvrDir, stCacheDir, stPgnSrcCsv, bSummaryOnly, bMappingOnly,  *this);
+        reader = ydvrReader;
+    }
+    GoPro goPro(stGoProDir, stCacheDir, *reader, *this);
 
     // Create path containing points from all gopro clips
     int clipCount = 0;
@@ -62,6 +72,8 @@ void Worker::readData(const QString &goproDir, const QString &nmeaDir, const QSt
 
     // Make performance vector the same size as the instr data vector
     m_rPerformanceMap.clear();
+
+    delete reader;
 
     std::cout << "clipCount " << clipCount << std::endl;
     std::cout << "pointsCount " << pointsCount << std::endl;
