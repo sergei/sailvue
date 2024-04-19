@@ -214,7 +214,7 @@ std::string FFMpeg::makeClipFfmpegArgs(const std::string &clipPath) {
             for (int i = 0; i < firstOverlayIdx; i++) {
                 ffmpegArgs += "[" + std::to_string(i) + "]";
             }
-            ffmpegArgs += " concat=v=0:a=1 [conca];";
+            ffmpegArgs += " concat=n=" + std::to_string(m_pClipFragments->size()) + ":v=0:a=1 [conca];";
         }
     }
 
