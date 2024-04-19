@@ -253,15 +253,3 @@ qt_add_qml_module(sailvue
         SOURCES gui/PgnSrcTreeModel.cpp
         SOURCES gui/ChapterTypes.h
 )
-
-add_executable(ydn2csv
-        ydn2csv/main.cpp
-
-        ${N2K_SRC}
-)
-
-target_include_directories(ydn2csv PUBLIC
-        n2k/canboat/analyzer
-        n2k/canboat/common
-        cxxopts/include
-)
