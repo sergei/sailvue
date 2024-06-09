@@ -22,10 +22,12 @@ add_executable (TestPolars
         ../movie/PolarOverlayMaker.cpp
         ../movie/RudderOverlayMaker.cpp
         ../movie/TargetsOverlayMaker.cpp
+        ../adobe_premiere/insta360/MarkerReaderInsta360.cpp
 
         test_polars.cpp
         test_median.cpp
         test_overlays.cpp
+        test_adobe_markers.cpp
         )
 
 target_include_directories(TestPolars PUBLIC
