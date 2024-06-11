@@ -4,9 +4,9 @@
 #include <codecvt>
 #include <QJsonDocument>
 
-#include "MarkerReaderInsta360.h"
+#include "MarkerReader.h"
 
-void MarkerReaderInsta360::read(const std::filesystem::path &markersDir, const std::list<CameraClipInfo *> &cameraClips) {
+void MarkerReader::read(const std::filesystem::path &markersDir, const std::list<CameraClipInfo *> &cameraClips) {
 
     auto markerFiles = std::filesystem::recursive_directory_iterator(markersDir);
 
@@ -85,13 +85,13 @@ void MarkerReaderInsta360::read(const std::filesystem::path &markersDir, const s
 }
 
 
-int MarkerReaderInsta360::timeCodeToSec(const std::string &item) {
+int MarkerReader::timeCodeToSec(const std::string &item) {
     return stoi(item.substr(0, 2)) * 3600
                + stoi(item.substr(3, 2)) * 60
                + stoi(item.substr(6, 2));
 }
 
-void MarkerReaderInsta360::makeChapters(std::list<Chapter *> &chapters, std::vector<InstrumentInput> &instrDataVector) {
+void MarkerReader::makeChapters(std::list<Chapter *> &chapters, std::vector<InstrumentInput> &instrDataVector) {
 
     for( const auto& marker: m_markersList){
         // Find index of the clip in

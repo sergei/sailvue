@@ -1,5 +1,5 @@
-#ifndef SAILVUE_MARKERREADERINSTA360_H
-#define SAILVUE_MARKERREADERINSTA360_H
+#ifndef SAILVUE_MARKERREADER_H
+#define SAILVUE_MARKERREADER_H
 
 #include <filesystem>
 #include <list>
@@ -8,7 +8,7 @@
 #include "cameras/CameraBase.h"
 
 
-class MarkerReaderInsta360 {
+class MarkerReader {
 public:
     void setTimeAdjustmentMs(int64_t timeAdjustmentMs){m_timeAdjustmentMs = timeAdjustmentMs;};
     void read(const std::filesystem::path &markersDir, const std::list<CameraClipInfo *> &cameraClips);
@@ -24,4 +24,4 @@ private:
 };
 
 
-#endif //SAILVUE_MARKERREADERINSTA360_H
+#endif //SAILVUE_MARKERREADER_H

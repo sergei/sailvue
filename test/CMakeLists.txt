@@ -22,7 +22,7 @@ add_executable (TestPolars
         ../movie/PolarOverlayMaker.cpp
         ../movie/RudderOverlayMaker.cpp
         ../movie/TargetsOverlayMaker.cpp
-        ../adobe_premiere/insta360/MarkerReaderInsta360.cpp
+        ../adobe_premiere/MarkerReader.cpp
         ../Insta360/Insta360.cpp
         ../cameras/CameraBase.cpp
 

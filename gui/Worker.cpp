@@ -11,7 +11,7 @@
 #include "Project.h"
 #include "navcomputer/Calibration.h"
 #include "n2k/ExpeditionReader.h"
-#include "adobe_premiere/insta360/MarkerReaderInsta360.h"
+#include "adobe_premiere/MarkerReader.h"
 
 void Worker::readData(const QString &goproDir, const QString &insta360Dir, const QString &adobeMarkersDir, const QString &logsType, const QString &nmeaDir, const QString &polarFile, bool bIgnoreCache){
     std::cout << "goproDir " + goproDir.toStdString() << std::endl;
@@ -92,7 +92,7 @@ void Worker::readData(const QString &goproDir, const QString &insta360Dir, const
 
 
 
-            MarkerReaderInsta360 markerReader;
+            MarkerReader markerReader;
             markerReader.setTimeAdjustmentMs(5000);
             markerReader.read(stAdobeMarkersDir, stInsta360Dir);
 

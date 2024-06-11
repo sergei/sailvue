@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <fstream>
 #include "navcomputer/InstrumentInput.h"
-#include "adobe_premiere/insta360/MarkerReaderInsta360.h"
+#include "adobe_premiere/MarkerReader.h"
 #include "Insta360/Insta360.h"
 
 
@@ -53,7 +53,7 @@ TEST(AdobeMarkersTests, ReadTest) {
 
     std::list<Chapter *> chapters;
 
-    MarkerReaderInsta360 markerReader;
+    MarkerReader markerReader;
     markerReader.setTimeAdjustmentMs(5000);
     markerReader.read(markersDir, camera->getClipList());
 
