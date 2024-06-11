@@ -11,17 +11,22 @@
 #include "Project.h"
 #include "navcomputer/Calibration.h"
 #include "n2k/ExpeditionReader.h"
+#include "adobe_premiere/insta360/MarkerReaderInsta360.h"
 
-void Worker::readData(const QString &goproDir, const QString &logsType, const QString &nmeaDir, const QString &polarFile, bool bIgnoreCache){
+void Worker::readData(const QString &goproDir, const QString &insta360Dir, const QString &adobeMarkersDir, const QString &logsType, const QString &nmeaDir, const QString &polarFile, bool bIgnoreCache){
     std::cout << "goproDir " + goproDir.toStdString() << std::endl;
     std::cout << "logsType " + nmeaDir.toStdString() << std::endl;
     std::cout << "nmeaDir " + nmeaDir.toStdString() << std::endl;
     std::cout << "polarFile " + polarFile.toStdString() << std::endl;
 
-    /* ... here is the expensive or blocking operation ... */
     std::string stYdvrDir = QUrl(nmeaDir).toLocalFile().toStdString();
     std::string stGoProDir = QUrl(goproDir).toLocalFile().toStdString();
+
+    const std::string &stAdobeMarkersDir = QUrl(adobeMarkersDir).toLocalFile().toStdString();
+    const std::string &stInsta360Dir = QUrl(insta360Dir).toLocalFile().toStdString();
+
     std::string stCacheDir = "/tmp/sailvue";
+
     bool bSummaryOnly = false;
     bool bMappingOnly = false;
 
@@ -53,22 +58,57 @@ void Worker::readData(const QString &goproDir, const QString &logsType, const QS
         YdvrReader *ydvrReader = new YdvrReader(stYdvrDir, stCacheDir, stPgnSrcCsv, bSummaryOnly, bMappingOnly,  *this);
         reader = ydvrReader;
     }
-    GoPro goPro(stGoProDir, stCacheDir, *reader, *this);
 
-    // Create path containing points from all gopro clips
-    int clipCount = 0;
     int pointsCount = 0;
-    m_rGoProClipInfoList.clear();
-    m_rInstrDataVector.clear();
-    for (auto& clip : goPro.getGoProClipList()) {
-        m_rGoProClipInfoList.push_back(clip);
-        clipCount++;
-        for( auto &ii : *clip.getInstrData()) {
+    int clipCount = 0;
+    if ( ! stGoProDir.empty() ){
+        GoPro goPro(stGoProDir, stCacheDir, *reader, *this);
+
+        // Create path containing points from all gopro clips
+        m_rGoProClipInfoList.clear();
+        m_rInstrDataVector.clear();
+        for (auto& clip : goPro.getGoProClipList()) {
+            m_rGoProClipInfoList.push_back(clip);
+            clipCount++;
+            for( auto &ii : *clip.getInstrData()) {
+                calibration.calibrate(ii);
+                m_rInstrDataVector.push_back(ii);
+                pointsCount++;
+            }
+        }
+    }else{
+        std::list<InstrumentInput> listInputs;
+        reader->read(0, 0xFFFFFFFFFFFFFFFFLL, listInputs);
+        m_rInstrDataVector.clear();
+        for( auto &ii : listInputs){
             calibration.calibrate(ii);
             m_rInstrDataVector.push_back(ii);
             pointsCount++;
         }
+
+        if( !stAdobeMarkersDir.empty() &&  !stInsta360Dir.empty() ) {
+            QDateTime raceTime = QDateTime::fromMSecsSinceEpoch(qint64(m_rInstrDataVector[0].utc.getUnixTimeMs()));
+            std::string raceName = "Adobe Race " + raceTime.toString("yyyy-MM-dd hh:mm").toStdString();
+
+
+
+            MarkerReaderInsta360 markerReader;
+            markerReader.setTimeAdjustmentMs(5000);
+            markerReader.read(stAdobeMarkersDir, stInsta360Dir);
+
+            std::list<Chapter *> chapters;
+            markerReader.makeChapters(m_rInstrDataVector, chapters);
+
+            auto *race = new RaceData(0, m_rInstrDataVector.size() - 1);
+            race->SetName(raceName);
+            for( auto chapter : chapters){
+                race->insertChapter(chapter);
+            }
+            m_RaceDataList.push_back(race);
+        }
+
     }
+
 
     // Make performance vector the same size as the instr data vector
     m_rPerformanceMap.clear();

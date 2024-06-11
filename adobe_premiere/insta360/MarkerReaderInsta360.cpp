@@ -1,29 +1,39 @@
 #include <iostream>
-#include <sys/stat.h>
 #include <ctime>
 #include <fstream>
 #include <codecvt>
+#include <QJsonDocument>
+
 #include "MarkerReaderInsta360.h"
 
-void MarkerReaderInsta360::read(std::filesystem::path &markersDir, std::filesystem::path &insta360Dir) {
+void MarkerReaderInsta360::read(const std::filesystem::path &markersDir, const std::list<CameraClipInfo *> &cameraClips) {
 
     auto markerFiles = std::filesystem::recursive_directory_iterator(markersDir);
 
     for( const auto& markerFile : markerFiles ) {
+        std::cout << "Reading marker file " << markerFile.path() << std::endl;
+
         if (markerFile.path().extension() == ".csv") {
-            // Find corresponding .insv file
-            std::filesystem::path insvBaseName = markerFile.path().filename().stem();
-            std::filesystem::path insvPath = insta360Dir / insvBaseName;
+            std::filesystem::path clipBaseName = markerFile.path().filename().stem().string();
 
-            std::cout << insvPath << std::endl;
+            // Find corresponding clip
 
-            const char *fname = insvPath.c_str();
+            u_int64_t createTimeUtcMs = 0;
+            CameraClipInfo *pClipInfo;
 
-            // Get file creation time
-            struct stat t_stat{};
-            stat(fname, &t_stat);
-            u_int64_t createTimeUtcMs = t_stat.st_birthtimespec.tv_sec * 1000 +
-                    t_stat.st_birthtimespec.tv_nsec / 1000 / 1000 ;
+            for( auto clip : cameraClips){
+                if( clip->getFileName().find(clipBaseName) != std::string::npos){
+                    std::cout << "  Marker for clip " << clip->getFileName() << std::endl;
+                    createTimeUtcMs = clip->getClipStartUtcMs();
+                    pClipInfo = clip;
+                    break;
+                }
+            }
+
+            if ( createTimeUtcMs == 0 ){
+                std::cerr << "Failed to find clip for marker file " << markerFile.path() << std::endl;
+                continue;
+            }
 
             // Read marker file line by line
             // Marker file is encoded as UTF-16LE
@@ -59,12 +69,21 @@ void MarkerReaderInsta360::read(std::filesystem::path &markersDir, std::filesyst
                 int outSec = timeCodeToSec(item);
                 marker->setOutTimeSec(outSec);
 
-                marker->setClipStartUtc(createTimeUtcMs);
+                marker->setClipStartUtc(createTimeUtcMs + m_timeAdjustmentMs);
+
+                marker->setClipInfo(pClipInfo);
+
                 m_markersList.push_back(*marker);
-          }
+                std::cout << "  Added marker  " << marker->getName() << std::endl;
+            }
         }
     }
+
+    // Sort Markers by start UTC time
+    m_markersList.sort( [] (const ClipMarker &c1, const ClipMarker &c2) {return c1.getUtcMsIn() < c2.getUtcMsIn();});
+
 }
+
 
 int MarkerReaderInsta360::timeCodeToSec(const std::string &item) {
     return stoi(item.substr(0, 2)) * 3600
@@ -72,11 +91,10 @@ int MarkerReaderInsta360::timeCodeToSec(const std::string &item) {
                + stoi(item.substr(6, 2));
 }
 
-void MarkerReaderInsta360::makeChapters(std::vector<InstrumentInput> &instrDataVector, std::list<Chapter> &chapters) {
+void MarkerReaderInsta360::makeChapters(std::list<Chapter *> &chapters, std::vector<InstrumentInput> &instrDataVector) {
 
-    for( auto marker: m_markersList){
+    for( const auto& marker: m_markersList){
         // Find index of the clip in
-
         auto inIter = std::lower_bound(instrDataVector.begin(), instrDataVector.end(), marker.getUtcMsIn(),
                                         [](const InstrumentInput& ii, u_int64_t utcMs)
                                         { return ii.utc.getUnixTimeMs() <= utcMs;}
@@ -88,18 +106,18 @@ void MarkerReaderInsta360::makeChapters(std::vector<InstrumentInput> &instrDataV
                                         );
 
         if ( inIter != instrDataVector.end() && outIter != instrDataVector.end()){
-            u_int64_t startIdx = inIter - instrDataVector.begin();
-            u_int64_t endIdx = outIter - instrDataVector.begin();
+            u_int64_t startIdx = std::distance(instrDataVector.begin(), inIter);
+            u_int64_t endIdx = std::distance(instrDataVector.begin(), outIter);
 
             auto chapter = new Chapter(startIdx, endIdx);
             chapter->SetName(marker.getName());
-            chapters.push_back(*chapter);
+            chapters.push_back(chapter);
         }else{
             std::cerr << "Could not timestamp marker " << marker.getName() << std::endl;
         }
     }
 
     // Sort chapters by index
-    chapters.sort( [] (const Chapter &c1, const Chapter &c2) {return c1.getStartIdx() < c2.getStartIdx();});
+    chapters.sort( [] (const Chapter *c1, const Chapter *c2) {return c1->getStartIdx() < c2->getStartIdx();});
 
 }

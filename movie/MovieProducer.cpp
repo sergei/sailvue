@@ -46,8 +46,13 @@ void MovieProducer::produce() {
         std::list<Chapter *> chapterList = race->getChapters();
 
 
-        int movieWidth = m_rGoProClipInfoList.front().getWidth();
-        int movieHeight = m_rGoProClipInfoList.front().getHeight();
+        int movieWidth = 1920;
+        int movieHeight = 1080;
+
+        if ( !m_rGoProClipInfoList.empty() ){
+            movieWidth = m_rGoProClipInfoList.front().getWidth();
+            movieHeight = m_rGoProClipInfoList.front().getHeight();
+        }
 
         int target_ovl_width = movieWidth;
         int target_ovl_height = 128;
@@ -94,11 +99,11 @@ void MovieProducer::produce() {
         OverlayMaker overlayMaker(raceFolder, movieWidth, movieHeight);
 
         overlayMaker.addOverlayElement(instrOverlayMaker);
-        overlayMaker.addOverlayElement(targetsOverlayMaker);
+//        overlayMaker.addOverlayElement(targetsOverlayMaker);
         overlayMaker.addOverlayElement(polarOverlayMaker);
         overlayMaker.addOverlayElement(rudderOverlayMaker);
         overlayMaker.addOverlayElement(startTimerOverlayMaker);
-        overlayMaker.addOverlayElement(performanceOverlayMaker);
+//        overlayMaker.addOverlayElement(performanceOverlayMaker);
 
         int chapterCount = 0;
         int numChapters = chapterList.size();
@@ -218,7 +223,10 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
     }
 
     std::filesystem::path chapterFolder = overlayMaker.setChapter(chapter, chapterEpochs);  // This call creates new chapter name
-    std::filesystem::path clipFulPathName = chapterFolder / "clip.mp4";
+    std::ostringstream oss;
+    oss << "CH_" << std::setw(2) << std::setfill('0') << chapterNum << "_" << chapter.getName() << ".mov";
+
+    std::filesystem::path clipFulPathName = chapterFolder.parent_path()  / oss.str() ;
     // Check if the chapter already exists
     // Don't return until the m_totalRaceDuration is updated
     if ( std::filesystem::is_regular_file(clipFulPathName) ){

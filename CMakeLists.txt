@@ -163,7 +163,7 @@ set (NAV_SRC
         magnetic/wmm.c
         magnetic/GeomagnetismLibrary.c
         magnetic/mem_file.c
-        adobe_premiere/insta360/MarkerReaderInsta360.cpp adobe_premiere/insta360/MarkerReaderInsta360.h adobe_premiere/ClipMarker.cpp adobe_premiere/ClipMarker.h)
+        adobe_premiere/insta360/MarkerReaderInsta360.cpp adobe_premiere/insta360/MarkerReaderInsta360.h adobe_premiere/ClipMarker.cpp adobe_premiere/ClipMarker.h Insta360/Insta360.cpp Insta360/Insta360.h cameras/CameraBase.cpp cameras/CameraBase.h)
 
 qt_add_executable(sailvue WIN32 MACOSX_BUNDLE
         main.cpp

@@ -27,6 +27,7 @@ Dialog {
         columns: 1
         visible: true
 
+        // GOPRO
         Label {
             id: goproFolderLabel
             text: raceTreeModel.goproPath
@@ -34,6 +35,24 @@ Dialog {
         Button {
             text: "Select GOPRO folder"
             onClicked: goProFolderDialog.open()
+        }
+
+        // Insta 360
+        Label {
+            text: raceTreeModel.insta360Path
+        }
+        Button {
+            text: "Select Insta360 folder"
+            onClicked: insta360FolderDialog.open()
+        }
+
+        // Adobe markers
+        Label {
+            text: raceTreeModel.adobeMarkersPath
+        }
+        Button {
+            text: "Select Adobe markers folder"
+            onClicked: adobeMarkersFolderDialog.open()
         }
 
         Label {
@@ -78,6 +97,26 @@ Dialog {
         currentFolder: raceTreeModel.goproPath
         onAccepted: {
             raceTreeModel.goproPath = selectedFolder
+        }
+    }
+
+    FolderDialog {
+        id: insta360FolderDialog
+        visible: false
+        title: "Select Insta360 folder"
+        currentFolder: raceTreeModel.insta360Path
+        onAccepted: {
+            raceTreeModel.insta360Path = selectedFolder
+        }
+    }
+
+    FolderDialog {
+        id: adobeMarkersFolderDialog
+        visible: false
+        title: "Select Adobe markers folder"
+        currentFolder: raceTreeModel.adobeMarkersPath
+        onAccepted: {
+            raceTreeModel.adobeMarkersPath = selectedFolder
         }
     }
 

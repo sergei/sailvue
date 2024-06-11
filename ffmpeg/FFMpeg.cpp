@@ -190,7 +190,7 @@ std::string FFMpeg::makeClipFfmpegArgs(const std::string &clipPath) {
 
     // List of overlay files
     for(const auto& overlay: m_pOverlays){
-        ffmpegArgs += " -framerate " + std::to_string(overlay.fps) + " -i " + overlay.path.string() + "/" + overlay.filePattern;
+        ffmpegArgs += " -framerate " + std::to_string(overlay.fps) + " -i \"" + overlay.path.string() + "/" + overlay.filePattern + "\"";
         ffmpegArgs += " \\\n";
         clipIdx++;
     }
@@ -255,10 +255,19 @@ std::string FFMpeg::makeClipFfmpegArgs(const std::string &clipPath) {
 
     ffmpegArgs += " \\\n";
     ffmpegArgs += " -map " + merged;
-    if ( !m_changeDuration ){  // If duration is changed, don't copy the audio
+    if ( !m_changeDuration && !m_pClipFragments->empty() ){  // If duration is changed or no GOPRO clips presents, don't copy the audio
         ffmpegArgs += " -map " + audio;
     }
     ffmpegArgs += " \\\n";
+
+    if( m_pClipFragments->empty() ){
+        ffmpegArgs += "-vcodec png ";
+        ffmpegArgs += " \\\n";
+        ffmpegArgs += "-pix_fmt yuva420p ";
+        ffmpegArgs += " \\\n";
+    }
+
+
     ffmpegArgs += " \"" + clipPath + "\"";
     return ffmpegArgs;
 }

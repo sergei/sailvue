@@ -351,14 +351,20 @@ void RaceTreeModel::load(const QString &path) {
         emit polarPathChanged();
         emit projectNameChanged();
         emit isDirtyChanged();
-        emit readData(m_project.goproPath(), m_project.logsType(), m_project.nmeaPath(), m_project.polarPath(), false);
+        emit readData(m_project.goproPath(),
+                      m_project.insta360Path(),
+                      m_project.adobeMarkersPath(),
+                      m_project.logsType(), m_project.nmeaPath(), m_project.polarPath(), false);
     }
 }
 
 void RaceTreeModel::read(bool ignoreCache) {
     emit loadStarted();
     deleteAllRaces();
-    emit readData(m_project.goproPath(), m_project.logsType(), m_project.nmeaPath(), m_project.polarPath(), ignoreCache);
+    emit readData(m_project.goproPath(),
+                  m_project.insta360Path(),
+                  m_project.adobeMarkersPath(),
+                  m_project.logsType(), m_project.nmeaPath(), m_project.polarPath(), ignoreCache);
 }
 
 void RaceTreeModel::save() {

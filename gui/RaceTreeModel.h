@@ -54,7 +54,11 @@ class RaceTreeModel  : public QAbstractItemModel {
 
     Q_PROPERTY(QString projectName READ projectName NOTIFY projectNameChanged)
     Q_PROPERTY(bool isDirty READ isDirty NOTIFY isDirtyChanged)
+
     Q_PROPERTY(QString goproPath READ goproPath WRITE setGoProPath NOTIFY goProPathChanged)
+    Q_PROPERTY(QString insta360Path READ insta360Path WRITE setInsta360Path NOTIFY insta360PathChanged)
+    Q_PROPERTY(QString adobeMarkersPath READ adobeMarkersPath WRITE setAdobeMarkersPath NOTIFY adobeMarkersPathChanged)
+
     Q_PROPERTY(QString nmeaPath READ nmeaPath WRITE setNmeaPath NOTIFY nmeaPathChanged)
     Q_PROPERTY(QString logsType READ logsType WRITE setLogsType NOTIFY logsTypeChanged)
     Q_PROPERTY(QString polarPath READ polarPath WRITE setPolarPath NOTIFY polarPathChanged)
@@ -103,6 +107,18 @@ public:
         emit isDirtyChanged();
     }
 
+    void setInsta360Path(const QString &path){
+        m_project.setInsta360Path(path);
+        emit insta360PathChanged();
+        emit isDirtyChanged();
+    }
+
+    void setAdobeMarkersPath(const QString &path){
+        m_project.setAdobeMarkersPath(path);
+        emit adobeMarkersPathChanged();
+        emit isDirtyChanged();
+    }
+
     void setNmeaPath(const QString &path){
         m_project.setNmeaPath(path);
         emit nmeaPathChanged();
@@ -128,6 +144,8 @@ public:
     [[nodiscard]] QString projectName() const { return m_project.projectName(); }
     [[nodiscard]] bool isDirty() const { return m_project.isDirty(); }
     [[nodiscard]] QString goproPath() const{ return m_project.goproPath(); }
+    [[nodiscard]] QString insta360Path() const{ return m_project.insta360Path(); }
+    [[nodiscard]] QString adobeMarkersPath() const{ return m_project.adobeMarkersPath(); }
     [[nodiscard]] QString nmeaPath() const{ return m_project.nmeaPath(); }
     [[nodiscard]] QString logsType() const{ return m_project.logsType(); }
     [[nodiscard]] QString polarPath() const{ return m_project.polarPath(); }
@@ -183,6 +201,8 @@ signals:
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "NotImplementedFunctions"
     void goProPathChanged();
+    void insta360PathChanged();
+    void adobeMarkersPathChanged();
     void isDirtyChanged();
     void projectNameChanged();
     void nmeaPathChanged();
@@ -190,7 +210,7 @@ signals:
     void polarPathChanged();
     void twaOffsetChanged();
 
-    void readData(const QString &goproDir, const QString &logsType, const QString &nmeaDir, const QString &polarFile, bool ignoreCache);
+    void readData(const QString &goproDir, const QString &insta360Dir, const QString &adobeMarkersDir, const QString &logsType, const QString &nmeaDir, const QString &polarFile, bool ignoreCache);
     void stop();
     void progressStatus(const QString &state, int progress);
     void fullPathReady(const QGeoPath fullPath);

@@ -2,6 +2,7 @@
 #define SAILVUE_CLIPMARKER_H
 
 #include <string>
+#include "cameras/CameraBase.h"
 
 
 class ClipMarker {
@@ -18,6 +19,8 @@ public:
     void setName(const std::string &makerName) { m_name = makerName; }
     void setInTimeSec(u_int64_t mInTimeSec) { m_inTimeSec = mInTimeSec; }
     void setOutTimeSec(u_int64_t mOutTimeSec) { m_outTimeSec = mOutTimeSec; }
+    CameraClipInfo *getClipInfo() const { return m_pClipInfo; }
+    void setClipInfo(CameraClipInfo *mPClipInfo) { m_pClipInfo = mPClipInfo; }
 
 private:
     std::string m_name="Untitled Marker";
@@ -25,6 +28,7 @@ private:
     u_int64_t m_outTimeSec=0;
     u_int64_t m_UtcMsIn=0;
     u_int64_t m_UtcMsOut=0;
+    CameraClipInfo *m_pClipInfo = nullptr;
 };
 
 

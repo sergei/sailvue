@@ -23,6 +23,18 @@ public:
         std::cout << "set gopro path to " << path.toStdString() << std::endl;
     }
 
+    void setInsta360Path(const QString &path){
+        m_insta360Path = path;
+        m_isDirty = true;
+        std::cout << "set insta 360 path to " << path.toStdString() << std::endl;
+    }
+
+    void setAdobeMarkersPath(const QString &path){
+        m_adobeMarkersPath = path;
+        m_isDirty = true;
+        std::cout << "set adobe markers path to " << path.toStdString() << std::endl;
+    }
+
     void setNmeaPath(const QString &path){
         m_nmeaPath = path;
         m_isDirty = true;
@@ -47,6 +59,14 @@ public:
 
     [[nodiscard]] QString goproPath() const{
         return m_goproPath;
+    }
+
+    [[nodiscard]] QString insta360Path() const{
+        return m_insta360Path;
+    }
+
+    [[nodiscard]] QString adobeMarkersPath() const{
+        return m_adobeMarkersPath;
     }
 
     [[nodiscard]] QString nmeaPath() const{
@@ -80,6 +100,8 @@ private:
     std::list<RaceData *> &m_RaceDataList;
     QString m_projectName = "Untitled";
     QString m_goproPath = "";
+    QString m_insta360Path = "";
+    QString m_adobeMarkersPath = "";
     QString m_nmeaPath = "";
     QString m_logsType = "";
     QString m_polarPath = "";

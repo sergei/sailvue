@@ -121,8 +121,12 @@ void YdvrReader::processDatFile(const std::string &ydvrFile, const std::string& 
     std::cout << ydvrFile << std::endl;
 
     std::string csvFileName = std::filesystem::path(ydvrFile).filename().string() + ".csv";
-    std::filesystem::path stCacheFile = bMappingOnly ? std::filesystem::path("/dev/null") : std::filesystem::path(stCacheDir)  / csvFileName;
-    std::filesystem::path stSummaryFile = std::filesystem::path(stSummaryDir)  / csvFileName;
+
+    std::filesystem::path fileCacheDir = std::filesystem::path(stCacheDir) / std::filesystem::path(ydvrFile).parent_path().filename();
+    std::filesystem::path fileSummaryDir = std::filesystem::path(stSummaryDir) / std::filesystem::path(ydvrFile).parent_path().filename();
+
+    std::filesystem::path stCacheFile = bMappingOnly ? std::filesystem::path("/dev/null") : fileCacheDir  / csvFileName;
+    std::filesystem::path stSummaryFile = fileSummaryDir  / csvFileName;
 
     auto haveCache = std::filesystem::exists(stCacheFile) && std::filesystem::is_regular_file(stCacheFile) ;
 
@@ -145,6 +149,9 @@ void YdvrReader::processDatFile(const std::string &ydvrFile, const std::string& 
         if( m_ulEpochCount > 0 )
             m_listDatFiles.push_back(DatFileInfo{ydvrFile, stCacheFile, m_ulStartGpsTimeMs, m_ulEndGpsTimeMs, m_ulEpochCount});
     } else {
+        std::filesystem::create_directories(fileCacheDir);
+        std::filesystem::create_directories(fileSummaryDir);
+
         readDatFile(ydvrFile, stCacheFile, stSummaryFile);
         if( m_ulEpochCount > 0 )
             m_listDatFiles.push_back(DatFileInfo{ydvrFile, stCacheFile, m_ulStartGpsTimeMs, m_ulEndGpsTimeMs, m_ulEpochCount});

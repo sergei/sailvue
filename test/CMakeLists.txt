@@ -23,6 +23,8 @@ add_executable (TestPolars
         ../movie/RudderOverlayMaker.cpp
         ../movie/TargetsOverlayMaker.cpp
         ../adobe_premiere/insta360/MarkerReaderInsta360.cpp
+        ../Insta360/Insta360.cpp
+        ../cameras/CameraBase.cpp
 
         test_polars.cpp
         test_median.cpp
