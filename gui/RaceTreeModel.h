@@ -14,6 +14,7 @@
 #include "Project.h"
 #include "navcomputer/NavStatsEventsListener.h"
 #include "navcomputer/Performance.h"
+#include "cameras/CameraBase.h"
 
 class TreeItem
 {
@@ -157,6 +158,7 @@ public:
     Q_INVOKABLE void read(bool ignoreCache);
     Q_INVOKABLE void save();
     Q_INVOKABLE void saveAs(const QString &path);
+    Q_INVOKABLE void importAdobeMarkers(const QString &markersFolder);
 
     Q_INVOKABLE void showRaceData();
     Q_INVOKABLE void stopDataProcessing();
@@ -166,6 +168,7 @@ public:
 
     Q_INVOKABLE void splitRace();
     Q_INVOKABLE void addChapter();
+    void addChapter(Chapter *chapter);
     Q_INVOKABLE void detectManeuvers();
     Q_INVOKABLE void makeAnalytics();
     Q_INVOKABLE void updateChapter(const QString &uuid, const QString &chapterName, ChapterTypes::ChapterType chapterType,
@@ -196,6 +199,7 @@ public slots:
 
     void handleProduceStarted();
     void handleProduceFinished(const QString &message);
+    void handleMarkersImported();
 
 signals:
 #pragma clang diagnostic push
@@ -250,6 +254,7 @@ private:
     QGeoPath m_geoPath;
 
     std::list<GoProClipInfo> m_GoProClipInfoList;
+    std::list<CameraClipInfo *> m_CameraClipsList;
     std::vector<InstrumentInput> m_InstrDataVector;
     std::map<uint64_t, Performance> m_PerformanceMap;
 

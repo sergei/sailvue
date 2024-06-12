@@ -153,6 +153,12 @@ ApplicationWindow {
             }
 
             Action {
+                text: qsTr("&Import Adobe Pr markers...")
+                onTriggered: importAdobeMarkersFileDialog.open()
+                enabled: raceTreeModel.projectName !== "Untitled"
+            }
+
+            Action {
                 text: qsTr("&Export CSV...")
                 onTriggered: statsFileDialog.open()
                 enabled: raceTreeModel.projectName !== "Untitled"
@@ -340,6 +346,15 @@ ApplicationWindow {
         nameFilters: ["Stat files (*.csv)"]
         onAccepted: {
             raceTreeModel.exportStats(raceTreeModel.polarPath, currentFile)
+        }
+    }
+
+    FolderDialog {
+        id: importAdobeMarkersFileDialog
+        visible: false
+        title: "Import Adone Premiere Markers"
+        onAccepted: {
+            raceTreeModel.importAdobeMarkers(selectedFolder)
         }
     }
 

@@ -7,6 +7,7 @@
 #include "ChapterMaker.h"
 #include "navcomputer/TimeDeltaComputer.h"
 #include "net_sim/NetworkSimulator.h"
+#include "adobe_premiere/MarkerReader.h"
 
 TreeItem::TreeItem(RaceData *pRaceData, Chapter *pChapter, TreeItem *parent)
         : m_pRaceData(pRaceData), m_pChapter(pChapter), m_parentItem(parent)
@@ -145,7 +146,7 @@ RaceTreeModel::RaceTreeModel(QObject *parent)
  m_project(m_RaceDataList) {
     rootItem = new TreeItem();
 
-    auto *worker = new Worker(m_GoProClipInfoList, m_InstrDataVector, m_PerformanceMap, m_RaceDataList);
+    auto *worker = new Worker(m_GoProClipInfoList, m_CameraClipsList, m_InstrDataVector, m_PerformanceMap, m_RaceDataList);
     worker->moveToThread(&workerThread);
     connect(&workerThread, &QThread::finished, worker, &QObject::deleteLater);
 
@@ -155,8 +156,10 @@ RaceTreeModel::RaceTreeModel(QObject *parent)
     connect(worker, &Worker::pathAvailable, this, &RaceTreeModel::handleNewInstrDataVector);
 
     connect(this, &RaceTreeModel::produce, worker, &Worker::produce);
+
     connect(worker, &Worker::produceStarted, this, &RaceTreeModel::handleProduceStarted);
     connect(worker, &Worker::produceFinished, this, &RaceTreeModel::handleProduceFinished);
+    connect(worker, &Worker::markersImported, this, &RaceTreeModel::handleMarkersImported);
 
     connect(this, &RaceTreeModel::exportStats, worker, &Worker::exportStats);
     connect(this, &RaceTreeModel::exportGpx, worker, &Worker::exportGpx);
@@ -336,6 +339,16 @@ void RaceTreeModel::handleNewInstrDataVector() {
 
     showRaceData();
 
+    m_ulCurrentInstrDataIdx = 0;
+
+    emit loadFinished();
+
+    selectFirstChapter();
+}
+
+void RaceTreeModel::handleMarkersImported() {
+
+    showRaceData();
     m_ulCurrentInstrDataIdx = 0;
 
     emit loadFinished();
@@ -576,6 +589,44 @@ void RaceTreeModel::addChapter() {
     }
     std::cerr << "No race found for the new chapter" << std::endl;
 }
+
+void RaceTreeModel::addChapter(Chapter *chapter){
+    // Find race to insert chapter into
+    for(int raceRow = 0; raceRow < rootItem->childCount(); raceRow++){
+        TreeItem *raceTreeItem = rootItem->child(raceRow);
+        RaceData *race = raceTreeItem->getRaceData();
+        if ( race->getStartIdx() <= chapter->getStartIdx() && race->getEndIdx() >= chapter->getEndIdx()){
+
+            emit layoutAboutToBeChanged();
+            // Found the race the UTC is pointing at
+
+            // Add data to underlying storage
+
+            std::cout << "insertChapter " << chapter->getName() <<  std::endl;
+            race->insertChapter(chapter);
+
+            // Add data to the view model
+            auto *chapterTreeItem = new TreeItem(race, chapter, raceTreeItem);
+            int chapterRow = raceTreeItem->insertChapterChild(chapterTreeItem);
+
+            m_project.raceDataChanged();
+            emit isDirtyChanged();
+            emit chapterAdded(chapter->getUuid(), QString::fromStdString(chapter->getName()), chapter->getChapterType(),
+                              chapter->getStartIdx(),  chapter->getEndIdx(), chapter->getGunIdx());
+            emit layoutChanged();
+
+            // Select newly added chapter
+            QModelIndex raceIndex = index(raceRow, 0 , QModelIndex());
+            m_selectedTreeIdx = index(chapterRow, 0, raceIndex);
+            m_selectionModel->setCurrentIndex(m_selectedTreeIdx, QItemSelectionModel::SelectCurrent);
+
+            return;
+        }
+    }
+    std::cerr << "No race found for the new chapter" << std::endl;
+
+}
+
 
 void RaceTreeModel::updateRace(const QString &raceName){
     std::cout << "updateRace " << raceName.toStdString() << std::endl;
@@ -1028,5 +1079,23 @@ qint64 RaceTreeModel::moveIdxByMs(qint64 idx, qint64 ms) const {
     return idx;
 }
 
+void RaceTreeModel::importAdobeMarkers(const QString &markersFolder) {
+    const std::string &markersDir = QUrl(markersFolder).toLocalFile().toStdString();
+    MarkerReader markerReader;
+    markerReader.setTimeAdjustmentMs(5000);
+    markerReader.read(markersDir, m_CameraClipsList);
 
+    std::list<Chapter *> chapters;
+    markerReader.makeChapters(chapters, m_InstrDataVector);
 
+    QDateTime raceTime = QDateTime::fromMSecsSinceEpoch(qint64(m_InstrDataVector[0].utc.getUnixTimeMs()));
+    std::string raceName = "Adobe Race " + raceTime.toString("yyyy-MM-dd hh:mm").toStdString();
+
+    auto *race = new RaceData(0, m_InstrDataVector.size() - 1);
+    race->SetName(raceName);
+
+    for( auto chapter : chapters){
+        addChapter(chapter);
+    }
+
+}

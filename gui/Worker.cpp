@@ -12,6 +12,7 @@
 #include "navcomputer/Calibration.h"
 #include "n2k/ExpeditionReader.h"
 #include "adobe_premiere/MarkerReader.h"
+#include "Insta360/Insta360.h"
 
 void Worker::readData(const QString &goproDir, const QString &insta360Dir, const QString &adobeMarkersDir, const QString &logsType, const QString &nmeaDir, const QString &polarFile, bool bIgnoreCache){
     std::cout << "goproDir " + goproDir.toStdString() << std::endl;
@@ -21,8 +22,6 @@ void Worker::readData(const QString &goproDir, const QString &insta360Dir, const
 
     std::string stYdvrDir = QUrl(nmeaDir).toLocalFile().toStdString();
     std::string stGoProDir = QUrl(goproDir).toLocalFile().toStdString();
-
-    const std::string &stAdobeMarkersDir = QUrl(adobeMarkersDir).toLocalFile().toStdString();
     const std::string &stInsta360Dir = QUrl(insta360Dir).toLocalFile().toStdString();
 
     std::string stCacheDir = "/tmp/sailvue";
@@ -76,39 +75,22 @@ void Worker::readData(const QString &goproDir, const QString &insta360Dir, const
                 pointsCount++;
             }
         }
-    }else{
-        std::list<InstrumentInput> listInputs;
-        reader->read(0, 0xFFFFFFFFFFFFFFFFLL, listInputs);
+    }else if (!stInsta360Dir.empty() ) {
+
+        m_pCamera = new Insta360(*reader, *this);
+        m_pCamera->processClipsDir(stInsta360Dir, stCacheDir);
+
         m_rInstrDataVector.clear();
-        for( auto &ii : listInputs){
-            calibration.calibrate(ii);
-            m_rInstrDataVector.push_back(ii);
-            pointsCount++;
-        }
-
-        if( !stAdobeMarkersDir.empty() &&  !stInsta360Dir.empty() ) {
-            QDateTime raceTime = QDateTime::fromMSecsSinceEpoch(qint64(m_rInstrDataVector[0].utc.getUnixTimeMs()));
-            std::string raceName = "Adobe Race " + raceTime.toString("yyyy-MM-dd hh:mm").toStdString();
-
-
-
-            MarkerReader markerReader;
-            markerReader.setTimeAdjustmentMs(5000);
-//            markerReader.read(stAdobeMarkersDir, stInsta360Dir);
-
-            std::list<Chapter *> chapters;
-//            markerReader.makeChapters(m_rInstrDataVector, chapters);
-
-            auto *race = new RaceData(0, m_rInstrDataVector.size() - 1);
-            race->SetName(raceName);
-            for( auto chapter : chapters){
-                race->insertChapter(chapter);
+        for (auto clip: m_pCamera->getClipList()) {
+            m_rCameraClipsList.push_back(clip);
+            clipCount++;
+            for (auto &ii: *clip->getInstrData()) {
+                calibration.calibrate(ii);
+                m_rInstrDataVector.push_back(ii);
+                pointsCount++;
             }
-            m_RaceDataList.push_back(race);
         }
-
     }
-
 
     // Make performance vector the same size as the instr data vector
     m_rPerformanceMap.clear();
@@ -361,3 +343,4 @@ void Worker::exportStats(const QString &polarUrl, const QString &path) {
     progress("Exporting CSV", 100);
     std::cout << "Export complete" << std::endl;
 }
+
