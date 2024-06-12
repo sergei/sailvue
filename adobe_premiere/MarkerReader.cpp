@@ -121,3 +121,42 @@ void MarkerReader::makeChapters(std::list<Chapter *> &chapters, std::vector<Inst
     chapters.sort( [] (const Chapter *c1, const Chapter *c2) {return c1->getStartIdx() < c2->getStartIdx();});
 
 }
+
+void MarkerReader::makeMarkers(std::list<Chapter *> chapters, std::vector<InstrumentInput> &instrDataVector,
+                               std::list<CameraClipInfo *> &clips, const std::filesystem::path &markerFile) {
+
+    std::filesystem::path markersDir = markerFile.parent_path();
+    std::filesystem::create_directories(markersDir);
+    std::ofstream outStream (markerFile, std::ios::out);
+
+    outStream << "Clip file, In, Name" << std::endl;
+    for(auto chapter: chapters) {
+        uint64_t startUtcMs = instrDataVector[chapter -> getStartIdx()].utc.getUnixTimeMs() - m_timeAdjustmentMs;
+        uint64_t endUtcMs = instrDataVector[chapter -> getEndIdx()].utc.getUnixTimeMs();
+
+        // Find clip corresponding to the start UTC
+        outStream << makeCsvEntry(chapter->getName(), startUtcMs, clips) << std::endl;
+    }
+}
+
+std::string MarkerReader::makeCsvEntry(std::string chapterName, uint64_t utcMs, std::list<CameraClipInfo *> &clips) {
+    std::string entry;
+
+    for(const auto &clip : clips){
+        if ( clip->getClipStartUtcMs() <= utcMs && clip->getClipEndUtcMs() >= utcMs  ){
+            int clipIn = (utcMs - clip->getClipStartUtcMs()) / 1000;
+            int hours = clipIn / 3600;
+            int minutes = (clipIn / 60) % 60;
+            int seconds = clipIn  % 60;
+            std::ostringstream oss;
+            oss << std::filesystem::path(clip->getFileName()).filename()
+            << ", "<< std::setw(2) << std::setfill('0') << hours << ":" << minutes << ":" << seconds << ":00"
+            << ", " << chapterName
+            ;
+            entry = oss.str();
+            break;
+        }
+    }
+
+    return entry;
+}

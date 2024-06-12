@@ -14,6 +14,10 @@ public:
     void read(const std::filesystem::path &markersDir, const std::list<CameraClipInfo *> &cameraClips);
     void makeChapters(std::list<Chapter *> &chapters, std::vector<InstrumentInput> &instrDataVector);
     const std::list<ClipMarker> &getMarkersList() const { return m_markersList; }
+
+    void makeMarkers(std::list<Chapter *> chapters, std::vector<InstrumentInput> &instrDataVector,
+                     std::list<CameraClipInfo *> &clips, const std::filesystem::path &markerFile);
+
 private:
     std::list<ClipMarker> m_markersList;
 
@@ -21,6 +25,8 @@ private:
     int64_t m_timeAdjustmentMs = 0;
 
     static int timeCodeToSec(const std::string &item) ;
+
+    std::string makeCsvEntry(std::string chapterName, uint64_t utcms, std::list<CameraClipInfo *> &clips);
 };
 
 

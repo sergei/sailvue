@@ -39,10 +39,8 @@ public:
 };
 
 TEST(AdobeMarkersTests, ReadTest) {
-
     std::filesystem::path markersDir("./data/02-MARKERS");
     std::filesystem::path insta360Dir("/Volumes/SailingVideos2/2024-Coastal-Cup/01-FOOTAGE/01-INSTA-X4/Camera01/");
-
 
     std::string iiFile = "./data/00010030.DAT.csv";
     TestInstrDataReader testInstrDataReader(iiFile);
@@ -75,4 +73,31 @@ TEST(AdobeMarkersTests, ReadTest) {
     ASSERT_EQ(5, chapters.size());
 }
 
+TEST(AdobeMarkersTests, WriteTest) {
+    std::filesystem::path insta360Dir("/Volumes/SailingVideos2/2024-Coastal-Cup/01-FOOTAGE/01-INSTA-X4/Camera01/");
 
+    std::string iiFile = "./data/00010030.DAT.csv";
+    TestInstrDataReader testInstrDataReader(iiFile);
+    TestProgressListener testProgressListener;
+
+    auto camera = new Insta360(testInstrDataReader, testProgressListener);
+    camera->processClipsDir(insta360Dir, "/tmp");
+    std::vector<InstrumentInput> instrDataVector;
+
+    for (auto clip : camera->getClipList()) {
+        for( auto &ii : *clip -> getInstrData()) {
+            instrDataVector.push_back(ii);
+        }
+    }
+
+    std::list<Chapter *> chapters;
+    auto chapter = new Chapter(43, 1519);
+    chapter->SetName("New chapter");
+    chapters.push_back(chapter);
+
+    MarkerReader markerReader;
+    markerReader.setTimeAdjustmentMs(5000);
+
+    std::filesystem::path markersFile("./data/03-EXP-MARKERS/markers.txt");
+    markerReader.makeMarkers(chapters, instrDataVector, camera->getClipList(), markersFile);
+}

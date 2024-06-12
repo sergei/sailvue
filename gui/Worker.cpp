@@ -94,10 +94,10 @@ void Worker::readData(const QString &goproDir, const QString &insta360Dir, const
 
             MarkerReader markerReader;
             markerReader.setTimeAdjustmentMs(5000);
-            markerReader.read(stAdobeMarkersDir, stInsta360Dir);
+//            markerReader.read(stAdobeMarkersDir, stInsta360Dir);
 
             std::list<Chapter *> chapters;
-            markerReader.makeChapters(m_rInstrDataVector, chapters);
+//            markerReader.makeChapters(m_rInstrDataVector, chapters);
 
             auto *race = new RaceData(0, m_rInstrDataVector.size() - 1);
             race->SetName(raceName);

@@ -20,7 +20,7 @@ public:
     void setInTimeSec(u_int64_t mInTimeSec) { m_inTimeSec = mInTimeSec; }
     void setOutTimeSec(u_int64_t mOutTimeSec) { m_outTimeSec = mOutTimeSec; }
     CameraClipInfo *getClipInfo() const { return m_pClipInfo; }
-    void setClipInfo(CameraClipInfo *mPClipInfo) { m_pClipInfo = mPClipInfo; }
+    void setClipInfo(CameraClipInfo *mpClipInfo) { m_pClipInfo = mpClipInfo; }
 
 private:
     std::string m_name="Untitled Marker";
