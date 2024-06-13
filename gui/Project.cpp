@@ -34,10 +34,6 @@ void Project::fromJson(const QJsonObject &json){
         setInsta360Path(v.toString());
     }
 
-    if(  QJsonValue v = json["adobeMarkersPath"]; v.isString()){
-        setAdobeMarkersPath(v.toString());
-    }
-
     if(  QJsonValue v = json["nmeaPath"]; v.isString()){
         setNmeaPath(v.toString());
     }
@@ -85,7 +81,6 @@ QJsonObject Project::toJson() const {
     QJsonObject json;
     json["goproPath"] = goproPath();
     json["insta360Path"] = insta360Path();
-    json["adobeMarkersPath"] = adobeMarkersPath();
     json["nmeaPath"] = nmeaPath();
     json["logsType"] = logsType();
 

@@ -159,6 +159,12 @@ ApplicationWindow {
             }
 
             Action {
+                text: qsTr("&Export Adobe Pr markers...")
+                onTriggered: exportAdobeMarkersDialog.open()
+                enabled: raceTreeModel.projectName !== "Untitled"
+            }
+
+            Action {
                 text: qsTr("&Export CSV...")
                 onTriggered: statsFileDialog.open()
                 enabled: raceTreeModel.projectName !== "Untitled"
@@ -366,6 +372,17 @@ ApplicationWindow {
         nameFilters: ["GPX files (*.gpx)"]
         onAccepted: {
             raceTreeModel.exportGpx(currentFile)
+        }
+    }
+
+    FileDialog {
+        id: exportAdobeMarkersDialog
+        visible: false
+        title: "Export Adobe markers file"
+        fileMode: FileDialog.SaveFile
+        nameFilters: ["Adobe Pr Markers CSV (*.csv)"]
+        onAccepted: {
+            raceTreeModel.exportAdobeMarkers(currentFile)
         }
     }
 

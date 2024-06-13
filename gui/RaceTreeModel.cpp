@@ -366,7 +366,6 @@ void RaceTreeModel::load(const QString &path) {
         emit isDirtyChanged();
         emit readData(m_project.goproPath(),
                       m_project.insta360Path(),
-                      m_project.adobeMarkersPath(),
                       m_project.logsType(), m_project.nmeaPath(), m_project.polarPath(), false);
     }
 }
@@ -376,7 +375,6 @@ void RaceTreeModel::read(bool ignoreCache) {
     deleteAllRaces();
     emit readData(m_project.goproPath(),
                   m_project.insta360Path(),
-                  m_project.adobeMarkersPath(),
                   m_project.logsType(), m_project.nmeaPath(), m_project.polarPath(), ignoreCache);
 }
 
@@ -1082,7 +1080,7 @@ qint64 RaceTreeModel::moveIdxByMs(qint64 idx, qint64 ms) const {
 void RaceTreeModel::importAdobeMarkers(const QString &markersFolder) {
     const std::string &markersDir = QUrl(markersFolder).toLocalFile().toStdString();
     MarkerReader markerReader;
-    markerReader.setTimeAdjustmentMs(5000);
+    markerReader.setTimeAdjustmentMs(CAMERA_UTC_TIME_ADJUSTMENT);
     markerReader.read(markersDir, m_CameraClipsList);
 
     std::list<Chapter *> chapters;
@@ -1097,5 +1095,14 @@ void RaceTreeModel::importAdobeMarkers(const QString &markersFolder) {
     for( auto chapter : chapters){
         addChapter(chapter);
     }
+
+}
+
+void RaceTreeModel::exportAdobeMarkers(const QString &path) {
+    MarkerReader markerReader;
+    markerReader.setTimeAdjustmentMs(CAMERA_UTC_TIME_ADJUSTMENT);
+
+    auto chapters = m_pCurrentRace->getChapters();
+    markerReader.makeMarkers(chapters, m_InstrDataVector, m_CameraClipsList, QUrl(path).toLocalFile().toStdString());
 
 }

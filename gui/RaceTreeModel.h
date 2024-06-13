@@ -16,6 +16,8 @@
 #include "navcomputer/Performance.h"
 #include "cameras/CameraBase.h"
 
+static const int CAMERA_UTC_TIME_ADJUSTMENT = 5000;
+
 class TreeItem
 {
 public:
@@ -58,7 +60,6 @@ class RaceTreeModel  : public QAbstractItemModel {
 
     Q_PROPERTY(QString goproPath READ goproPath WRITE setGoProPath NOTIFY goProPathChanged)
     Q_PROPERTY(QString insta360Path READ insta360Path WRITE setInsta360Path NOTIFY insta360PathChanged)
-    Q_PROPERTY(QString adobeMarkersPath READ adobeMarkersPath WRITE setAdobeMarkersPath NOTIFY adobeMarkersPathChanged)
 
     Q_PROPERTY(QString nmeaPath READ nmeaPath WRITE setNmeaPath NOTIFY nmeaPathChanged)
     Q_PROPERTY(QString logsType READ logsType WRITE setLogsType NOTIFY logsTypeChanged)
@@ -114,12 +115,6 @@ public:
         emit isDirtyChanged();
     }
 
-    void setAdobeMarkersPath(const QString &path){
-        m_project.setAdobeMarkersPath(path);
-        emit adobeMarkersPathChanged();
-        emit isDirtyChanged();
-    }
-
     void setNmeaPath(const QString &path){
         m_project.setNmeaPath(path);
         emit nmeaPathChanged();
@@ -146,7 +141,6 @@ public:
     [[nodiscard]] bool isDirty() const { return m_project.isDirty(); }
     [[nodiscard]] QString goproPath() const{ return m_project.goproPath(); }
     [[nodiscard]] QString insta360Path() const{ return m_project.insta360Path(); }
-    [[nodiscard]] QString adobeMarkersPath() const{ return m_project.adobeMarkersPath(); }
     [[nodiscard]] QString nmeaPath() const{ return m_project.nmeaPath(); }
     [[nodiscard]] QString logsType() const{ return m_project.logsType(); }
     [[nodiscard]] QString polarPath() const{ return m_project.polarPath(); }
@@ -184,6 +178,7 @@ public:
     Q_INVOKABLE [[nodiscard]] QString getTimeString(uint64_t idx) const;
     Q_INVOKABLE [[nodiscard]] qint64 getIdxOffsetByMs(qint64 ms) const;
     Q_INVOKABLE [[nodiscard]] qint64 moveIdxByMs(qint64 idx, qint64 ms) const;
+    Q_INVOKABLE void exportAdobeMarkers(const QString &path);
 
     std::list<GoProClipInfo> *getClipList()  {return &m_GoProClipInfoList;};
 
@@ -206,7 +201,6 @@ signals:
 #pragma ide diagnostic ignored "NotImplementedFunctions"
     void goProPathChanged();
     void insta360PathChanged();
-    void adobeMarkersPathChanged();
     void isDirtyChanged();
     void projectNameChanged();
     void nmeaPathChanged();
@@ -214,7 +208,7 @@ signals:
     void polarPathChanged();
     void twaOffsetChanged();
 
-    void readData(const QString &goproDir, const QString &insta360Dir, const QString &adobeMarkersDir, const QString &logsType, const QString &nmeaDir, const QString &polarFile, bool ignoreCache);
+    void readData(const QString &goproDir, const QString &insta360Dir, const QString &logsType, const QString &nmeaDir, const QString &polarFile, bool ignoreCache);
     void stop();
     void progressStatus(const QString &state, int progress);
     void fullPathReady(const QGeoPath fullPath);

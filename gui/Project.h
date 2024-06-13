@@ -29,12 +29,6 @@ public:
         std::cout << "set insta 360 path to " << path.toStdString() << std::endl;
     }
 
-    void setAdobeMarkersPath(const QString &path){
-        m_adobeMarkersPath = path;
-        m_isDirty = true;
-        std::cout << "set adobe markers path to " << path.toStdString() << std::endl;
-    }
-
     void setNmeaPath(const QString &path){
         m_nmeaPath = path;
         m_isDirty = true;
@@ -63,10 +57,6 @@ public:
 
     [[nodiscard]] QString insta360Path() const{
         return m_insta360Path;
-    }
-
-    [[nodiscard]] QString adobeMarkersPath() const{
-        return m_adobeMarkersPath;
     }
 
     [[nodiscard]] QString nmeaPath() const{
@@ -101,7 +91,6 @@ private:
     QString m_projectName = "Untitled";
     QString m_goproPath = "";
     QString m_insta360Path = "";
-    QString m_adobeMarkersPath = "";
     QString m_nmeaPath = "";
     QString m_logsType = "";
     QString m_polarPath = "";

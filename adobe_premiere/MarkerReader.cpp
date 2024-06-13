@@ -150,7 +150,13 @@ std::string MarkerReader::makeCsvEntry(std::string chapterName, uint64_t utcMs, 
             int seconds = clipIn  % 60;
             std::ostringstream oss;
             oss << std::filesystem::path(clip->getFileName()).filename()
-            << ", "<< std::setw(2) << std::setfill('0') << hours << ":" << minutes << ":" << seconds << ":00"
+            << ", "
+            << std::setw(2) << std::setfill('0') << hours
+            << ":"
+            << std::setw(2) << std::setfill('0')<< minutes
+            << ":"
+            << std::setw(2) << std::setfill('0')<< seconds
+            << ":00"
             << ", " << chapterName
             ;
             entry = oss.str();

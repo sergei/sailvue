@@ -46,15 +46,6 @@ Dialog {
             onClicked: insta360FolderDialog.open()
         }
 
-        // Adobe markers
-        Label {
-            text: raceTreeModel.adobeMarkersPath
-        }
-        Button {
-            text: "Select Adobe markers folder"
-            onClicked: adobeMarkersFolderDialog.open()
-        }
-
         Label {
             id: nmeaFolderLabel
             text: raceTreeModel.nmeaPath
@@ -107,16 +98,6 @@ Dialog {
         currentFolder: raceTreeModel.insta360Path
         onAccepted: {
             raceTreeModel.insta360Path = selectedFolder
-        }
-    }
-
-    FolderDialog {
-        id: adobeMarkersFolderDialog
-        visible: false
-        title: "Select Adobe markers folder"
-        currentFolder: raceTreeModel.adobeMarkersPath
-        onAccepted: {
-            raceTreeModel.adobeMarkersPath = selectedFolder
         }
     }
 

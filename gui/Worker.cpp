@@ -14,7 +14,7 @@
 #include "adobe_premiere/MarkerReader.h"
 #include "Insta360/Insta360.h"
 
-void Worker::readData(const QString &goproDir, const QString &insta360Dir, const QString &adobeMarkersDir, const QString &logsType, const QString &nmeaDir, const QString &polarFile, bool bIgnoreCache){
+void Worker::readData(const QString &goproDir, const QString &insta360Dir, const QString &logsType, const QString &nmeaDir, const QString &polarFile, bool bIgnoreCache){
     std::cout << "goproDir " + goproDir.toStdString() << std::endl;
     std::cout << "logsType " + nmeaDir.toStdString() << std::endl;
     std::cout << "nmeaDir " + nmeaDir.toStdString() << std::endl;
