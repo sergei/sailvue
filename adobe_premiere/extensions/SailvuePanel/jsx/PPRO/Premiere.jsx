@@ -85,35 +85,42 @@ var NOT_SET = "-400000";
 
 $._PPP_={
 
+	getClipList : function (projectItem) {
+
+		// Create list of all clips
+		$._PPP_.updateEventPanel("Looking for clips in " + projectItem.name);
+
+		var  queue = [projectItem];
+		var clipList = [];
+		while ( queue.length ){
+			var size = queue.length;
+			while( size ){
+				// dequeue the  element
+				var node = queue.shift();
+				if ( node.type == ProjectItemType.ROOT  || node.type == ProjectItemType.BIN ){
+					$._PPP_.updateEventPanel(node.name + " has " + node.children.numItems + " items");
+					for( var i=0; i< node.children.numItems; i++){
+						queue.push(node.children[i]);
+						if ( node.children[i].type == ProjectItemType.CLIP ){
+							$._PPP_.updateEventPanel("Adding clip " + node.children[i].name);
+							clipList.push(node.children[i]);
+						}
+					}
+				}
+				size --;
+			}
+		}
+
+		return clipList;
+	},
+
 	importSailvueMarkers : function () {
 		if (app.project.rootItem.children.numItems > 0) {
 			var projectItem = app.project.rootItem; // assumes first item is footage.
 			if (projectItem) {
 
-				// Create list of all clips 
-				$._PPP_.updateEventPanel("Looking for clips in " + projectItem.name);
-
-				var  queue = [projectItem];
-				var clipList = [];
-				while ( queue.length ){
-					var size = queue.length;
-					while( size ){
-						// dequeue the  element
-						var node = queue.shift();
-						if ( node.type == ProjectItemType.ROOT  || node.type == ProjectItemType.BIN ){
-							$._PPP_.updateEventPanel(node.name + " has " + node.children.numItems + " items");
-							for( var i=0; i< node.children.numItems; i++){
-								queue.push(node.children[i]);	
-								if ( node.children[i].type == ProjectItemType.CLIP ){
-									$._PPP_.updateEventPanel("Adding clip " + node.children[i].name);
-									clipList.push(node.children[i]);
-								}
-							}
-						}
-						size --;
-					}
-				}
-
+				// Create list of all clips
+				var clipList = $._PPP_.getClipList(projectItem);
 				$._PPP_.updateEventPanel("Found " + clipList.length + " clips");
 
 				var fileToOpen = File.openDialog("Select Markers file",
@@ -126,6 +133,24 @@ $._PPP_={
 						fileToOpen.open("r", "TEXT", "????");
 						var fileContents = fileToOpen.read();
 						if (fileContents) {
+
+							for(var j =0 ; j < clipList.length; j++) {
+								var clip = clipList[j];
+								var markers   = clip.getMarkers();
+
+								// Get list of sailvue markers in this clip
+								var sailvueMarkers = [];
+								for(var i = 0; i < markers.numMarkers; i++) {
+									if ( markers[i].type == "Segmentation" ){
+										sailvueMarkers.push(markers[i]);
+									}
+								}
+
+								// Delete all of them
+								for(var i = 0; i < sailvueMarkers.length; i++) {
+									markers.deleteMarker(sailvueMarkers[i]);
+								}
+							}
 
 							// Process CSV line by line
 							var record_num = 3;
@@ -158,9 +183,50 @@ $._PPP_={
 											break;
 										}
 									}
-
 								}
 							}							
+						}
+					}
+				} else {
+					$._PPP_.updateEventPanel("No valid marker file chosen.");
+				}
+
+			} else {
+				$._PPP_.updateEventPanel("Could not find first projectItem.");
+			}
+		} else {
+			$._PPP_.updateEventPanel("Project is empty.");
+		}
+	},
+
+	exportSailvueMarkers : function () {
+		if (app.project.rootItem.children.numItems > 0) {
+			var projectItem = app.project.rootItem; // assumes first item is footage.
+			if (projectItem) {
+
+				// Create list of all clips
+				var clipList = $._PPP_.getClipList(projectItem);
+				$._PPP_.updateEventPanel("Found " + clipList.length + " clips");
+
+				var fileToOpen = File.saveDialog("Select Markers file",
+														"*.csv");
+
+				if (fileToOpen) {
+					fileToOpen.encoding = "UTF8";
+					fileToOpen.open("w", "TEXT", "????");
+
+					for(var j =0 ; j < clipList.length; j++) {
+						var clip = clipList[j];
+						var markers = clip.getMarkers();
+
+						// Get list of sailvue markers in this clip
+						var sailvueMarkers = [];
+						for (var i = 0; i < markers.numMarkers; i++) {
+							if (markers[i].type == "Segmentation") {
+								var newLine = clip.getMediaPath() + "," + markers[i].start.seconds + "," + markers[i].end.seconds + "," + markers[i].name + "\n";
+								$._PPP_.updateEventPanel(newLine);
+								fileToOpen.write(newLine);
+							}
 						}
 					}
 				} else {
