@@ -75,24 +75,31 @@ void YdvrReader::processYdvrDir(const std::string& stYdvrDir, const std::string&
     std::filesystem::create_directories(stSummaryDir);
 
     auto files = std::filesystem::recursive_directory_iterator(stYdvrDir);
-    float filesCount = 0;
-    for( const auto& file : files )
-        if (file.path().extension() == ".DAT")
-            filesCount++;
 
-    files = std::filesystem::recursive_directory_iterator(stYdvrDir);
-    float fileNo = 0;
+    // Sort files by name
+    std::list<std::filesystem::directory_entry> filesSorted;
     for( const auto& file : files ) {
         if (file.path().extension() == ".DAT") {
-            processDatFile(file.path().string(), stCacheDir, stSummaryDir, bSummaryOnly, bMappingOnly);
-            int progress = (int)round(fileNo / filesCount * 100.f);
-            m_rProgressListener.progress(file.path().filename(), progress);
-            if( m_rProgressListener.stopRequested() ) {
-                m_rProgressListener.progress("Terminated", 100);
-                break;
-            }
-            fileNo++;
+            filesSorted.push_back(file);
         }
+    }
+
+    filesSorted.sort([](const std::filesystem::directory_entry& a, const std::filesystem::directory_entry& b) {
+        return a.path().filename() < b.path().filename();
+    });
+
+    auto filesCount = (float)filesSorted.size();
+    float fileNo = 0;
+
+    for( const auto& file : filesSorted ) {
+        processDatFile(file.path().string(), stCacheDir, stSummaryDir, bSummaryOnly, bMappingOnly);
+        int progress = (int)round(fileNo / filesCount * 100.f);
+        m_rProgressListener.progress(file.path().filename(), progress);
+        if( m_rProgressListener.stopRequested() ) {
+            m_rProgressListener.progress("Terminated", 100);
+            break;
+        }
+        fileNo++;
     }
 
     if( !bSummaryOnly ) {

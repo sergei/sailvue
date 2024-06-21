@@ -1,0 +1,52 @@
+/*************************************************************************
+* ADOBE CONFIDENTIAL
+* ___________________
+*
+* Copyright 2014 Adobe
+* All Rights Reserved.
+*
+* NOTICE: Adobe permits you to use, modify, and distribute this file in
+* accordance with the terms of the Adobe license agreement accompanying
+* it. If you have received this file from a source other than Adobe,
+* then your use, modification, or distribution of it requires the prior
+* written permission of Adobe. 
+**************************************************************************/
+
+* {
+	font-family: "LucidaGrande", sans-serif;
+}
+
+p {
+	text-align:center;
+}
+
+a {
+        color: #8080ff;
+}
+
+button
+{
+	font-size:12px;
+	border:1px solid;
+	height:20px;
+}
+
+input[type=text]
+{
+	height:12px;
+}
+
+#content {
+	margin-right:auto;
+	margin-left:auto;
+	vertical-align:middle;
+	width:100%;
+}
+
+#content ul {
+	padding:0px;
+}
+
+#content ul li {
+	margin:3px 0px 3px 0px;
+}

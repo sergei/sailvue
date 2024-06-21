@@ -15,8 +15,8 @@ public:
     void makeChapters(std::list<Chapter *> &chapters, std::vector<InstrumentInput> &instrDataVector);
     const std::list<ClipMarker> &getMarkersList() const { return m_markersList; }
 
-    void makeMarkers(std::list<Chapter *> chapters, std::vector<InstrumentInput> &instrDataVector,
-                     std::list<CameraClipInfo *> &clips, const std::filesystem::path &markerFile);
+    void makeMarkers(const std::list<Chapter *>& chapters, std::vector<InstrumentInput> &instrDataVector,
+                     std::list<CameraClipInfo *> &clips, const std::filesystem::path &markerFile) const;
 
 private:
     std::list<ClipMarker> m_markersList;
@@ -26,7 +26,7 @@ private:
 
     static int timeCodeToSec(const std::string &item) ;
 
-    std::string makeCsvEntry(std::string chapterName, uint64_t utcms, std::list<CameraClipInfo *> &clips);
+    static std::string makeCsvEntry(const std::string& chapterName, uint64_t inUtcMs, uint64_t outUtcMs, std::list<CameraClipInfo *> &clips);
 };
 
 

@@ -1,0 +1,18 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "extendscript-debug",
+            "request": "launch",
+            "name": "Debug ExtendScript in PPro",
+            "script": "${workspaceFolder}/jsx/PPRO/Premiere.jsx",
+        },
+        {
+            "type": "chrome",
+            "request": "attach",
+            "name": "Attach to Chrome",
+            "port": 7777,
+            "webRoot": "${workspaceRoot}"
+        }
+    ]
+}
