@@ -224,12 +224,15 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
 
     std::filesystem::path chapterFolder = overlayMaker.setChapter(chapter, chapterEpochs);  // This call creates new chapter name
     std::ostringstream oss;
-    oss << "CH_" << std::setw(2) << std::setfill('0') << chapterNum << "_" << chapter.getName() << ".mov";
+    oss << "CHAPTER-OVERLAY-" << chapter.getUuid().toStdString() << ".MOV";
 
     std::filesystem::path clipFulPathName = chapterFolder.parent_path()  / oss.str() ;
+    chapter.setChapterClipFileName(clipFulPathName.native());
+
     // Check if the chapter already exists
     // Don't return until the m_totalRaceDuration is updated
-    if ( std::filesystem::is_regular_file(clipFulPathName) ){
+    std::filesystem::path summaryFile = chapterFolder / "summary.csv";
+    if ( isClipCacheValid(summaryFile, chapter) ){
         return clipFulPathName;
     }
 
@@ -263,6 +266,12 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
 
     ffmpeg.makeClip(clipFulPathName, progressListener);
     m_stopRequested = progressListener.isStopRequested();
+
+    if ( m_stopRequested ){
+        return "";
+    }
+
+    makeSummaryFile(summaryFile, chapter);
 
     return clipFulPathName;
 }
@@ -306,6 +315,58 @@ void MovieProducer::makeRaceVideo(const std::filesystem::path &raceFolder, std::
     FFMpeg::joinChapters(chaptersList, outMoviePath.native(), progressListener);
 }
 
+bool MovieProducer::isClipCacheValid(const std::filesystem::path &summaryFile, Chapter &chapter) {
+
+    // Read the summary file
+    if ( !std::filesystem::is_regular_file(summaryFile) ){
+        return false;
+    }
+
+    std::ifstream sf(summaryFile, std::ios::in);
+    std::string line;
+    std::getline(sf, line);
+    std::istringstream ss(line);
+    std::string item;
+
+    std::getline(ss, item, ',');
+    if ( item != chapter.getUuid().toStdString() ){
+        std::cout << "clip " << chapter.getName() << " uuid "  << chapter.getUuid().toStdString() << " has changed " << std::endl;
+        return false;
+    }
+
+    std::getline(ss, item, ',');
+    int startIdx = std::stoi(item);
+    if ( startIdx != chapter.getStartIdx() ){
+        std::cout << "clip " << chapter.getName() << " startIdx " << chapter.getStartIdx() << " has changed " << std::endl;
+        return false;
+    }
+
+    std::getline(ss, item, ',');
+    int endIdx = std::stoi(item);
+    if ( endIdx != chapter.getEndIdx() ){
+        std::cout << "clip " << chapter.getName() << " endIdx "  << chapter.getEndIdx() << " has changed " << std::endl;
+        return false;
+    }
+
+    std::getline(ss, item, ',');
+    int chapterType = std::stoi(item);
+    if ( chapterType != chapter.getChapterType() ){
+        std::cout << "clip " << chapter.getName() << " type "  << chapter.getChapterType() << " has changed " << std::endl;
+        return false;
+    }
+
+    std::cout << "clip " << chapter.getName() << chapter.getUuid().toStdString() << " is still the same " << std::endl;
+    return true;
+}
+
+void MovieProducer::makeSummaryFile(const std::filesystem::path &summaryFile, const Chapter &chapter) {
+    std::ostringstream oss;
+    oss << chapter.getUuid().toStdString() << "," << chapter.getStartIdx() << "," << chapter.getEndIdx()
+    << "," << chapter.getChapterType() << "," << chapter.getName() << std::endl;
+    // Write the summary file
+    std::ofstream sf(summaryFile, std::ios::out);
+    sf << oss.str();
+}
 
 
 bool EncodingProgressListener::ffmpegProgress(uint64_t msEncoded) {

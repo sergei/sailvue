@@ -11,6 +11,7 @@ static const int MIN_PERF_CHAPTER_DURATION = 1 * 60 * 1000; //
 
 class Chapter {
 public:
+    Chapter(QUuid uuid, u_int64_t startIdx, u_int64_t endIdx);
     Chapter(u_int64_t startIdx, u_int64_t endIdx);
     [[nodiscard]] const std::string &getName() const { return name; }
     [[nodiscard]] u_int64_t getStartIdx() const { return m_startIdx; }
@@ -18,12 +19,14 @@ public:
     [[nodiscard]] u_int64_t getGunIdx() const { return m_gunIdx; }
     [[nodiscard]] QString getUuid() const { return m_uuid.toString(QUuid::WithoutBraces); }
     [[nodiscard]] ChapterTypes::ChapterType getChapterType() const { return m_chapterType; }
+    [[nodiscard]] const std::string &getChapterClipFileName() const;
 
     void SetName(std::string name);
     void setEndIdx(u_int64_t endIdx) { m_endIdx = endIdx; }
     void setStartIdx(u_int64_t startIdx) { m_startIdx = startIdx; }
     void SetGunIdx(u_int64_t gunIdx) { m_gunIdx = gunIdx; }
     void setChapterType(ChapterTypes::ChapterType chapterType) { m_chapterType = chapterType; }
+    void setChapterClipFileName(const std::string &chapterClipFileName);
 
     void setFetch(bool isFetch);
     [[nodiscard]] bool isFetch() const;
@@ -31,6 +34,9 @@ public:
 private:
     QUuid m_uuid;
     std::string name="Untitled Chapter";
+    std::string m_chapterClipFileName;
+
+private:
     u_int64_t m_startIdx=0;
     u_int64_t m_endIdx=0;
     u_int64_t m_gunIdx=0;

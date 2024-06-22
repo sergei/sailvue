@@ -129,17 +129,17 @@ void MarkerReader::makeMarkers(const std::list<Chapter *>& chapters, std::vector
     std::filesystem::create_directories(markersDir);
     std::ofstream outStream (markerFile, std::ios::out);
 
-    outStream << "Filename, In, Out, Description" << std::endl;
+    outStream << "Clip filename, In, Out, Description, Overlay filename" << std::endl;
     for(auto chapter: chapters) {
         uint64_t startUtcMs = instrDataVector[chapter -> getStartIdx()].utc.getUnixTimeMs() - m_timeAdjustmentMs;
         uint64_t endUtcMs = instrDataVector[chapter -> getEndIdx()].utc.getUnixTimeMs();
 
         // Find clip corresponding to the start UTC
-        outStream << makeCsvEntry(chapter->getName(), startUtcMs, endUtcMs, clips) << std::endl;
+        outStream << makeCsvEntry(chapter, startUtcMs, endUtcMs, clips) << std::endl;
     }
 }
 
-std::string MarkerReader::makeCsvEntry(const std::string& chapterName, uint64_t inUtcMs, uint64_t outUtcMs, std::list<CameraClipInfo *> &clips) {
+std::string MarkerReader::makeCsvEntry(const Chapter *pChapter, uint64_t inUtcMs, uint64_t outUtcMs, std::list<CameraClipInfo *> &clips) {
     std::string entry;
 
     for(const auto &clip : clips){
@@ -150,7 +150,8 @@ std::string MarkerReader::makeCsvEntry(const std::string& chapterName, uint64_t 
             oss << clip->getFileName()
             << ", " << clipIn
             << ", " << clipOut
-            << ", " << chapterName
+            << ", " << pChapter->getName()
+            << ", " << pChapter->getChapterClipFileName()
             ;
             entry = oss.str();
             break;

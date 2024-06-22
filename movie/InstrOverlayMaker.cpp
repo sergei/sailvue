@@ -21,6 +21,7 @@ void InfoCell::setSize(int width) {
         }
     }
 
+    fontPointSize -= 10;
     m_valueFont = QFont(FONT_FAMILY_VALUE, fontPointSize);
     QFontMetrics fm(m_valueFont);
     m_height = fm.ascent();
@@ -37,9 +38,9 @@ void InfoCell::draw(QPainter &painter, int x, int y, const QString &label, const
     QRect valueRect = fv.tightBoundingRect(label);
 
     int labelXoffset = (m_width - labelRect.width())   / 2;
-    int labelYoffset = labelRect.height();
+    int labelYoffset = labelRect.height() + 6;
     int valueXoffset = (m_width - valueRect.width())   / 2;
-    int valueYoffset = 10 + valueRect.height() + labelYoffset;
+    int valueYoffset = 16 + valueRect.height() + labelYoffset;
 
     painter.setFont(m_labelFont);
     painter.setPen(m_labelPen);
@@ -78,7 +79,7 @@ void InstrOverlayMaker::chooseTimeStampFont(int timeStampHeight) {
         QFontMetrics fm(font);
         QRect rect = fm.boundingRect("2023-03-01 13:34:00 PDT");
         if(rect.height() > maxHeight || rect.width() > m_infoCell.geWidth()){
-            fontPointSize = fs - 1;
+            fontPointSize = fs - 2;
             break;
         }
     }
@@ -93,7 +94,7 @@ void InstrOverlayMaker::chooseTimeStampFont(int timeStampHeight) {
         QFontMetrics fm(font);
         QRect rect = fm.boundingRect(COPYRIGHT_SAILVUE);
         if( (rect.height() > maxHeight) || (rect.width() > m_infoCell.geWidth()) ){
-            fontPointSize = fs - 1;
+            fontPointSize = fs - 2;
             break;
         }
     }

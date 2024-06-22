@@ -59,15 +59,14 @@ void Project::fromJson(const QJsonObject &json){
                     int chapterEndIdx = chapterJson["endIdx"].toInt();
                     int chapterGunIdx = chapterJson["gunIdx"].toInt();
                     int chapterType = chapterJson["type"].toInt();
+                    QUuid uuid = QUuid(chapterJson["uuid"].toString());
+                    QString clipPath = chapterJson["clipPath"].toString();
 
-                    auto chapter = new Chapter(chapterStartIdx, chapterEndIdx);
+                    auto chapter = new Chapter(uuid, chapterStartIdx, chapterEndIdx);
                     chapter->SetName(chapterName.toStdString());
                     chapter->SetGunIdx(chapterGunIdx);
-//                    if(  QJsonValue vg = json["gunIdx"]; vg.isDouble()){
-//                        int chapterGunIdx = vg.toInt();
-//                        chapter->SetGunIdx(chapterGunIdx);
-//                    }
                     chapter->setChapterType(ChapterTypes::ChapterType(chapterType));
+                    chapter->setChapterClipFileName(clipPath.toStdString());
 
                     raceData->insertChapter(chapter);
                 }
@@ -100,6 +99,8 @@ QJsonObject Project::toJson() const {
             chapterJson["startIdx"] = qint64(chapter->getStartIdx());
             chapterJson["endIdx"] = qint64(chapter->getEndIdx());
             chapterJson["gunIdx"] = qint64(chapter->getGunIdx());
+            chapterJson["uuid"] = chapter->getUuid();
+            chapterJson["clipPath"] = QString::fromStdString(chapter->getChapterClipFileName());
 
             chaptersArray.append(chapterJson);
         }

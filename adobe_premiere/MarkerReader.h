@@ -26,7 +26,7 @@ private:
 
     static int timeCodeToSec(const std::string &item) ;
 
-    static std::string makeCsvEntry(const std::string& chapterName, uint64_t inUtcMs, uint64_t outUtcMs, std::list<CameraClipInfo *> &clips);
+    static std::string makeCsvEntry(const Chapter *pChapter, uint64_t inUtcMs, uint64_t outUtcMs, std::list<CameraClipInfo *> &clips);
 };
 
 

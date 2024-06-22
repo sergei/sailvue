@@ -11,7 +11,7 @@ OverlayMaker::OverlayMaker(const std::filesystem::path &folder, int width, int h
 
 std::filesystem::path & OverlayMaker::setChapter(Chapter &chapter, const std::list<InstrumentInput> &chapterEpochs) {
     std::ostringstream oss;
-    oss <<  "chapter_" << std::setw(3) << std::setfill('0') << m_ChapterCount << "_" << chapter.getName();
+    oss <<  "CLIP-PNGS-" << chapter.getUuid().toStdString();
     m_OverlayCount = 0;
     m_ChapterCount ++;
     m_ChapterFolder = m_workDir / std::filesystem::path(oss.str());
