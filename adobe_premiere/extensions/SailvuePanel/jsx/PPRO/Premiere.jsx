@@ -85,6 +85,104 @@ var NOT_SET = "-400000";
 
 $._PPP_={
 
+
+	insertSailVueOverlays : function (projectItem) {
+		var seq = app.project.activeSequence;
+		if (seq) {
+			$._PPP_.updateEventPanel('Looking for markers in sequence' + seq.name);
+
+			// Add video track to keep sailvue overlays
+			var tracks = seq.videoTracks;
+			var sailVueVideoTrack = null;
+			for (var i = 0; i < tracks.numTracks; i++) {
+				if (tracks[i].name === "sailvue") {
+					sailVueVideoTrack = tracks[i];
+					break;
+				}
+			}
+
+			if (sailVueVideoTrack == null) {
+				$._PPP_.updateEventPanel('No sailvue track was found');
+				return;
+			}
+
+
+			// Create bit where the sailvue overlays will be inserted
+			var project = app.project.rootItem; // assumes first item is footage.
+			var sailvueOverlaysBinName = "Sailvue Overlays";
+			var sailVueBin = null;
+			if (project) {
+				// Check if the bin already exists
+				for (var projItemIdx = 0; projItemIdx < project.children.numItems; projItemIdx++) {
+					if (project.children[projItemIdx].name === sailvueOverlaysBinName) {
+						sailVueBin = project.children[projItemIdx];
+						break;
+					}
+				}
+
+				if (sailVueBin == null) {
+					project.createBin(sailvueOverlaysBinName);
+				}
+			}
+
+
+			for (var trackIdx = 0; trackIdx < tracks.numTracks; trackIdx++) {
+				if (tracks[trackIdx].mediaType === "Video") {
+					var clips = tracks[trackIdx].clips;
+					for (var clipIdx = 0; clipIdx < clips.numItems; clipIdx++) {
+						var trackItem = clips[clipIdx];
+						var trackItemIn = trackItem.inPoint.seconds;
+						var trackItemStart = trackItem.start.seconds;
+						var projectItem = trackItem.projectItem;
+						var markers = projectItem.getMarkers();
+
+						for (var markerIdx = 0; markerIdx < markers.numMarkers; markerIdx++) {
+							var marker = markers[markerIdx];
+							if (marker.type === "Segmentation") {
+								$._PPP_.updateEventPanel('Found sailvue marker ' + marker.name);
+								var overlayPath = marker.comments.replace(/^\s+/,'').replace(/\s+$/,'');
+								if (overlayPath) {
+
+									// Check if media is already in this bin
+									var overlayProjectItem = null;
+									for (var projItemIdx = 0; projItemIdx < sailVueBin.children.numItems; projItemIdx++) {
+										if (sailVueBin.children[projItemIdx].getMediaPath() === overlayPath) {
+											overlayProjectItem = sailVueBin.children[projItemIdx];
+											break;
+										}
+									}
+
+									if ( overlayProjectItem == null){  // Import it
+										// Import the overlay into the project
+										app.project.importFiles([overlayPath],
+											false, sailVueBin, false);
+										for (var projItemIdx = 0; projItemIdx < sailVueBin.children.numItems; projItemIdx++) {
+											if (sailVueBin.children[projItemIdx].getMediaPath() === overlayPath) {
+												overlayProjectItem = sailVueBin.children[projItemIdx];
+												break;
+											}
+										}
+									}else{  // Refresh the media, since the clip could have been modified
+										overlayProjectItem.refreshMedia();
+									}
+
+									var start = trackItemStart - trackItemIn  + marker.start.seconds
+									$._PPP_.updateEventPanel('Inserting overlay ' + overlayProjectItem.name + ' at start ' + start + ' = trackItemStart ' + trackItemStart + ' - trackItemIn ' + trackItemIn + ' + marker.start.seconds ' + marker.start.seconds);
+									sailVueVideoTrack.overwriteClip(overlayProjectItem, start);
+								}
+							}
+						}
+
+
+					}
+				}
+			}
+		} else {
+			$._PPP_.updateEventPanel('No active sequence to insert sailvue overlays.');
+		}
+	},
+
+
 	getClipList : function (projectItem) {
 
 		// Create list of all clips
@@ -102,7 +200,6 @@ $._PPP_={
 					for( var i=0; i< node.children.numItems; i++){
 						queue.push(node.children[i]);
 						if ( node.children[i].type == ProjectItemType.CLIP ){
-							$._PPP_.updateEventPanel("Adding clip " + node.children[i].name);
 							clipList.push(node.children[i]);
 						}
 					}
@@ -165,6 +262,7 @@ $._PPP_={
 									var markerIn = Number(data[1]);
 									var markerOut = Number(data[2]);
 									var markerName = data[3];
+									var overlayPath = data[4];
 									$._PPP_.updateEventPanel("clipFileName [" + clipFileName + "]");
 
 									// Find clip 
@@ -179,6 +277,7 @@ $._PPP_={
 											var markeEnd = new Time();
 											markeEnd.seconds = markerOut;
 											newMarker.end  = (newMarker.start.seconds + (markerOut - markerIn));
+											newMarker.comments = overlayPath;
 											newMarker.setTypeAsSegmentation();
 											break;
 										}
