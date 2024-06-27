@@ -23,9 +23,6 @@ private:
 
 private:
     int64_t m_timeAdjustmentMs = 0;
-
-    static int timeCodeToSec(const std::string &item) ;
-
     static std::string makeCsvEntry(const Chapter *pChapter, uint64_t inUtcMs, uint64_t outUtcMs, std::list<CameraClipInfo *> &clips);
 };
 

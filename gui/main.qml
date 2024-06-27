@@ -355,12 +355,14 @@ ApplicationWindow {
         }
     }
 
-    FolderDialog {
+    FileDialog {
         id: importAdobeMarkersFileDialog
         visible: false
         title: "Import Adone Premiere Markers"
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["Adobe Pr Markers CSV (*.csv)"]
         onAccepted: {
-            raceTreeModel.importAdobeMarkers(selectedFolder)
+            raceTreeModel.importAdobeMarkers(currentFile)
         }
     }
 

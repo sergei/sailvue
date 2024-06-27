@@ -638,6 +638,33 @@ void RaceTreeModel::updateRace(const QString &raceName){
     emit layoutChanged();
 }
 
+void RaceTreeModel::updateChapter(Chapter *pChapter) {
+    // Find the chapter to be updated ( it should have the same UUID)
+    for (int raceRow = 0; raceRow < rootItem->childCount(); raceRow++) {
+        TreeItem *raceTreeItem = rootItem->child(raceRow);
+        for (int chapterRow = 0; chapterRow < raceTreeItem->childCount(); chapterRow++) {
+            TreeItem *chapterTreeItem = raceTreeItem->child(chapterRow);
+            Chapter *chapter = chapterTreeItem->getChapter();
+            if (chapter->getUuid() == pChapter->getUuid()) {
+                emit layoutAboutToBeChanged();
+                // Found the chapter
+                std::cout << "updateChapter " << pChapter->getName() << std::endl;
+                chapter->SetName(pChapter->getName());
+                // Don't change the chapter type
+                // chapter->setChapterType(pChapter->getChapterType());
+                chapter->setStartIdx(pChapter->getStartIdx());
+                chapter->setEndIdx(pChapter->getEndIdx());
+                // Don't change the gun idx
+                // chapter->SetGunIdx(pChapter->getGunIdx());
+                m_project.raceDataChanged();
+                emit isDirtyChanged();
+                emit layoutChanged();
+                return;
+            }
+        }
+    }
+}
+
 void RaceTreeModel::updateChapter(const QString &uuid, const QString &chapterName, ChapterTypes::ChapterType chapterType, uint64_t startIdx,
                                   uint64_t endIdx, uint64_t gunIdx) {
     std::cout << "updateChapter " << uuid.toStdString() << " " << chapterName.toStdString() << " " << chapterType << " " << startIdx << " " << endIdx << " " << gunIdx << std::endl;
@@ -1077,23 +1104,23 @@ qint64 RaceTreeModel::moveIdxByMs(qint64 idx, qint64 ms) const {
     return idx;
 }
 
-void RaceTreeModel::importAdobeMarkers(const QString &markersFolder) {
-    const std::string &markersDir = QUrl(markersFolder).toLocalFile().toStdString();
+void RaceTreeModel::importAdobeMarkers(const QString &markersFile) {
+    const std::string &markersCsv = QUrl(markersFile).toLocalFile().toStdString();
     MarkerReader markerReader;
     markerReader.setTimeAdjustmentMs(CAMERA_UTC_TIME_ADJUSTMENT);
-    markerReader.read(markersDir, m_CameraClipsList);
+    markerReader.read(markersCsv, m_CameraClipsList);
 
     std::list<Chapter *> chapters;
     markerReader.makeChapters(chapters, m_InstrDataVector);
 
-    QDateTime raceTime = QDateTime::fromMSecsSinceEpoch(qint64(m_InstrDataVector[0].utc.getUnixTimeMs()));
-    std::string raceName = "Adobe Race " + raceTime.toString("yyyy-MM-dd hh:mm").toStdString();
-
-    auto *race = new RaceData(0, m_InstrDataVector.size() - 1);
-    race->SetName(raceName);
-
     for( auto chapter : chapters){
-        addChapter(chapter);
+        // If chapter has empty UUID, this is a new chapter, so we need to add it
+        if ( chapter->getChapterClipFileName() == "" ) {
+            addChapter(chapter);
+        }else{
+            // If chapter has UUID, this is an existing chapter, so we need to update it
+            updateChapter(chapter);
+        }
     }
 
 }
@@ -1106,3 +1133,4 @@ void RaceTreeModel::exportAdobeMarkers(const QString &path) {
     markerReader.makeMarkers(chapters, m_InstrDataVector, m_CameraClipsList, QUrl(path).toLocalFile().toStdString());
 
 }
+

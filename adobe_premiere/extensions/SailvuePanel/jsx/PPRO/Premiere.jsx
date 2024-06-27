@@ -106,8 +106,7 @@ $._PPP_={
 				return;
 			}
 
-
-			// Create bit where the sailvue overlays will be inserted
+			// Create bin where the sailvue overlays will be inserted
 			var project = app.project.rootItem; // assumes first item is footage.
 			var sailvueOverlaysBinName = "Sailvue Overlays";
 			var sailVueBin = null;
@@ -129,17 +128,29 @@ $._PPP_={
 			for (var trackIdx = 0; trackIdx < tracks.numTracks; trackIdx++) {
 				if (tracks[trackIdx].mediaType === "Video") {
 					var clips = tracks[trackIdx].clips;
+					$._PPP_.updateEventPanel('Looking for clips in track ' + tracks[trackIdx].name + ' with ' + clips.numItems + ' items');
+
 					for (var clipIdx = 0; clipIdx < clips.numItems; clipIdx++) {
 						var trackItem = clips[clipIdx];
 						var trackItemIn = trackItem.inPoint.seconds;
+						var trackItemOut = trackItem.outPoint.seconds;
 						var trackItemStart = trackItem.start.seconds;
 						var projectItem = trackItem.projectItem;
 						var markers = projectItem.getMarkers();
 
+						$._PPP_.updateEventPanel('projectItem ' + projectItem.name + ' has ' + markers.numMarkers + ' markers');
 						for (var markerIdx = 0; markerIdx < markers.numMarkers; markerIdx++) {
 							var marker = markers[markerIdx];
 							if (marker.type === "Segmentation") {
-								$._PPP_.updateEventPanel('Found sailvue marker ' + marker.name);
+
+								// Check if marker is between in and out of the clip
+								if (marker.start.seconds < trackItemIn  ) {  // FIXME check the end as well, but now since it interferes with current production :-)
+									$._PPP_.updateEventPanel('Marker ' + marker.name + ' is outside of the clip');
+									continue;
+								}
+
+								$._PPP_.updateEventPanel('Found sailvue marker within clip' + marker.name);
+
 								var overlayPath = marker.comments.replace(/^\s+/,'').replace(/\s+$/,'');
 								if (overlayPath) {
 
@@ -313,6 +324,7 @@ $._PPP_={
 				if (fileToOpen) {
 					fileToOpen.encoding = "UTF8";
 					fileToOpen.open("w", "TEXT", "????");
+					fileToOpen.write("Clip filename, In, Out, Description, Overlay filename\n");
 
 					for(var j =0 ; j < clipList.length; j++) {
 						var clip = clipList[j];
@@ -322,7 +334,7 @@ $._PPP_={
 						var sailvueMarkers = [];
 						for (var i = 0; i < markers.numMarkers; i++) {
 							if (markers[i].type == "Segmentation") {
-								var newLine = clip.getMediaPath() + "," + markers[i].start.seconds + "," + markers[i].end.seconds + "," + markers[i].name + "\n";
+								var newLine = clip.getMediaPath() + "," + markers[i].start.seconds + "," + markers[i].end.seconds + "," + markers[i].name + "," + markers[i].comments + "\n";
 								$._PPP_.updateEventPanel(newLine);
 								fileToOpen.write(newLine);
 							}

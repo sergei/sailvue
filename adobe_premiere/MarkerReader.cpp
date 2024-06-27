@@ -6,77 +6,73 @@
 
 #include "MarkerReader.h"
 
-void MarkerReader::read(const std::filesystem::path &markersDir, const std::list<CameraClipInfo *> &cameraClips) {
+void MarkerReader::read(const std::filesystem::path &markerFile, const std::list<CameraClipInfo *> &cameraClips) {
 
-    auto markerFiles = std::filesystem::recursive_directory_iterator(markersDir);
+    std::cout << "Reading marker file " << markerFile << std::endl;
 
-    for( const auto& markerFile : markerFiles ) {
-        std::cout << "Reading marker file " << markerFile.path() << std::endl;
+    // Read marker file line by line
+    // opens as text file
+    std::ifstream is(markerFile);
 
-        if (markerFile.path().extension() == ".csv") {
-            std::filesystem::path clipBaseName = markerFile.path().filename().stem().string();
+    std::string line;
+    // The file can be either \n or \r separated, so the first line is read to determine the separator
+    std::getline(is, line);
+    std::istream *pStream;
+    if( line.find('\r') != std::string::npos) {
+        // Replace \r with \n
+        std::replace(line.begin(), line.end(), '\r', '\n');
+        pStream = new std::istringstream(line);
+        // Skip header
+        std::getline(*pStream, line);
+    }else{
+        pStream = &is;
+    }
 
-            // Find corresponding clip
+    while (std::getline(*pStream, line)) {
+        std::stringstream ss(line);
+        std::string item;
 
-            u_int64_t createTimeUtcMs = 0;
-            CameraClipInfo *pClipInfo;
+        auto * marker = new ClipMarker();
 
-            for( auto clip : cameraClips){
-                if( clip->getFileName().find(clipBaseName) != std::string::npos){
-                    std::cout << "  Marker for clip " << clip->getFileName() << std::endl;
-                    createTimeUtcMs = clip->getClipStartUtcMs();
-                    pClipInfo = clip;
-                    break;
-                }
-            }
+        // Clip name
+        std::getline(ss, item, ',');
+        std::filesystem::path clipName = item;
+        std::filesystem::path clipBaseName = clipName.filename().stem().string();
+        // Find corresponding clip
+        u_int64_t createTimeUtcMs = 0;
+        CameraClipInfo *pClipInfo;
 
-            if ( createTimeUtcMs == 0 ){
-                std::cerr << "Failed to find clip for marker file " << markerFile.path() << std::endl;
-                continue;
-            }
-
-            // Read marker file line by line
-            // Marker file is encoded as UTF-16LE
-            std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t> converter;
-            std::wifstream is16(markerFile);
-            is16.imbue(std::locale(is16.getloc(), new std::codecvt_utf16<wchar_t, 0x10ffff, std::little_endian>()));
-
-            std::wstring wline;
-            // Skip header
-            std::getline(is16, wline);
-
-            while (std::getline(is16, wline)) {
-                std::string line = converter.to_bytes(wline);
-                std::stringstream ss(line);
-                std::string item;
-
-                auto * marker = new ClipMarker();
-
-                // Marker Name
-                std::getline(ss, item, '\t');
-                marker->setName(item);
-
-                // Description
-                std::getline(ss, item, '\t');
-
-                // In
-                std::getline(ss, item, '\t');
-                int inSec = timeCodeToSec(item);
-                marker->setInTimeSec(inSec);
-
-                // Out
-                std::getline(ss, item, '\t');
-                int outSec = timeCodeToSec(item);
-                marker->setOutTimeSec(outSec);
-
-                marker->setClipStartUtc(createTimeUtcMs + m_timeAdjustmentMs);
-
-                marker->setClipInfo(pClipInfo);
-
-                m_markersList.push_back(*marker);
-                std::cout << "  Added marker  " << marker->getName() << std::endl;
+        for( auto clip : cameraClips){
+            if( clip->getFileName().find(clipBaseName) != std::string::npos){
+                std::cout << "  Marker for clip " << clip->getFileName() << std::endl;
+                createTimeUtcMs = clip->getClipStartUtcMs();
+                pClipInfo = clip;
+                break;
             }
         }
+
+        marker->setClipInfo(pClipInfo);
+
+        // In seconds
+        std::getline(ss, item, ',');
+        marker->setInTimeMilliSecond((u_int64_t)std::round(std::stof(item) * 1000));
+
+        // Out seconds
+        std::getline(ss, item, ',');
+        marker->setOutTimeMilliSecond((u_int64_t)std::round(std::stof(item) * 1000));
+
+        // Name
+        std::getline(ss, item, ',');
+        marker->setName(item);
+
+        // Overlay name if any
+        std::getline(ss, item, ',');
+        marker->setOverlayName(item);
+
+        marker->setClipStartUtc(createTimeUtcMs + m_timeAdjustmentMs);
+
+        m_markersList.push_back(*marker);
+        std::cout << "  Added marker  " << marker->getName() << std::endl;
     }
 
     // Sort Markers by start UTC time
@@ -84,17 +80,12 @@ void MarkerReader::read(const std::filesystem::path &markersDir, const std::list
 
 }
 
-
-int MarkerReader::timeCodeToSec(const std::string &item) {
-    return stoi(item.substr(0, 2)) * 3600
-               + stoi(item.substr(3, 2)) * 60
-               + stoi(item.substr(6, 2));
-}
-
 void MarkerReader::makeChapters(std::list<Chapter *> &chapters, std::vector<InstrumentInput> &instrDataVector) {
 
     for( const auto& marker: m_markersList){
         // Find index of the clip in
+
+        // Returns the first iterator iter in [first, last) where bool(comp(*iter, value)) is false, or last if no such iter exists.
         auto inIter = std::lower_bound(instrDataVector.begin(), instrDataVector.end(), marker.getUtcMsIn(),
                                         [](const InstrumentInput& ii, u_int64_t utcMs)
                                         { return ii.utc.getUnixTimeMs() <= utcMs;}
@@ -109,7 +100,28 @@ void MarkerReader::makeChapters(std::list<Chapter *> &chapters, std::vector<Inst
             u_int64_t startIdx = std::distance(instrDataVector.begin(), inIter);
             u_int64_t endIdx = std::distance(instrDataVector.begin(), outIter);
 
-            auto chapter = new Chapter(startIdx, endIdx);
+            if( startIdx >= endIdx) {
+                std::cerr << "  Invalid timestamp marker " << marker.getName() << " at " << startIdx << " to " << endIdx
+                          << std::endl;
+                continue;
+            }
+
+            Chapter *chapter;
+            if ( marker.getOverlayName() == "" ) {
+                chapter = new Chapter(startIdx, endIdx);
+                chapter->setChapterClipFileName(marker.getOverlayName());
+            }else{
+                // Get UUID fom clip info
+                std::string clipUuid = marker.getOverlayName();
+                size_t pos = clipUuid.find("CHAPTER-OVERLAY-");
+                clipUuid = clipUuid.substr(pos + 16);
+                // Remove the extension
+                clipUuid = clipUuid.substr(0, clipUuid.find_last_of('.'));
+                std::cout << "  Found overlay UUID " << clipUuid << std::endl;
+                chapter = new Chapter(QUuid(clipUuid), startIdx, endIdx);
+                chapter->setChapterClipFileName(marker.getOverlayName());
+            }
+
             chapter->SetName(marker.getName());
             chapters.push_back(chapter);
         }else{

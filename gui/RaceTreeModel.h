@@ -152,7 +152,7 @@ public:
     Q_INVOKABLE void read(bool ignoreCache);
     Q_INVOKABLE void save();
     Q_INVOKABLE void saveAs(const QString &path);
-    Q_INVOKABLE void importAdobeMarkers(const QString &markersFolder);
+    Q_INVOKABLE void importAdobeMarkers(const QString &markersFile);
 
     Q_INVOKABLE void showRaceData();
     Q_INVOKABLE void stopDataProcessing();
@@ -167,6 +167,9 @@ public:
     Q_INVOKABLE void makeAnalytics();
     Q_INVOKABLE void updateChapter(const QString &uuid, const QString &chapterName, ChapterTypes::ChapterType chapterType,
                                    uint64_t startIdx, uint64_t endIdx, uint64_t gunIdx);
+
+    void updateChapter(Chapter *pChapter);
+
     Q_INVOKABLE void updateChapterStartIdx(uint64_t idx);
     Q_INVOKABLE void updateChapterEndIdx(uint64_t idx);
     Q_INVOKABLE void updateChapterGunIdx(uint64_t idx);
