@@ -4,10 +4,15 @@ import re
 import os
 import requests
 CHUNK_SIZE = 1024
-VOICE_ID = 'WLKp2jV6nrS8aMkPPDRO'
+
+VOICE_IDS = {
+    'Paul': 'WLKp2jV6nrS8aMkPPDRO',
+    'Alexander': 'bWD9lIQeeSXBIWPT0mu4',
+    'Jacob': 'KHx6YfZBu23HH6GJtSrW',
+}
 
 
-def make_voiceover_file(number, text, api_key, output_dir):
+def make_voiceover_file(number, text, api_key, voice_id, output_dir):
     # Make text hash to check if we already have the voiceover
     text_hash = hashlib.md5(text.encode()).hexdigest()
     # Construct file name from first few words and a hash
@@ -27,9 +32,8 @@ def make_voiceover_file(number, text, api_key, output_dir):
             print(f'File {file_name} already exists, skipping ...')
             return
 
-    # Get the voice ID from eleven labs API
     # Make the voiceover using eleven labs API
-    url = f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}"
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
     headers = {
         "Accept": "audio/mpeg",
         "Content-Type": "application/json",
@@ -60,10 +64,14 @@ def make_voiceover_file(number, text, api_key, output_dir):
 
 
 def make_voiceover(param):
+    voice_id = VOICE_IDS['Alexander']
+    output_dir = os.path.expanduser(param.output_dir)
+    srt_name = os.path.expanduser(param.srt_name)
+
     with open('elevenlabs-key.txt', 'rt') as key_file:
         key = key_file.read().strip()
 
-    with open(param.srt_name, 'rt',  encoding="utf-8-sig") as srt_file:
+    with open(srt_name, 'rt', encoding="utf-8-sig") as srt_file:
         got_number = False
         got_time = False
         text = ''
@@ -76,7 +84,7 @@ def make_voiceover(param):
                 got_time = True
             elif line == '':
                 print(f'Chapter {number}:\n[{text}]')
-                make_voiceover_file(number, text, key, param.output_dir)
+                make_voiceover_file(number, text, key, voice_id, output_dir)
                 got_number = False
                 got_time = False
                 text = ''
@@ -86,7 +94,7 @@ def make_voiceover(param):
         # Process the last chapter
         if text != '':
             print(f'Chapter {number}:\n[{text}]')
-            make_voiceover_file(number, text, key, param.output_dir)
+            make_voiceover_file(number, text, key, voice_id, output_dir)
 
 
 if __name__ == '__main__':
