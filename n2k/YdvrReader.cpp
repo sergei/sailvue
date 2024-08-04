@@ -227,14 +227,19 @@ void YdvrReader::readDatFile(const std::string &ydvrFile, const std::filesystem:
             }
             const Pgn * pgn = searchForPgn(int(m.pgn));
 
-            if ( m.pgn == 59904 ) {
+            if ( pgn == nullptr ) { // Unknown to us PGN, just skip this message
+                m.len = 8;
+                if ( offset + m.len > size )
+                    break;
+                offset += m.len;
+            }else if ( m.pgn == 59904 ) {
                 m.len = 3;
                 if ( offset + m.len > size )
                     break;
                 m.data =  (uint8_t  *)(buff + offset);
                 offset += m.len;
 
-            }else if ( pgn != nullptr && pgn->type == PACKET_FAST && pgn->complete == PACKET_COMPLETE){
+            } else if ( pgn->type == PACKET_FAST && pgn->complete == PACKET_COMPLETE ) {
                 uint8_t seqNo;
                 if ( offset + 1 > size )
                     break;
@@ -256,17 +261,36 @@ void YdvrReader::readDatFile(const std::string &ydvrFile, const std::filesystem:
                 m.data =  (uint8_t *)(buff + offset);
                 offset += m.len;
 
+//                std::cout << "Fast complete PGN: " << m.pgn << " src: " << int(m.src) << " len: " << int(m.len) <<  " offset " << offset << std::endl;
+                ProcessPgn(m, cache);
             }else {
+                // Might be a single frame message of fast message not known to YDVR
                 m.len = 8;
                 if ( offset + m.len > size )
                     break;
                 m.data =  (uint8_t  *)(buff + offset);
                 offset += m.len;
-            }
-//            std::cout << "PGN: " << m.pgn << " len: " << int(m.len) <<  " offset " << offset << std::endl;
-            ProcessPgn(m, cache);
-        }
 
+                if ( pgn->type == PACKET_FAST ) { // Some assembly is required
+
+                    Packet *p = assembleFastPacket(&m);
+
+                    if (p != nullptr) {
+                        m.pgn = p->pgn;
+                        m.src = p->src;
+                        m.len = p->size;
+                        m.data = p->data;
+//                        std::cout << "Fast assembled PGN: " << m.pgn << " src: " << int(m.src) << " len: " << int(m.len) << " offset " << offset
+//                                  << std::endl;
+                        ProcessPgn(m, cache);
+                    }
+                }else if ( pgn->type == PACKET_SINGLE ){
+//                    std::cout << "Single PGN: " << m.pgn << " src: " << int(m.src) << " len: " << int(m.len) << " offset " << offset
+//                              << std::endl;
+                    ProcessPgn(m, cache);
+                }
+            }
+        }
     }
 
     cache.close();
@@ -275,8 +299,92 @@ void YdvrReader::readDatFile(const std::string &ydvrFile, const std::filesystem:
     summary << "StartGpsTimeMs,EndGpsTimeMs,EpochCount" << std::endl;
     summary << m_ulStartGpsTimeMs << "," << m_ulEndGpsTimeMs << "," << m_ulEpochCount << std::endl;
     summary.close();
-
 }
+
+
+Packet *YdvrReader::assembleFastPacket(YdvrMessage *msg) {
+    size_t     buffer;
+    Packet    *p;
+
+    // Find slot containing the sequence for given PGN from given SRC
+    for (buffer = 0; buffer < REASSEMBLY_BUFFER_SIZE; buffer++)
+    {
+        p = &reassemblyBuffer[buffer];
+
+        if (p->used && p->pgn == msg->pgn && p->src == msg->src)
+        {
+            // Found existing slot
+            break;
+        }
+    }
+
+    // Not found, put message to the new slot
+    if (buffer == REASSEMBLY_BUFFER_SIZE)
+    {
+        // Find a free slot
+        for (buffer = 0; buffer < REASSEMBLY_BUFFER_SIZE; buffer++)
+        {
+            p = &reassemblyBuffer[buffer];
+            if (!p->used)
+            {
+                break;
+            }
+        }
+        if (buffer == REASSEMBLY_BUFFER_SIZE)
+        {
+            logError("Out of reassembly buffers; ignoring PGN %u\n", msg->pgn);
+            return nullptr;
+        }
+        p->used   = true;
+        p->src    = msg->src;
+        p->pgn    = msg->pgn;
+        p->frames = 0;
+    }
+
+
+    // YDWG can receive frames out of order, so handle this.
+    uint32_t frame    = msg->data[0] & 0x1f;
+    uint32_t seq      = msg->data[0] & 0xe0;
+    size_t   idx      = (frame == 0) ? 0 : FASTPACKET_BUCKET_0_SIZE + (frame - 1) * FASTPACKET_BUCKET_N_SIZE;
+    size_t   frameLen = (frame == 0) ? FASTPACKET_BUCKET_0_SIZE : FASTPACKET_BUCKET_N_SIZE;
+    size_t   msgIdx   = (frame == 0) ? FASTPACKET_BUCKET_0_OFFSET : FASTPACKET_BUCKET_N_OFFSET;
+
+    if ((p->frames & (1 << frame)) != 0)
+    {
+        logError("Received incomplete fast packet PGN %u from source %u\n", msg->pgn, msg->src);
+        p->frames = 0;
+    }
+
+    if (frame == 0 && p->frames == 0)
+    {
+        p->size      = msg->data[1];
+        p->allFrames = (1 << (1 + (p->size / 7))) - 1;
+    }
+
+    memcpy(&p->data[idx], &msg->data[msgIdx], frameLen);
+    p->frames |= 1 << frame;
+
+    logDebug("Using buffer %u for reassembly of PGN %u: size %zu frame %u sequence %u idx=%zu frames=%x mask=%x\n",
+             buffer,
+             msg->pgn,
+             p->size,
+             frame,
+             seq,
+             idx,
+             p->frames,
+             p->allFrames);
+
+    if (p->frames == p->allFrames)
+    {
+        // Received all data
+        p->used   = false;
+        p->frames = 0;
+        return p;
+    }
+
+    return nullptr;
+}
+
 
 void YdvrReader::canIdToN2k(uint32_t can_id, uint8_t &prio, uint32_t &pgn, uint8_t &src, uint8_t &dst) {
     uint8_t can_id_pf = (can_id >> 16) & 0x00FF;
@@ -302,6 +410,7 @@ void YdvrReader::ProcessPgn(const YdvrMessage &msg, std::ofstream& cache)  {
 
     auto data = msg.data;
     auto len = msg.len;
+
     const Pgn *pgn = getMatchingPgn(int(msg.pgn), data, len);
     if ( pgn == nullptr ) {
         return;
@@ -319,7 +428,8 @@ void YdvrReader::ProcessPgn(const YdvrMessage &msg, std::ofstream& cache)  {
         processProductInformationPgn(msg.src, pgn, data, len);
     } else {
         // Here we check if it's coming from approved source address
-        if ( m_mapSrcForPgn[pgn->pgn] == msg.src )
+        // Accept B&G key value from any source
+        if ( m_mapSrcForPgn[pgn->pgn] == msg.src || PGN_BANG_KEY_VALUE == pgn->pgn)
         {
             switch(pgn->pgn){
                 case 129029:
@@ -364,8 +474,106 @@ void YdvrReader::ProcessPgn(const YdvrMessage &msg, std::ofstream& cache)  {
                 case 128267:
                     processWaterDepth(pgn, data, len);
                     break;
+                case PGN_BANG_KEY_VALUE:
+                    processBangProprietary(pgn, data, len);
+                    break;
             }
         }
+    }
+}
+extern "C" size_t getFieldOffsetByOrder(const Pgn *pgn, size_t order);
+void YdvrReader::processBangProprietary(const Pgn *pgn, uint8_t *data, uint8_t dataLen) {
+    bool haveMore = false;
+    size_t startBit = getFieldOffsetByOrder(pgn, pgn->repeatingStart1);
+    int64_t maxValue;
+    int fieldNo = pgn->repeatingStart1 - 1;
+    const Field *field;
+    while(true) {
+        int64_t val;
+        int64_t valueLen;
+        int64_t key;
+
+        field = &pgn->fieldList[fieldNo];
+        haveMore = extractNumber(field, data, dataLen, startBit, field->size, &key, &maxValue);
+        if ( !haveMore )
+            break;
+        startBit += field->size;
+
+        field = &pgn->fieldList[fieldNo + 1];
+        extractNumber(field, data, dataLen, startBit, field->size, &valueLen, &maxValue);
+        startBit += field->size;
+
+        valueLen *= 8; // Convert to bits
+
+        field = &pgn->fieldList[fieldNo + 2];
+        extractNumber(field, data, dataLen, startBit, valueLen, &val, &maxValue);
+        startBit += valueLen;
+
+        lookupBangField(val, key);
+    }
+}
+
+void YdvrReader::lookupBangField(int64_t val, int64_t key) {
+    switch(key){
+        case BANG_KEY_RACE_TIMER:  // "Race Timer", "TIME_UFIX32_MS"
+            m_epoch.raceTimer = val;
+            break;
+        case BANG_KEY_TARGET_SPEED: // "Target Boat Speed", "SPEED_FIX16_CM"
+            if ( isInt16Valid(val) ) {
+                m_epoch.targetSpeed = Speed::fromMetersPerSecond(double(val) * RES_MPS, m_ulLatestGpsTimeMs);
+            } else {
+                m_epoch.targetSpeed = Speed::INVALID;
+            }
+            break;
+        case BANG_KEY_POLAR_SPEED: // "Polar Speed", "SPEED_UFIX16_CM"
+            if ( isInt16Valid(val) ) {
+                m_epoch.polarSpeed = Speed::fromMetersPerSecond(double(val) * RES_MPS, m_ulLatestGpsTimeMs);
+            } else {
+                m_epoch.polarSpeed = Speed::INVALID;
+            }
+            break;
+        case BANG_KEY_VMG: // "VMG", "SPEED_FIX16_CM"
+            if ( isInt16Valid(val) ) {
+                m_epoch.vmg = Speed::fromMetersPerSecond(double(val) * RES_MPS, m_ulLatestGpsTimeMs);
+            } else {
+                m_epoch.vmg = Speed::INVALID;
+            }
+            break;
+        case BANG_KEY_LEEWAY: // "Leeway", "ANGLE_FIX16"
+            if ( isInt16Valid(val) ) {
+                m_epoch.leeway = Angle::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs);
+            } else {
+                m_epoch.leeway = Angle::INVALID;
+            }
+            break;
+        case BANG_KEY_CURRENT_DRIFT: // "Current Drift", "SPEED_FIX16_CM"
+            if ( isInt16Valid(val) ) {
+                m_epoch.currentDrift = Speed::fromMetersPerSecond(double(val) * RES_MPS, m_ulLatestGpsTimeMs);
+            } else {
+                m_epoch.currentDrift = Speed::INVALID;
+            }
+            break;
+        case BANG_KEY_CURRENT_SET: // "Current Set", "ANGLE_FIX16"
+            if ( isInt16Valid(val) ) {
+                m_epoch.currentSet = Direction::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs);
+            } else {
+                m_epoch.currentSet = Direction::INVALID;
+            }
+            break;
+        case BANG_KEY_DIST_TO_START: // "Distance to Start", "DISTANCE_FIX32_CM"
+            if ( isUint32Valid(val) ) {
+                m_epoch.distToStart = Distance::fromMeters(double(val) * RES_MPS, m_ulLatestGpsTimeMs);
+            } else {
+                m_epoch.distToStart = Distance::INVALID;
+            }
+            break;
+        case BANG_KEY_PILOT_TARGET_TWA: // "Pilot Target Wind Angle", "ANGLE_FIX16" Value
+            if ( isInt16Valid(val) ) {
+                m_epoch.pilotTwa = Angle::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs);
+            } else {
+                m_epoch.pilotTwa = Angle::INVALID;
+            }
+            break;
     }
 }
 
@@ -705,8 +913,3 @@ void YdvrReader::getPgnData(std::map<uint32_t, std::vector<std::string>> &mapPgn
     std::cout << "---------------------------------------" << std::endl;
 
 }
-
-
-
-
-

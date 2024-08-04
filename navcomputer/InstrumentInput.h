@@ -30,8 +30,15 @@ static const char *const ITEM_ROLL = "roll_deg";
 static const char *const ITEM_LOG = "log_m";
 static const char *const ITEM_MAG_VAR = "mag_var_deg";
 static const char *const ITEM_DEPTH = "depth_m";
-
-
+static const char *const ITEM_RACE_TIMER = "race_timer_ms";
+static const char *const ITEM_TARGET_SPEED = "target_speed_kts";
+static const char *const ITEM_POLAR_SPEED = "polar_speed_kts";
+static const char *const ITEM_VMG = "vmg_kts";
+static const char *const ITEM_LEEWAY = "leeway_deg";
+static const char *const ITEM_CURRENT_DRIFT = "current_drift_kts";
+static const char *const ITEM_CURRENT_SET = "current_set_deg";
+static const char *const ITEM_DIST_TO_START = "dist_to_start_m";
+static const char *const ITEM_PILOT_TWA = "pilot_twa_deg";
 
 class InstrumentInput {
 public:
@@ -55,6 +62,25 @@ public:
     Angle magVar = Angle::INVALID;
     Distance depth = Distance::INVALID;
 
+    /// The fields below coming form B&G proprietary PGN
+    // Race timer
+    int64_t raceTimer = INT64_MIN;
+    // Target boat speed
+    Speed targetSpeed = Speed::INVALID;
+    // Polar speed
+    Speed polarSpeed = Speed::INVALID;
+    // VMG to wind
+    Speed vmg = Speed::INVALID;
+    // Leeway angle
+    Angle leeway = Angle::INVALID;
+    // Current drift
+    Speed currentDrift = Speed::INVALID;
+    // Current set
+    Direction currentSet = Direction::INVALID;
+    // Distance to start line
+    Distance distToStart = Distance::INVALID;
+    // Pilot Target Wind Angle
+    Angle pilotTwa = Angle::INVALID;
 
     [[nodiscard]] std::string toCsv(bool isHeader) const {
         std::stringstream ss;
@@ -118,6 +144,15 @@ public:
               <<  "," << ITEM_LOG << "," << log.toString(utc.getUnixTimeMs())
               <<  "," << ITEM_MAG_VAR << "," << magVar.toString(utc.getUnixTimeMs())
               <<  "," << ITEM_DEPTH << "," << depth.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_RACE_TIMER << "," << std::to_string(raceTimer)
+              <<  "," << ITEM_TARGET_SPEED << "," << targetSpeed.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_POLAR_SPEED << "," << polarSpeed.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_VMG << "," << vmg.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_LEEWAY << "," << leeway.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_CURRENT_DRIFT << "," << currentDrift.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_CURRENT_SET << "," << currentSet.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_DIST_TO_START << "," << distToStart.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_PILOT_TWA << "," << pilotTwa.toString(utc.getUnixTimeMs())
               ;
         return ss.str();
     }
@@ -177,6 +212,24 @@ public:
                 ii.magVar = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
             else if(item == ITEM_DEPTH)
                 ii.depth = Distance::fromMillimeters(std::stod(value) * 1000, ulGpsTimeMs);
+            else if(item == ITEM_RACE_TIMER)
+                ii.raceTimer = std::stoll(value);
+            else if(item == ITEM_TARGET_SPEED)
+                ii.targetSpeed = Speed::fromKnots(std::stod(value), ulGpsTimeMs);
+            else if(item == ITEM_POLAR_SPEED)
+                ii.polarSpeed = Speed::fromKnots(std::stod(value), ulGpsTimeMs);
+            else if(item == ITEM_VMG)
+                ii.vmg = Speed::fromKnots(std::stod(value), ulGpsTimeMs);
+            else if(item == ITEM_LEEWAY)
+                ii.leeway = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
+            else if(item == ITEM_CURRENT_DRIFT)
+                ii.currentDrift = Speed::fromKnots(std::stod(value), ulGpsTimeMs);
+            else if(item == ITEM_CURRENT_SET)
+                ii.currentSet = Direction::fromDegrees(std::stod(value), ulGpsTimeMs);
+            else if(item == ITEM_DIST_TO_START)
+                ii.distToStart = Distance::fromMeters(std::stod(value), ulGpsTimeMs);
+            else if(item == ITEM_PILOT_TWA)
+                ii.pilotTwa = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
         }
 
         return ii;
@@ -198,6 +251,13 @@ public:
         std::list<Angle> yaws;
         std::list<Angle> pitches;
         std::list<Angle> rolls;
+        std::list<Speed> targetSpeeds;
+        std::list<Speed> polarSpeeds;
+        std::list<Speed> vmgs;
+        std::list<Angle> leeways;
+        std::list<Speed> currentDrifts;
+        std::list<Direction> currentSets;
+        std::list<Angle> pilotTwas;
 
         for( auto it = from; it != to; it++){
             InstrumentInput ii = *it;
@@ -216,6 +276,13 @@ public:
             yaws.push_back(ii.yaw);
             pitches.push_back(ii.pitch);
             rolls.push_back(ii.roll);
+            targetSpeeds.push_back(ii.targetSpeed);
+            polarSpeeds.push_back(ii.polarSpeed);
+            vmgs.push_back(ii.vmg);
+            leeways.push_back(ii.leeway);
+            currentDrifts.push_back(ii.currentDrift);
+            currentSets.push_back(ii.currentSet);
+            pilotTwas.push_back(ii.pilotTwa);
         }
 
         InstrumentInput median;
@@ -238,6 +305,15 @@ public:
         median.log = from->log;
         median.magVar = from->magVar;
         median.depth = from->depth;
+        median.raceTimer = from->raceTimer;
+        median.targetSpeed = Speed::median(targetSpeeds, from->utc.getUnixTimeMs());
+        median.polarSpeed = Speed::median(polarSpeeds, from->utc.getUnixTimeMs());
+        median.vmg = Speed::median(vmgs, from->utc.getUnixTimeMs());
+        median.leeway = Angle::median(leeways, from->utc.getUnixTimeMs());
+        median.currentDrift = Speed::median(currentDrifts, from->utc.getUnixTimeMs());
+        median.currentSet = Direction::median(currentSets, from->utc.getUnixTimeMs());
+        median.distToStart = from->distToStart;
+        median.pilotTwa = Angle::median(pilotTwas, from->utc.getUnixTimeMs());
 
         return median;
     }

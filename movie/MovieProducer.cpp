@@ -103,7 +103,7 @@ void MovieProducer::produce() {
         overlayMaker.addOverlayElement(polarOverlayMaker);
         overlayMaker.addOverlayElement(rudderOverlayMaker);
         overlayMaker.addOverlayElement(startTimerOverlayMaker);
-//        overlayMaker.addOverlayElement(performanceOverlayMaker);
+        overlayMaker.addOverlayElement(performanceOverlayMaker);
 
         int chapterCount = 0;
         int numChapters = chapterList.size();
@@ -163,6 +163,21 @@ void MovieProducer::makeChapterDescription(std::ofstream &df, const Chapter *cha
 
         df << ulTimeSailedSeconds << " seconds";
 
+        df << ")";
+    }else if ( chapter->getChapterType() == ChapterTypes::TACK_GYBE  ){
+        Performance perf = m_rPerformanceVector[m_rInstrDataVector[chapter->getEndIdx()].utc.getUnixTimeMs()];
+        df << " (";
+            auto legTimeLostToTargetSec = perf.legTimeLostToTargetSec;
+            auto legDistLostToTargetMeters = perf.legDistLostToTargetMeters;
+            if ( perf.legTimeLostToTargetSec > 0 ){
+                df << "Lost ";
+            }else{
+                legTimeLostToTargetSec = -legTimeLostToTargetSec;
+                legDistLostToTargetMeters = -legDistLostToTargetMeters;
+                df << "Gained ";
+            }
+            df << "time: " << std::fixed << std::setprecision(0) << legTimeLostToTargetSec << " sec, ";
+            df << "distance: " << std::fixed << std::setprecision(0) << legDistLostToTargetMeters << " meters";
         df << ")";
     }
 

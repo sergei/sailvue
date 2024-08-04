@@ -16,7 +16,22 @@ add_executable (TestPolars
         ../navcomputer/polars.h
         ../navcomputer/polars.cpp
         ../navcomputer/Chapter.cpp
+
         ../n2k/geo/Quantity.cpp
+        ../n2k/YdvrReader.cpp
+        ../n2k/canboat/analyzer/pgn.c
+        ../n2k/canboat/analyzer/pgn.h
+        ../n2k/canboat/analyzer/lookup.c
+        ../n2k/canboat/analyzer/lookup.h
+        ../n2k/canboat/analyzer/print.c
+        ../n2k/canboat/analyzer/fieldtype.c
+        ../n2k/canboat/analyzer/fieldtype.h
+        ../n2k/canboat/common/common.c
+        ../n2k/canboat/common/utf.c
+        ../n2k/YdvrReader.cpp
+        ../n2k/YdvrReader.h
+        ../n2k/InitCanBoat.c
+        ../n2k/InitCanBoat.h
 
         ../movie/OverlayMaker.cpp
         ../movie/PolarOverlayMaker.cpp
@@ -30,12 +45,15 @@ add_executable (TestPolars
         test_median.cpp
         test_overlays.cpp
         test_adobe_markers.cpp
+        test_n2k.cpp
         )
 
 target_include_directories(TestPolars PUBLIC
         ../libInterpolate/src
         ..
         ../gui
+        ../n2k/canboat/analyzer
+        ../n2k/canboat/common
 )
 
 target_link_libraries(TestPolars

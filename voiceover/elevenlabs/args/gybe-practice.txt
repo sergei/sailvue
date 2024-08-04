@@ -1,2 +1,2 @@
---srt-name=~/SailingVideos/2024-07-13-SAIL-GP/01-PROJECTS/03-GYBE-PRACTICE-UNCUT.srt
---output-dir=~/SailingVideos/2024-07-13-SAIL-GP/08-VOICEOVER
+--srt-name=/Users/sergei/SailingVideos/2024-07-20-PRACTICE/00-PROJECTS/03-HAT-OVERBOARD.srt
+--output-dir=/Users/sergei/SailingVideos/2024-07-20-PRACTICE/06-VOICEOVER/HAT-OVER-BOARD

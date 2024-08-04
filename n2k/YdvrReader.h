@@ -45,6 +45,8 @@ public:
     uint32_t m_ulEpochCount = 0;
 };
 
+static const int PGN_BANG_KEY_VALUE = 130824;
+
 const std::set<uint32_t> REQUIRED_PGNS({
     129029, // GNSS Position Data
     129025, // GNSS Position Rapid Update
@@ -58,7 +60,34 @@ const std::set<uint32_t> REQUIRED_PGNS({
     127237, // Heading/Track Control
     128275, // Distance Log
     128267, // Water depth
+    PGN_BANG_KEY_VALUE, // Bang proprietary "B&G: key-value data",
 });
+
+enum BangKeys{
+    BANG_KEY_RACE_TIMER = 117,
+    BANG_KEY_TARGET_SPEED = 125,
+    BANG_KEY_POLAR_SPEED = 126,
+    BANG_KEY_VMG  = 127,
+    BANG_KEY_LEEWAY = 130,
+    BANG_KEY_CURRENT_DRIFT = 131,
+    BANG_KEY_CURRENT_SET = 132,
+    BANG_KEY_DIST_TO_START = 152,
+    BANG_KEY_PILOT_TARGET_TWA = 385,
+};
+
+typedef struct
+{
+    size_t   size;
+    uint8_t  data[FASTPACKET_MAX_SIZE];
+    uint32_t frames;    // Bit is one when frame is received
+    uint32_t allFrames; // Bit is one when frame needs to be present
+    int      pgn;
+    int      src;
+    bool     used;
+} Packet;
+
+
+const size_t  REASSEMBLY_BUFFER_SIZE = 64;
 
 
 class YdvrReader : public InstrDataReader {
@@ -133,6 +162,14 @@ private:
     Angle m_magVar = Angle::INVALID;
 
     void processWaterDepth(const Pgn *pgn, uint8_t *data, uint8_t len);
+
+    void processBangProprietary(const Pgn *pgn, uint8_t *data, uint8_t len);
+
+    Packet *assembleFastPacket(YdvrMessage *msg);
+
+    Packet reassemblyBuffer[REASSEMBLY_BUFFER_SIZE];
+
+    void lookupBangField(int64_t val, int64_t key);
 };
 
 
