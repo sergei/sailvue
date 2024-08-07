@@ -2,7 +2,8 @@
 /cmake-build-release/
 /test/overlays_targets/
 /test/overlays_rudder/
-/test/overlays/
-/test/overlays_perf/
+/test/overlays_instruments/
+/test/overlays_performance/
+/test/overlays_polar/
 /test/data/00010030.DAT.csv
 /test/data/ydvr/

@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cmath>
 #include "PolarOverlayMaker.h"
+#include "ColorPalette.h"
 
 PolarOverlayMaker::PolarOverlayMaker(Polars &polars, std::vector<InstrumentInput> &instrDataVector,
                                      int width, int height, int x, int y)
@@ -35,10 +36,16 @@ void PolarOverlayMaker::addEpoch(QPainter &painter, const InstrumentInput &epoch
     QImage image = m_pBackgroundImage->copy();
     painter.drawImage(0, 0, image);
 
-    // Draw history
-    auto armPen = QPen(Qt::green);
-    armPen.setWidth(4);
+    // Draw the autopilot target TWA
+    if (epoch.pilotTwa.isValid(epoch.utc.getUnixTimeMs())) {
+        auto twaRad = float(epoch.pilotTwa.getDegrees() * M_PI / 180);
+        auto xy = polToCart(float(m_maxSpeedKts), - twaRad);
+        QPoint p = toScreen(xy);
+        painter.setPen(POLAR_PILOT_TWA_PEN);
+        painter.drawLine(m_origin, p) ;
+    }
 
+    // Draw history
     // Show no more than HIST_DISPLAY_LEN_MS of history
     uint64_t epochUtcMs = epoch.utc.getUnixTimeMs();
     int lastHistIdx;
@@ -68,11 +75,12 @@ void PolarOverlayMaker::addEpoch(QPainter &painter, const InstrumentInput &epoch
             continue;
 
         QPoint p = toScreen(m_history[utcMs]);
-        auto historyColor = QColor(255, 0, 0, alpha);
+        auto historyColor = POLAR_HISTORY_COLOR;
+        historyColor.setAlpha(alpha);
         painter.setBrush(historyColor);
 
         if ( i == lastHistIdx ){
-            painter.setPen(armPen);
+            painter.setPen(POLAR_ARM_PEN);
             painter.drawLine(m_origin, p) ;
             painter.drawEllipse(p, m_dotRadius, m_dotRadius);
         }else{
@@ -196,9 +204,7 @@ QPoint PolarOverlayMaker::drawGrid() {
         arcEnd = 359;
     }
 
-    auto axisPen = QPen(m_polarGridColor);
-    axisPen.setWidth(2);
-    painter.setPen(axisPen);
+    painter.setPen(POLAR_GRID_PEN);
     // Speed circles
     for( int speed = m_minSpeedKts; speed <= m_maxSpeedKts; speed += m_speedStep ){
         QPoint ul = toScreen({-speed, speed});  // Top left
@@ -221,9 +227,7 @@ QPoint PolarOverlayMaker::drawGrid() {
 void PolarOverlayMaker::drawPolarCurve(float tws) {
     QPainter painter(m_PolarCurveImage);
 
-    auto curvePen = QPen(Qt::blue);
-    curvePen.setWidth(6);
-    painter.setPen(curvePen);
+    painter.setPen(POLAR_CURVE_PEN);
 
     QPoint prevPt;
     bool isFirst = true;

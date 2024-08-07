@@ -1,7 +1,6 @@
 #include <iostream>
 #include "StartTimerOverlayMaker.h"
 
-static const char *const FONT_FAMILY_TIMESTAMP = "Courier";
 
 StartTimerOverlayMaker::StartTimerOverlayMaker(std::vector<InstrumentInput>  &instrData, int width, int height, int x, int y)
 :  OverlayElement(width, height, x, y), m_rInstrDataVector(instrData){

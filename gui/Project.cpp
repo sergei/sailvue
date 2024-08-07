@@ -178,3 +178,16 @@ double Project::twaOffset() {
     return twaOffset;
 }
 
+void Project::setCameraUtcOffset(const int cameraUtcOffsetMs) {
+    QSettings settings;
+    settings.setValue(SETTINGS_CAMERA_UTC_OFFSET_MS, cameraUtcOffsetMs);
+    std::cout << "Set Camera URC offset to " << std::to_string(cameraUtcOffsetMs) << std::endl;
+}
+
+int Project::cameraUtcOffset() {
+    QSettings settings;
+    int utcOffsetMs = settings.value(SETTINGS_CAMERA_UTC_OFFSET_MS, 0).toInt();
+    std::cout << "Use Camera URC offset of " << std::to_string(utcOffsetMs) << " ms" << std::endl;
+    return utcOffsetMs;
+}
+

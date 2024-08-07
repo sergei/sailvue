@@ -1107,7 +1107,7 @@ qint64 RaceTreeModel::moveIdxByMs(qint64 idx, qint64 ms) const {
 void RaceTreeModel::importAdobeMarkers(const QString &markersFile) {
     const std::string &markersCsv = QUrl(markersFile).toLocalFile().toStdString();
     MarkerReader markerReader;
-    markerReader.setTimeAdjustmentMs(CAMERA_UTC_TIME_ADJUSTMENT);
+    markerReader.setTimeAdjustmentMs(cameraUtcOffsetMs());
     markerReader.read(markersCsv, m_CameraClipsList);
 
     std::list<Chapter *> chapters;
@@ -1122,12 +1122,11 @@ void RaceTreeModel::importAdobeMarkers(const QString &markersFile) {
             updateChapter(chapter);
         }
     }
-
 }
 
 void RaceTreeModel::exportAdobeMarkers(const QString &path) {
     MarkerReader markerReader;
-    markerReader.setTimeAdjustmentMs(CAMERA_UTC_TIME_ADJUSTMENT);
+    markerReader.setTimeAdjustmentMs(cameraUtcOffsetMs());
 
     auto chapters = m_pCurrentRace->getChapters();
     markerReader.makeMarkers(chapters, m_InstrDataVector, m_CameraClipsList, QUrl(path).toLocalFile().toStdString());

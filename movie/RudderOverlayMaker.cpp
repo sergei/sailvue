@@ -1,8 +1,9 @@
 #include <cmath>
+#include <iostream>
 
 #include "RudderOverlayMaker.h"
+#include "ColorPalette.h"
 
-static const char *const FONT_FAMILY = "Courier";
 
 RudderOverlayMaker::RudderOverlayMaker(int width, int height, int x, int y)
 :OverlayElement(width, height, x, y)
@@ -26,12 +27,6 @@ RudderOverlayMaker::RudderOverlayMaker(int width, int height, int x, int y)
 
     m_RudderFont = QFont(FONT_FAMILY, getFontSize(FONT_FAMILY, "◄33º", rudderTextBoxWidth, rudderTextBoxHeight));
     m_PilotFont = QFont(FONT_FAMILY, getFontSize(FONT_FAMILY, "PILOT 33º►", pilotTextBoxWidth, pilotTextBoxHeight));
-
-    m_RudderPen.setWidth(15);
-    m_RudderPen.setCapStyle(Qt::RoundCap);
-
-    m_AutoPen.setWidth(10);
-    m_AutoPen.setCapStyle(Qt::RoundCap);
 }
 
 int RudderOverlayMaker::getFontSize(const char *fontFamily, const char *text, int width, int height) const {
@@ -71,9 +66,9 @@ void RudderOverlayMaker::setHistory(const std::list<InstrumentInput> &chapterEpo
     for (auto &instrData: chapterEpochs) {
         auto utcMs = instrData.utc.getUnixTimeMs();
         if (instrData.rdr.isValid(utcMs)) {
-            float fAngleRad = instrData.rdr.getRadians();
+            auto fAngleRad = float(instrData.rdr.getRadians());
             fMaxAngleRad = std::max(abs(fAngleRad), fMaxAngleRad);
-            m_history[utcMs] = float(fAngleRad);
+            m_history[utcMs] = instrData.rdr;
             m_TimeStamps.push_back(utcMs);
         }
     }
@@ -102,11 +97,6 @@ std::pair<QPoint, QPoint> RudderOverlayMaker::toScreen(const float angleRad) con
     float x = float(m_rudderBoxWidth) / 2 - float(m_rudderY0) * tg;
     QPoint top(int(x), 0);
 
-    // Flat bottom
-//    x = float(m_rudderBoxWidth) / 2 + float(m_rudderBoxHeight - m_rudderY0) * tg;
-//    QPoint bottom(int(x), m_rudderBoxHeight);
-
-    // Curved bottom
     x = float(m_rudderBoxWidth) / 2 + float(m_rudderBoxHeight - m_rudderY0) * sin(angleRad);
     float y = float(m_rudderBoxHeight - m_rudderY0) * cos(angleRad) + float(m_rudderY0);
     QPoint bottom((int)x, (int)y);
@@ -117,12 +107,7 @@ std::pair<QPoint, QPoint> RudderOverlayMaker::toScreen(const float angleRad) con
 void RudderOverlayMaker::drawGrid() {
     QPainter painter(m_pBackgroundImage);
 
-    int startAngle = -60;
-    int endAngle = 30;
-
-    auto axisPen = QPen(m_gridColor);
-    axisPen.setWidth(2);
-    painter.setPen(axisPen);
+    painter.setPen(RUDDER_GRID_PEN);
 
     // Angle lines
     for( int angle = - m_maxAngleDeg; angle <= m_maxAngleDeg; angle += 2 ){
@@ -131,7 +116,7 @@ void RudderOverlayMaker::drawGrid() {
     }
 
     // Erase  angle rectangle on to of them
-//    painter.setPen(m_RudderPen);
+    //    painter.setPen(m_RudderPen);
     painter.save();
     painter.setCompositionMode(QPainter::CompositionMode_Clear);
     painter.eraseRect(m_rudderTextRect);
@@ -153,8 +138,10 @@ void RudderOverlayMaker::addEpoch(QPainter &painter, const InstrumentInput &epoc
     QImage image = m_pBackgroundImage->copy();
     painter.drawImage(0, 0, image);
 
+    plotHistory(painter, epoch);
+
     auto rudderTick = toScreen(float(epoch.rdr.getRadians()));
-    painter.setPen(m_RudderPen);
+    painter.setPen(RUDDER_PEN);
     painter.drawLine(rudderTick.first, rudderTick.second);
 
     if( epoch.cmdRdr.isValid(epoch.utc.getUnixTimeMs())){
@@ -170,11 +157,11 @@ void RudderOverlayMaker::addEpoch(QPainter &painter, const InstrumentInput &epoc
         }
 
         painter.setFont(m_PilotFont);
-        painter.setPen(m_AutoFontPen);
+        painter.setPen(AUTO_FONT_PEN);
         painter.drawText(m_pilotTextRect, Qt::AlignCenter, QString::fromStdString(ossAuto.str()));
 
         auto autoTick = toScreen(float(epoch.cmdRdr.getRadians()));
-        painter.setPen(m_AutoPen);
+        painter.setPen(AUTO_PEN);
         painter.drawLine(autoTick.first, autoTick.second);
     }
 
@@ -188,7 +175,52 @@ void RudderOverlayMaker::addEpoch(QPainter &painter, const InstrumentInput &epoc
     }
 
     painter.setFont(m_RudderFont);
-    painter.setPen(m_RudderFontPen);
+    painter.setPen(RUDDER_FONT_PEN);
     painter.drawText(m_rudderTextRect, Qt::AlignCenter, QString::fromStdString(oss.str()));
+
+}
+
+void RudderOverlayMaker::plotHistory(QPainter &painter, const InstrumentInput &epoch) {
+
+    // Show no more than HIST_DISPLAY_LEN_MS of history
+    uint64_t epochUtcMs = epoch.utc.getUnixTimeMs();
+
+    int lastHistIdx;
+    for( lastHistIdx =0; lastHistIdx < m_TimeStamps.size(); lastHistIdx++)
+        if ( m_TimeStamps[lastHistIdx] >= epochUtcMs )
+            break;
+
+    int firstHistoryIdx;
+    for( firstHistoryIdx = lastHistIdx; firstHistoryIdx > 0; firstHistoryIdx--){
+        uint64_t histUtcMs = m_TimeStamps[firstHistoryIdx];
+        if ( epochUtcMs - histUtcMs > HIST_DISPLAY_LEN_MS ){
+            break;
+        }
+    }
+    int shownHistoryLen = lastHistIdx - firstHistoryIdx;
+    if (shownHistoryLen == 0) shownHistoryLen = 1;
+
+    int minAlpha = 10;
+    int maxAlpha = 127;
+    int alphaStep = 10;
+    for (int i=firstHistoryIdx; i <= lastHistIdx; i++){
+        double r = double(i - firstHistoryIdx) / shownHistoryLen; // 0 to 1
+        int alpha = minAlpha + int((maxAlpha - minAlpha) * r);
+        // Quantize alpha to alphaStep
+        alpha = alpha - alpha % alphaStep;
+//        std::cout << "alpha: " << alpha << std::endl;
+
+        auto utcMs = m_TimeStamps[i];
+        auto pair = toScreen(float(m_history[utcMs].getRadians()));
+        QPoint p = pair.second;
+        auto historyColor = RUDDER_RUDDER_COLOR;
+        historyColor.setAlpha(alpha);
+        painter.setBrush(historyColor);
+
+        auto historyPen = QPen(historyColor);
+        painter.setPen(historyPen);
+        painter.drawEllipse(p, RUDDER_DOT_RADIUS, RUDDER_DOT_RADIUS);
+    }
+
 
 }

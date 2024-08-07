@@ -6,10 +6,6 @@
 #include "navcomputer/InstrumentInput.h"
 #include "OverlayElement.h"
 
-static const char *const FONT_FAMILY_TIMESTAMP = "Courier";
-static const char *const FONT_FAMILY_VALUE = "Courier";
-static const char *const FONT_FAMILY_LABEL = "Courier";
-
 static const char *const COPYRIGHT_SAILVUE = "(c) github.com/sergei/sailvue " GIT_HASH;
 
 class InfoCell {

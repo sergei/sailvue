@@ -16,8 +16,6 @@
 #include "navcomputer/Performance.h"
 #include "cameras/CameraBase.h"
 
-static const int CAMERA_UTC_TIME_ADJUSTMENT = 5000;
-
 class TreeItem
 {
 public:
@@ -65,6 +63,7 @@ class RaceTreeModel  : public QAbstractItemModel {
     Q_PROPERTY(QString logsType READ logsType WRITE setLogsType NOTIFY logsTypeChanged)
     Q_PROPERTY(QString polarPath READ polarPath WRITE setPolarPath NOTIFY polarPathChanged)
     Q_PROPERTY(float twaOffset READ twaOffset WRITE setTwaOffset NOTIFY twaOffsetChanged)
+    Q_PROPERTY(int cameraUtcOffsetMs READ cameraUtcOffsetMs WRITE setCameraUtcOffsetMs NOTIFY cameraUtcOffsetMsChanged)
     Q_PROPERTY(QString gitHash READ gitHash )
 
 
@@ -136,6 +135,13 @@ public:
         m_project.setTwaOffset(twaOffset);
         emit twaOffsetChanged();
     }
+
+    void setCameraUtcOffsetMs(const int cameraUtcOffsetMs){
+        m_project.setCameraUtcOffset(cameraUtcOffsetMs);
+        emit cameraUtcOffsetMsChanged();
+    }
+
+    [[nodiscard]] int cameraUtcOffsetMs() const { return m_project.cameraUtcOffset(); }
 
     [[nodiscard]] QString projectName() const { return m_project.projectName(); }
     [[nodiscard]] bool isDirty() const { return m_project.isDirty(); }
@@ -210,6 +216,7 @@ signals:
     void logsTypeChanged();
     void polarPathChanged();
     void twaOffsetChanged();
+    void cameraUtcOffsetMsChanged();
 
     void readData(const QString &goproDir, const QString &insta360Dir, const QString &logsType, const QString &nmeaDir, const QString &polarFile, bool ignoreCache);
     void stop();

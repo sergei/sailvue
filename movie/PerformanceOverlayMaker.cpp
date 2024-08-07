@@ -1,4 +1,5 @@
 #include "PerformanceOverlayMaker.h"
+#include "ColorPalette.h"
 
 PerformanceOverlayMaker::PerformanceOverlayMaker(std::map<uint64_t, Performance> &rPerformanceMap, int width, int height, int x, int y)
  : OverlayElement(width, height, x, y),  m_height(height),
@@ -11,7 +12,7 @@ PerformanceOverlayMaker::PerformanceOverlayMaker(std::map<uint64_t, Performance>
         fontPointSize = fs;
         font.setPointSize(fs);
         QFontMetrics fm(font);
-        QRect rect = fm.tightBoundingRect("-00:00:00");
+        QRect rect = fm.tightBoundingRect("(+00:00:00)");
         if(rect.width() > width || rect.height() > height / 3){
             fontPointSize = fs - 1;
             break;
@@ -31,15 +32,15 @@ void PerformanceOverlayMaker::addEpoch(QPainter &painter, const InstrumentInput 
         auto thisRaceDeltaMs = int64_t(m_rPerformanceVector[utcMs].raceTimeLostToTargetSec * 1000);
 
         painter.setFont(m_labelTimeFont);
-        painter.setPen(m_labelPen);
-        painter.drawText(0, m_height / 4, "This chapter");
-        painter.drawText(0, m_height * 3 / 4, "Entire race");
+        painter.setPen(PERF_LABEL_PEN);
+        painter.drawText(0, m_height * 5 / 8, "  entire video");
 
         painter.setFont(m_currentTimeFont);
-        painter.setPen(m_timePen);
-        painter.drawText(0, m_height / 2,  formatTime(thisLegDeltaMs) );
+        painter.setPen(thisLegDeltaMs > 0 ? SLOW_TIME_PEN : FAST_TIME_PEN);
+        painter.drawText(0, m_height * 1 / 4,  " " + formatTime(thisLegDeltaMs) );
         painter.setFont(m_totalTimeFont);
-        painter.drawText(0, m_height ,  formatTime(thisRaceDeltaMs) );
+        painter.setPen(thisRaceDeltaMs > 0 ? SLOW_TIME_PEN : FAST_TIME_PEN);
+        painter.drawText(0, m_height * 2 / 4,  "(" + formatTime(thisRaceDeltaMs) + ")");
     }
 
 }

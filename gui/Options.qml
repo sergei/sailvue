@@ -83,6 +83,20 @@ Dialog {
                             raceTreeModel.twaOffset = parseFloat(twa_offset_value.text)
                         }
                     }
+                    Label {
+                        text: "Camera time time adjustment (ms)"
+                    }
+                    TextEdit {
+                        id: camera_time_offset_value
+                        text: raceTreeModel.cameraUtcOffsetMs
+                        color: "white"
+                    }
+                    Button {
+                        text: "Save"
+                        onClicked: {
+                            raceTreeModel.cameraUtcOffsetMs = parseInt(camera_time_offset_value.text)
+                        }
+                    }
                 }
             }
         }

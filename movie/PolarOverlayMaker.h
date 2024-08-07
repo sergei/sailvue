@@ -8,8 +8,6 @@
 #include "navcomputer/Polars.h"
 #include "OverlayElement.h"
 
-static const int HIST_DISPLAY_LEN_MS = 1000 * 30;
-
 class PolarOverlayMaker : public  OverlayElement{
 public:
     PolarOverlayMaker(Polars &polars, std::vector<InstrumentInput> &instrDataVector, int width, int height, int x, int y);
@@ -28,7 +26,6 @@ private:
     const int m_dotRadius = 10;
     const int m_xPad = m_dotRadius;
     const int m_yPad = m_dotRadius;
-    const QColor m_polarGridColor = QColor(255, 255, 255, 127);
 
     int m_maxSpeedKts = 0;
     int m_minSpeedKts = 100;
@@ -52,7 +49,6 @@ private:
     QImage *m_pBackgroundImage = nullptr;
     QImage *m_PolarCurveImage = nullptr;
     QPoint m_origin;
-
 };
 
 

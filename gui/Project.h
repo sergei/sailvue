@@ -83,8 +83,10 @@ public:
     }
 
     static void setTwaOffset(const double twaOffset);
-
     static double twaOffset();
+
+    static void setCameraUtcOffset(const int cameraUtcOffsetMs);
+    static int cameraUtcOffset();
 
 private:
     std::list<RaceData *> &m_RaceDataList;

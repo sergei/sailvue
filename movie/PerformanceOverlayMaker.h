@@ -9,8 +9,6 @@
 #include "navcomputer/TimeDeltaComputer.h"
 #include "OverlayElement.h"
 
-static const char *const FONT_FAMILY_TIME = "Courier";
-
 class PerformanceOverlayMaker : public OverlayElement {
 public:
     PerformanceOverlayMaker(std::map<uint64_t, Performance> &rPerformanceMap, int width, int height, int x, int y);
@@ -27,8 +25,6 @@ private:
     QFont m_labelTimeFont;
     QFont m_totalTimeFont;
     QFont m_currentTimeFont;
-    QPen m_timePen = QPen(QColor(255, 255, 255, 220));
-    QPen m_labelPen = QPen(QColor(200, 200, 200, 220));
 };
 
 

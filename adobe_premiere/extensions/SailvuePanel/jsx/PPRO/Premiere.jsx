@@ -245,6 +245,9 @@ $._PPP_={
 							for(var j =0 ; j < clipList.length; j++) {
 								var clip = clipList[j];
 								var markers   = clip.getMarkers();
+								if ( markers === undefined){
+									continue;
+								}
 
 								// Get list of sailvue markers in this clip
 								var sailvueMarkers = [];
@@ -259,6 +262,8 @@ $._PPP_={
 									markers.deleteMarker(sailvueMarkers[i]);
 								}
 							}
+							$._PPP_.updateEventPanel("Start CSV processing");
+
 
 							// Process CSV line by line
 							var record_num = 3;

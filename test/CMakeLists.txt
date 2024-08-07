@@ -37,6 +37,8 @@ add_executable (TestPolars
         ../movie/PolarOverlayMaker.cpp
         ../movie/RudderOverlayMaker.cpp
         ../movie/TargetsOverlayMaker.cpp
+        ../movie/InstrOverlayMaker.cpp
+        ../movie/PerformanceOverlayMaker.cpp
         ../adobe_premiere/MarkerReader.cpp
         ../Insta360/Insta360.cpp
         ../cameras/CameraBase.cpp

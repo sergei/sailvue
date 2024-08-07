@@ -4,6 +4,7 @@
 #include <QFontMetrics>
 #include <QDateTime>
 #include "InstrOverlayMaker.h"
+#include "ColorPalette.h"
 
 void InfoCell::setSize(int width) {
     int fontPointSize;
