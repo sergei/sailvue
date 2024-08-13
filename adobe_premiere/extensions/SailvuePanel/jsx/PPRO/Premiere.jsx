@@ -1,3 +1,5 @@
+// noinspection ES6ConvertVarToLetConst
+
 /*************************************************************************
 * ADOBE CONFIDENTIAL
 * ___________________
@@ -85,46 +87,61 @@ var NOT_SET = "-400000";
 
 $._PPP_={
 
+	isSailvueTrackAvailable : function (seq) {
+		// Add video track to keep sailvue overlays
+		var tracks = seq.videoTracks;
+		var sailVueVideoTrack = null;
+		for (var i = 0; i < tracks.numTracks; i++) {
+			if (tracks[i].name === "sailvue") {
+				sailVueVideoTrack = tracks[i];
+				break;
+			}
+		}
 
-	insertSailVueOverlays : function (projectItem) {
-		var seq = app.project.activeSequence;
-		if (seq) {
-			$._PPP_.updateEventPanel('Looking for markers in sequence' + seq.name);
+		return sailVueVideoTrack;
+	},
 
-			// Add video track to keep sailvue overlays
-			var tracks = seq.videoTracks;
-			var sailVueVideoTrack = null;
-			for (var i = 0; i < tracks.numTracks; i++) {
-				if (tracks[i].name === "sailvue") {
-					sailVueVideoTrack = tracks[i];
+	createSailvueBinIfNeeded : function () {
+		var project = app.project.rootItem; // assumes first item is footage.
+		var sailvueOverlaysBinName = "Sailvue Overlays";
+		var sailVueBin = null;
+		if (project) {
+			// Check if the bin already exists
+			for (var projItemIdx = 0; projItemIdx < project.children.numItems; projItemIdx++) {
+				if (project.children[projItemIdx].name === sailvueOverlaysBinName) {
+					sailVueBin = project.children[projItemIdx];
 					break;
 				}
 			}
 
-			if (sailVueVideoTrack == null) {
-				$._PPP_.updateEventPanel('No sailvue track was found');
+			if (sailVueBin === null) {
+				project.createBin(sailvueOverlaysBinName);
+			}
+			return sailVueBin;
+		}
+		$._PPP_.updateEventPanel('Could not create bin for sailvue overlays. Do you have project?');
+		return null;
+	},
+
+	insertSailVueOverlays : function () {
+
+		var seq = app.project.activeSequence;
+		if (seq) {
+
+			var sailVueVideoTrack = $._PPP_.isSailvueTrackAvailable(seq);
+			if ( sailVueVideoTrack === null ) {
+				// There is no API to add a video track, so we need to ask the user to add it manually
+				$._PPP_.updateEventPanel('Please add a video track named "sailvue" to the sequence.');
 				return;
 			}
 
 			// Create bin where the sailvue overlays will be inserted
-			var project = app.project.rootItem; // assumes first item is footage.
-			var sailvueOverlaysBinName = "Sailvue Overlays";
-			var sailVueBin = null;
-			if (project) {
-				// Check if the bin already exists
-				for (var projItemIdx = 0; projItemIdx < project.children.numItems; projItemIdx++) {
-					if (project.children[projItemIdx].name === sailvueOverlaysBinName) {
-						sailVueBin = project.children[projItemIdx];
-						break;
-					}
-				}
-
-				if (sailVueBin == null) {
-					project.createBin(sailvueOverlaysBinName);
-				}
+			var sailVueBin = $._PPP_.createSailvueBinIfNeeded();
+			if (sailVueBin === null) {
+				return;
 			}
 
-
+			var tracks = seq.videoTracks;
 			for (var trackIdx = 0; trackIdx < tracks.numTracks; trackIdx++) {
 				if (tracks[trackIdx].mediaType === "Video") {
 					var clips = tracks[trackIdx].clips;
@@ -151,12 +168,21 @@ $._PPP_={
 
 								$._PPP_.updateEventPanel('Found sailvue marker within clip' + marker.name);
 
-								var overlayPath = marker.comments.replace(/^\s+/,'').replace(/\s+$/,'');
+								var data = marker.comments.split(',');
+								// Type, uuid, overlayPath
+								$._PPP_.updateEventPanel('Marker ' + marker.name + ' has ' + data.length + ' items');
+								if (data.length < 3) {
+									$._PPP_.updateEventPanel('No overlay path found in marker ' + marker.name);
+									continue;
+								}
+								$._PPP_.updateEventPanel('Marker ' + marker.name + ' has [' + data[2] + '] overlay path');
+								var overlayPath = data[2].replace(/^\s+/,'').replace(/\s+$/,'');
+								var projItemIdx;
 								if (overlayPath) {
 
 									// Check if media is already in this bin
 									var overlayProjectItem = null;
-									for (var projItemIdx = 0; projItemIdx < sailVueBin.children.numItems; projItemIdx++) {
+									for (projItemIdx = 0; projItemIdx < sailVueBin.children.numItems; projItemIdx++) {
 										if (sailVueBin.children[projItemIdx].getMediaPath() === overlayPath) {
 											overlayProjectItem = sailVueBin.children[projItemIdx];
 											break;
@@ -167,7 +193,7 @@ $._PPP_={
 										// Import the overlay into the project
 										app.project.importFiles([overlayPath],
 											false, sailVueBin, false);
-										for (var projItemIdx = 0; projItemIdx < sailVueBin.children.numItems; projItemIdx++) {
+										for (projItemIdx = 0; projItemIdx < sailVueBin.children.numItems; projItemIdx++) {
 											if (sailVueBin.children[projItemIdx].getMediaPath() === overlayPath) {
 												overlayProjectItem = sailVueBin.children[projItemIdx];
 												break;
@@ -180,11 +206,11 @@ $._PPP_={
 									var start = trackItemStart - trackItemIn  + marker.start.seconds
 									$._PPP_.updateEventPanel('Inserting overlay ' + overlayProjectItem.name + ' at start ' + start + ' = trackItemStart ' + trackItemStart + ' - trackItemIn ' + trackItemIn + ' + marker.start.seconds ' + marker.start.seconds);
 									sailVueVideoTrack.overwriteClip(overlayProjectItem, start);
+								}else{
+									$._PPP_.updateEventPanel('No overlay path found in marker ' + marker.name);
 								}
 							}
 						}
-
-
 					}
 				}
 			}
@@ -224,41 +250,35 @@ $._PPP_={
 
 	importSailvueMarkers : function () {
 		if (app.project.rootItem.children.numItems > 0) {
-			var projectItem = app.project.rootItem; // assumes first item is footage.
+			var projectItem = app.project.rootItem;
 			if (projectItem) {
-
 				// Create list of all clips
 				var clipList = $._PPP_.getClipList(projectItem);
-				$._PPP_.updateEventPanel("Found " + clipList.length + " clips");
-
-				var fileToOpen = File.openDialog("Select Markers file",
-														"*.csv",
-														false);
-		
+				var fileToOpen = File.openDialog("Select Markers file", "*.csv", false);
+				var i, j, clip, markers;
 				if (fileToOpen) {
-					if (fileToOpen.fsName.indexOf('.csv')) { // We should really be more careful, but hey, it says it's XML!
+					if (fileToOpen.fsName.indexOf('.csv')) {
 						fileToOpen.encoding = "UTF8";
 						fileToOpen.open("r", "TEXT", "????");
 						var fileContents = fileToOpen.read();
 						if (fileContents) {
-
-							for(var j =0 ; j < clipList.length; j++) {
-								var clip = clipList[j];
-								var markers   = clip.getMarkers();
+							for(j =0 ; j < clipList.length; j++) {
+								clip = clipList[j];
+								markers   = clip.getMarkers();
+								// Check if this kind of clip even has markers
 								if ( markers === undefined){
 									continue;
 								}
 
 								// Get list of sailvue markers in this clip
 								var sailvueMarkers = [];
-								for(var i = 0; i < markers.numMarkers; i++) {
-									if ( markers[i].type == "Segmentation" ){
+								for(i = 0; i < markers.numMarkers; i++) {
+									if ( markers[i].type === "Segmentation" ){
 										sailvueMarkers.push(markers[i]);
 									}
 								}
-
 								// Delete all of them
-								for(var i = 0; i < sailvueMarkers.length; i++) {
+								for(i = 0; i < sailvueMarkers.length; i++) {
 									markers.deleteMarker(sailvueMarkers[i]);
 								}
 							}
@@ -266,35 +286,43 @@ $._PPP_={
 
 
 							// Process CSV line by line
-							var record_num = 3;
 							var allTextLines = fileContents.split("\n");
 							var headers = allTextLines[0].split(",");
 							
-							for (var i=1; i<allTextLines.length; i++) {
+							for (i=1; i<allTextLines.length; i++) {
 								var data = allTextLines[i].split(',');
 
-								if (data.length == headers.length) {
+								if (data.length === headers.length) {
 									var clipFileName = data[0];
 									var markerIn = Number(data[1]);
 									var markerOut = Number(data[2]);
 									var markerName = data[3];
-									var overlayPath = data[4];
+									var chapterType = data[4];
+									var uuid = data[5];
+									var overlayPath = data[6];
 									$._PPP_.updateEventPanel("clipFileName [" + clipFileName + "]");
+									$._PPP_.updateEventPanel("markerIn [" + markerIn + "]");
+									$._PPP_.updateEventPanel("markerOut [" + markerOut + "]");
+									$._PPP_.updateEventPanel("markerName [" + markerName + "]");
+									$._PPP_.updateEventPanel("chapterType [" + chapterType + "]");
+									$._PPP_.updateEventPanel("uuid [" + uuid + "]");
+									$._PPP_.updateEventPanel("overlayPath [" + overlayPath + "]");
 
-									// Find clip 
-									for(var j =0 ; j < clipList.length; j++){
-										var clip = clipList[j];
-										if( clip.getMediaPath() == clipFileName){
+									// Find clip for this marker
+									for(j =0 ; j < clipList.length; j++){
+										clip = clipList[j];
+										if( clip.getMediaPath() === clipFileName){
 											$._PPP_.updateEventPanel("Add marker to " + clipList[j].name);
 
-											var markers   = clip.getMarkers();
+											markers   = clip.getMarkers();
 											var newMarker = markers.createMarker(markerIn);
 											newMarker.name = markerName;
-											var markeEnd = new Time();
-											markeEnd.seconds = markerOut;
+											var markerEnd = new Time();
+											markerEnd.seconds = markerOut;
 											newMarker.end  = (newMarker.start.seconds + (markerOut - markerIn));
-											newMarker.comments = overlayPath;
+											newMarker.comments = chapterType + "," + uuid + "," + overlayPath;
 											newMarker.setTypeAsSegmentation();
+											newMarker.setColorByIndex( overlayPath.length === 0 ? 1 : 0);
 											break;
 										}
 									}
@@ -305,7 +333,7 @@ $._PPP_={
 				} else {
 					$._PPP_.updateEventPanel("No valid marker file chosen.");
 				}
-
+				$._PPP_.insertSailVueOverlays();
 			} else {
 				$._PPP_.updateEventPanel("Could not find first projectItem.");
 			}

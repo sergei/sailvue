@@ -202,7 +202,7 @@ public slots:
     void handleProgress(const QString &state, int progress);
 
     void handleProduceStarted();
-    void handleProduceFinished(const QString &message);
+    void handleProduceFinished(const QString &moviePathUrl, const QString &message);
     void handleMarkersImported();
 
 signals:

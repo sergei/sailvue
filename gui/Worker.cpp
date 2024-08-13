@@ -133,7 +133,7 @@ void Worker::produce(const QString &moviePathUrl, const QString &polarUrl) {
 
     movieProducer.produce();
 
-    emit produceFinished("Production complete");
+    emit produceFinished(moviePathUrl, "Production complete");
 }
 
 
@@ -296,7 +296,7 @@ void Worker::exportGpx(const QString &path) {
 
     progress("Exporting GPX", 100);
     std::cout << "Export complete" << std::endl;
-    emit produceFinished("GPX export complete");
+    emit produceFinished("", "GPX export complete");
 }
 
 void Worker::exportStats(const QString &polarUrl, const QString &path) {
@@ -340,7 +340,7 @@ void Worker::exportStats(const QString &polarUrl, const QString &path) {
     }
 
     ofs.close();
-    emit produceFinished("CSV export complete");
+    emit produceFinished("", "CSV export complete");
 
     progress("Exporting CSV", 100);
     std::cout << "Export complete" << std::endl;

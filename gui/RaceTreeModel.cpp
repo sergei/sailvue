@@ -970,7 +970,11 @@ void RaceTreeModel::handleProduceStarted() {
     emit produceStarted();
 }
 
-void RaceTreeModel::handleProduceFinished(const QString &message) {
+void RaceTreeModel::handleProduceFinished(const QString &moviePathUrl, const QString &message) {
+    if ( !moviePathUrl.isEmpty() ){
+        auto markerFileName = moviePathUrl + "/markers.csv";
+        exportAdobeMarkers(markerFileName);
+    }
     emit produceFinished(message);
 }
 

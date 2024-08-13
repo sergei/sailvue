@@ -65,6 +65,14 @@ void MarkerReader::read(const std::filesystem::path &markerFile, const std::list
         std::getline(ss, item, ',');
         marker->setName(item);
 
+        // Type
+        std::getline(ss, item, ',');
+        marker->setType(std::stoi(item));
+
+        // Uuid
+        std::getline(ss, item, ',');
+        marker->setUuid(item);
+
         // Overlay name if any
         std::getline(ss, item, ',');
         marker->setOverlayName(item);
@@ -107,22 +115,10 @@ void MarkerReader::makeChapters(std::list<Chapter *> &chapters, std::vector<Inst
             }
 
             Chapter *chapter;
-            if ( marker.getOverlayName() == "" ) {
-                chapter = new Chapter(startIdx, endIdx);
-                chapter->setChapterClipFileName(marker.getOverlayName());
-            }else{
-                // Get UUID fom clip info
-                std::string clipUuid = marker.getOverlayName();
-                size_t pos = clipUuid.find("CHAPTER-OVERLAY-");
-                clipUuid = clipUuid.substr(pos + 16);
-                // Remove the extension
-                clipUuid = clipUuid.substr(0, clipUuid.find_last_of('.'));
-                std::cout << "  Found overlay UUID " << clipUuid << std::endl;
-                chapter = new Chapter(QUuid(clipUuid), startIdx, endIdx);
-                chapter->setChapterClipFileName(marker.getOverlayName());
-            }
-
+            chapter = new Chapter(QUuid(marker.getUuid()), startIdx, endIdx);
+            chapter->setChapterClipFileName(marker.getOverlayName());
             chapter->SetName(marker.getName());
+            chapter->setChapterType(ChapterTypes::ChapterType(marker.getType()));
             chapters.push_back(chapter);
         }else{
             std::cerr << "Could not timestamp marker " << marker.getName() << std::endl;
@@ -141,7 +137,7 @@ void MarkerReader::makeMarkers(const std::list<Chapter *>& chapters, std::vector
     std::filesystem::create_directories(markersDir);
     std::ofstream outStream (markerFile, std::ios::out);
 
-    outStream << "Clip filename, In, Out, Description, Overlay filename" << std::endl;
+    outStream << "Clip filename, In, Out, Description, Type, Uuid, Overlay filename" << std::endl;
     for(auto chapter: chapters) {
         uint64_t startUtcMs = instrDataVector[chapter -> getStartIdx()].utc.getUnixTimeMs() - m_timeAdjustmentMs;
         uint64_t endUtcMs = instrDataVector[chapter -> getEndIdx()].utc.getUnixTimeMs();
@@ -163,6 +159,8 @@ std::string MarkerReader::makeCsvEntry(const Chapter *pChapter, uint64_t inUtcMs
             << ", " << clipIn
             << ", " << clipOut
             << ", " << pChapter->getName()
+            << ", " << pChapter->getChapterType()
+            << ", " << pChapter->getUuid().toStdString()
             << ", " << pChapter->getChapterClipFileName()
             ;
             entry = oss.str();

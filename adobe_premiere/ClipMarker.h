@@ -15,11 +15,15 @@ public:
     void setInTimeMilliSecond(u_int64_t inTimeMillisecond) { m_inTimeMillisecond = inTimeMillisecond; }
     void setOutTimeMilliSecond(u_int64_t outTimeMillisecond) { m_outTimeMillisecond = outTimeMillisecond; }
     void setClipInfo(CameraClipInfo *mpClipInfo) { m_pClipInfo = mpClipInfo; }
+    void setType(int type) { m_type = type; }
+    void setUuid(std::string &uuid) { m_Uuid = uuid; }
     void setOverlayName(const std::string &mOverlayName) { m_OverlayName = mOverlayName; }
 
     [[nodiscard]] const std::string &getName() const { return m_name; }
     [[nodiscard]] u_int64_t getUtcMsIn() const { return m_UtcMsIn; }
     [[nodiscard]] u_int64_t getUtcMsOut() const { return m_UtcMsOut; }
+    [[nodiscard]] int getType() const { return m_type; }
+    [[nodiscard]] const std::string &getUuid() const { return m_Uuid; }
     [[nodiscard]] const std::string &getOverlayName() const { return m_OverlayName; }
     [[nodiscard]] CameraClipInfo *getClipInfo() const { return m_pClipInfo; }
 
@@ -29,7 +33,9 @@ private:
     u_int64_t m_outTimeMillisecond=0;
     u_int64_t m_UtcMsIn=0;
     u_int64_t m_UtcMsOut=0;
+    int m_type=0;
     CameraClipInfo *m_pClipInfo = nullptr;
+    std::string m_Uuid = "";
     std::string m_OverlayName = "";
 };
 

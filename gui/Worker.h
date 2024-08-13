@@ -43,7 +43,7 @@ signals:
     // Production related signals
     void produceStarted();
     void markersImported();
-    void produceFinished(const QString &message);
+    void produceFinished(const QString &moviePathUrl, const QString &message);
 
 private:
     bool b_keepRunning = true;
