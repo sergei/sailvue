@@ -122,7 +122,7 @@ private:
     std::string makeClipFfmpegArgs(const std::string &clipPath);
     static std::string makeJoinChaptersFfmpegArgs(std::list<std::string> &chaptersList,const std::basic_string<char> &outPath);
 
-    static void executeFfmpeg( const std::string &ffmpegArgs, FfmpegProgressListener &progress) ;
+    static bool executeFfmpeg( const std::string &ffmpegArgs, FfmpegProgressListener &progress) ;
 
 };
 

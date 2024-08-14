@@ -85,6 +85,13 @@ var BitPrecision_HDR	= 3;
 
 var NOT_SET = "-400000";
 
+function makeUUid() {
+	return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+		var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
+		return v.toString(16);
+	});
+}
+
 $._PPP_={
 
 	isSailvueTrackAvailable : function (seq) {
@@ -177,6 +184,7 @@ $._PPP_={
 								}
 								$._PPP_.updateEventPanel('Marker ' + marker.name + ' has [' + data[2] + '] overlay path');
 								var overlayPath = data[2].replace(/^\s+/,'').replace(/\s+$/,'');
+								var overlayType = Number(data[0]);
 								var projItemIdx;
 								if (overlayPath) {
 
@@ -189,7 +197,7 @@ $._PPP_={
 										}
 									}
 
-									if ( overlayProjectItem == null){  // Import it
+									if ( overlayProjectItem === null) {  // Import it
 										// Import the overlay into the project
 										app.project.importFiles([overlayPath],
 											false, sailVueBin, false);
@@ -203,9 +211,14 @@ $._PPP_={
 										overlayProjectItem.refreshMedia();
 									}
 
-									var start = trackItemStart - trackItemIn  + marker.start.seconds
-									$._PPP_.updateEventPanel('Inserting overlay ' + overlayProjectItem.name + ' at start ' + start + ' = trackItemStart ' + trackItemStart + ' - trackItemIn ' + trackItemIn + ' + marker.start.seconds ' + marker.start.seconds);
-									sailVueVideoTrack.overwriteClip(overlayProjectItem, start);
+									if ( overlayProjectItem != null) {
+										overlayProjectItem.setColorLabel(overlayType === 1  ? 15 : 8);
+										var start = trackItemStart - trackItemIn  + marker.start.seconds
+										$._PPP_.updateEventPanel('Inserting overlay ' + overlayProjectItem.name + ' at start ' + start + ' = trackItemStart ' + trackItemStart + ' - trackItemIn ' + trackItemIn + ' + marker.start.seconds ' + marker.start.seconds);
+										sailVueVideoTrack.overwriteClip(overlayProjectItem, start);
+									}else{
+										$._PPP_.updateEventPanel('Failed to import ' + overlayPath );
+									}
 								}else{
 									$._PPP_.updateEventPanel('No overlay path found in marker ' + marker.name);
 								}
@@ -297,7 +310,7 @@ $._PPP_={
 									var markerIn = Number(data[1]);
 									var markerOut = Number(data[2]);
 									var markerName = data[3];
-									var chapterType = data[4];
+									var chapterType = Number(data[4]);
 									var uuid = data[5];
 									var overlayPath = data[6];
 									$._PPP_.updateEventPanel("clipFileName [" + clipFileName + "]");
@@ -307,6 +320,7 @@ $._PPP_={
 									$._PPP_.updateEventPanel("chapterType [" + chapterType + "]");
 									$._PPP_.updateEventPanel("uuid [" + uuid + "]");
 									$._PPP_.updateEventPanel("overlayPath [" + overlayPath + "]");
+									$._PPP_.updateEventPanel("overlayPath.length [" + overlayPath.length + "]");
 
 									// Find clip for this marker
 									for(j =0 ; j < clipList.length; j++){
@@ -322,7 +336,7 @@ $._PPP_={
 											newMarker.end  = (newMarker.start.seconds + (markerOut - markerIn));
 											newMarker.comments = chapterType + "," + uuid + "," + overlayPath;
 											newMarker.setTypeAsSegmentation();
-											newMarker.setColorByIndex( overlayPath.length === 0 ? 1 : 0);
+											newMarker.setColorByIndex( chapterType === 1  ? 4 : 2);
 											break;
 										}
 									}
@@ -367,7 +381,15 @@ $._PPP_={
 						var sailvueMarkers = [];
 						for (var i = 0; i < markers.numMarkers; i++) {
 							if (markers[i].type == "Segmentation") {
-								var newLine = clip.getMediaPath() + "," + markers[i].start.seconds + "," + markers[i].end.seconds + "," + markers[i].name + "," + markers[i].comments + "\n";
+								var newLine;
+								if( markers[i].comments.length > 0) {
+									newLine = clip.getMediaPath() + "," + markers[i].start.seconds + "," + markers[i].end.seconds + "," + markers[i].name + "," + markers[i].comments + "\n";
+								}else{
+									var uuid = makeUUid();
+									var chapterType = 0;
+									newLine = clip.getMediaPath() + "," + markers[i].start.seconds + "," + markers[i].end.seconds + "," + markers[i].name + "," + chapterType + "," + uuid + ",\n";
+
+								}
 								$._PPP_.updateEventPanel(newLine);
 								fileToOpen.write(newLine);
 							}

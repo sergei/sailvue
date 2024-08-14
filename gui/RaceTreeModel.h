@@ -275,6 +275,8 @@ private:
     void computeStats();
     void startNetworkSimulator();
     void selectFirstChapter();
+
+    void deleteChapterByUUid(const QString& uuid);
 };
 
 

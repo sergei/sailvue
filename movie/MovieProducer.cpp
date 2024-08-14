@@ -194,14 +194,12 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
 
 
     auto duration = float(stopUtcMs - startUtcMs) / 1000;
-    float presentationDuration;
+    float presentationDuration = duration;
     bool changeDuration = false;
-    if( chapter.getChapterType() == ChapterTypes::ChapterType::SPEED_PERFORMANCE) {
-        presentationDuration = 60;
-        changeDuration = true;
-    }else{
-        presentationDuration = duration;
-    }
+//    if( chapter.getChapterType() == ChapterTypes::ChapterType::SPEED_PERFORMANCE) {
+//        presentationDuration = 60;
+//        changeDuration = true;
+//    }
 
     m_totalRaceDuration += presentationDuration * 1000;
 
@@ -220,6 +218,14 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
         // let's skip some epochs
         int targetFps = 10;
         ulEpochStep = totalCount / u_int64_t(presentationDuration) / targetFps;
+        // Recompute overlay FPS
+        overlaysFps = float(totalCount / ulEpochStep) / presentationDuration;
+    }
+
+    if( chapter.getChapterType() == ChapterTypes::ChapterType::SPEED_PERFORMANCE &&  totalCount > 1200 ){
+        // We don't want to have too many frames
+        // let's skip some epochs
+        ulEpochStep = totalCount / 1000;
         // Recompute overlay FPS
         overlaysFps = float(totalCount / ulEpochStep) / presentationDuration;
     }

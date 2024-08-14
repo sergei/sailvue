@@ -111,12 +111,15 @@ void FFMpeg::makeClip(const std::string &clipPath, FfmpegProgressListener &progr
     std::cout <<  "[" << ffmpegArgs << "]" << std::endl;
 
     // Execute ffmpeg
-    executeFfmpeg(ffmpegArgs, progress);
+    if( ! executeFfmpeg(ffmpegArgs, progress) ){
+            std::cout << "Deleting ffmpeg output file"  << std::endl;
+            std::filesystem::remove(clipPath);
+    }
 
     std::cout << "FFMpeg::makeClip: done " << std::endl;
 }
 
-void FFMpeg::executeFfmpeg(const std::string &ffmpegArgs, FfmpegProgressListener &progress) {
+bool FFMpeg::executeFfmpeg(const std::string &ffmpegArgs, FfmpegProgressListener &progress) {
     int outfp;
     int pid = popen2((const char *)ffmpegArgs.c_str(), nullptr, &outfp);
     if (pid == -1) {
@@ -150,7 +153,7 @@ void FFMpeg::executeFfmpeg(const std::string &ffmpegArgs, FfmpegProgressListener
                     std::cout << "FFMpeg::makeClip: killing PID " <<  pid << std::endl;
                     kill(pid, SIGINT);
                     fclose(outStream);
-                    break;
+                    return false;
                 }
             } else if( keyword == "progress"  ){
                 if ( value == "end" ){
@@ -164,8 +167,9 @@ void FFMpeg::executeFfmpeg(const std::string &ffmpegArgs, FfmpegProgressListener
         }
     } catch (...) {
         fclose(outStream);
-        throw;
+        return false;
     }
+    return true;
 }
 
 std::string FFMpeg::makeClipFfmpegArgs(const std::string &clipPath) {

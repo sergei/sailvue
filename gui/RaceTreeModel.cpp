@@ -1114,18 +1114,59 @@ void RaceTreeModel::importAdobeMarkers(const QString &markersFile) {
     markerReader.setTimeAdjustmentMs(cameraUtcOffsetMs());
     markerReader.read(markersCsv, m_CameraClipsList);
 
-    std::list<Chapter *> chapters;
-    markerReader.makeChapters(chapters, m_InstrDataVector);
+    std::list<Chapter *> importedChapters;
+    markerReader.makeChapters(importedChapters, m_InstrDataVector);
 
-    for( auto chapter : chapters){
-        // If chapter has empty UUID, this is a new chapter, so we need to add it
-        if ( chapter->getChapterClipFileName() == "" ) {
+    auto existingChapters = m_pCurrentRace->getChapters();
+
+    std::set<QString> existingUuids;
+    for( auto chapter : existingChapters){
+        const QString &uuid = chapter->getUuid();
+        std::cout << "Existing chapter " << chapter->getName() << " uuid " << uuid.toStdString() << std::endl;
+        existingUuids.emplace(uuid);
+    }
+
+    std::set<QString> importedUuids;
+    for( auto chapter : importedChapters){
+        const QString &uuid = chapter->getUuid();
+        std::cout << "Imported chapter " << chapter->getName() << " uuid " << uuid.toStdString() << std::endl;
+        importedUuids.emplace(uuid);
+    }
+
+    // Set of new uuids to be added
+    std::set<QString> newUuids;
+    std::set_difference(importedUuids.begin(), importedUuids.end(), existingUuids.begin(), existingUuids.end(),
+                        std::inserter(newUuids, newUuids.end()));
+
+    // Set of uuids to be updated
+    std::set<QString> updateUuids;
+    std::set_intersection(importedUuids.begin(), importedUuids.end(), existingUuids.begin(), existingUuids.end(),
+                          std::inserter(updateUuids, updateUuids.end()));
+
+    // Set of uuids to be deleted
+    std::set<QString> deleteUuids;
+    std::set_difference(existingUuids.begin(), existingUuids.end(), importedUuids.begin(), importedUuids.end(),
+                        std::inserter(deleteUuids, deleteUuids.end()));
+
+    // Delete chapters
+    for( auto chapter : existingChapters){
+        if ( deleteUuids.find(chapter->getUuid()) != deleteUuids.end()  )  {
+            std::cout << "Delete chapter " << chapter->getName() << std::endl;
+            deleteChapterByUUid(chapter->getUuid());
+        }
+    }
+
+    // Add or update chapters
+    for( auto chapter : importedChapters){
+        if ( newUuids.find(chapter->getUuid()) != newUuids.end()  )  {
+            std::cout << "Add chapter " << chapter->getName() << std::endl;
             addChapter(chapter);
-        }else{
-            // If chapter has UUID, this is an existing chapter, so we need to update it
+        }else{ // Just update the chapter
+            std::cout << "Update chapter " << chapter->getName() << std::endl;
             updateChapter(chapter);
         }
     }
+
 }
 
 void RaceTreeModel::exportAdobeMarkers(const QString &path) {
@@ -1135,5 +1176,20 @@ void RaceTreeModel::exportAdobeMarkers(const QString &path) {
     auto chapters = m_pCurrentRace->getChapters();
     markerReader.makeMarkers(chapters, m_InstrDataVector, m_CameraClipsList, QUrl(path).toLocalFile().toStdString());
 
+}
+
+void RaceTreeModel::deleteChapterByUUid(const QString& uuid) {
+    for( auto race : m_RaceDataList) {
+        for (auto chapter: race->getChapters()) {
+            if (chapter->getUuid() == uuid) {
+                race->getChapters().remove(chapter);
+                std::cout << "deleteChapterByUUid Chapter: " << chapter->getName() << std::endl;
+                m_project.raceDataChanged();
+                emit isDirtyChanged();
+                emit chapterDeleted(chapter->getUuid());
+                return;
+            }
+        }
+    }
 }
 

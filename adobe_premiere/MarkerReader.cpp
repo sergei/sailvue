@@ -63,6 +63,8 @@ void MarkerReader::read(const std::filesystem::path &markerFile, const std::list
 
         // Name
         std::getline(ss, item, ',');
+        // Trim whitespace
+        item.erase(std::remove(item.begin(), item.end(), ' '), item.end());
         marker->setName(item);
 
         // Type
@@ -71,10 +73,14 @@ void MarkerReader::read(const std::filesystem::path &markerFile, const std::list
 
         // Uuid
         std::getline(ss, item, ',');
+        // Trim whitespace
+        item.erase(std::remove(item.begin(), item.end(), ' '), item.end());
         marker->setUuid(item);
 
         // Overlay name if any
         std::getline(ss, item, ',');
+        // Trim whitespace
+        item.erase(std::remove(item.begin(), item.end(), ' '), item.end());
         marker->setOverlayName(item);
 
         marker->setClipStartUtc(createTimeUtcMs + m_timeAdjustmentMs);
@@ -140,7 +146,7 @@ void MarkerReader::makeMarkers(const std::list<Chapter *>& chapters, std::vector
     outStream << "Clip filename, In, Out, Description, Type, Uuid, Overlay filename" << std::endl;
     for(auto chapter: chapters) {
         uint64_t startUtcMs = instrDataVector[chapter -> getStartIdx()].utc.getUnixTimeMs() - m_timeAdjustmentMs;
-        uint64_t endUtcMs = instrDataVector[chapter -> getEndIdx()].utc.getUnixTimeMs();
+        uint64_t endUtcMs = instrDataVector[chapter -> getEndIdx()].utc.getUnixTimeMs()- m_timeAdjustmentMs;
 
         // Find clip corresponding to the start UTC
         outStream << makeCsvEntry(chapter, startUtcMs, endUtcMs, clips) << std::endl;
