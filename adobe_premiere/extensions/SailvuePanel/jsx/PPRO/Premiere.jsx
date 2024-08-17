@@ -380,7 +380,7 @@ $._PPP_={
 						// Get list of sailvue markers in this clip
 						var sailvueMarkers = [];
 						for (var i = 0; i < markers.numMarkers; i++) {
-							if (markers[i].type == "Segmentation") {
+							if (markers[i].type === "Segmentation") {
 								var newLine;
 								if( markers[i].comments.length > 0) {
 									newLine = clip.getMediaPath() + "," + markers[i].start.seconds + "," + markers[i].end.seconds + "," + markers[i].name + "," + markers[i].comments + "\n";
@@ -2323,8 +2323,8 @@ $._PPP_={
 	},
 
 	myOnProjectChanged : function (documentID) {
-		var msg = 'Project with ID ' + documentID + ' changed, in some way.';
-		$._PPP_.updateEventPanel(msg);
+		// var msg = 'Project with ID ' + documentID + ' changed, in some way.';
+		// $._PPP_.updateEventPanel(msg);
 	},
 
 	registerProjectChangedFxn : function () {
@@ -2390,7 +2390,7 @@ $._PPP_={
 	},
 
 	myActiveSequenceChangedFxn : function () {
-		$._PPP_.updateEventPanel(app.project.activeSequence.name + " changed, in some way.");
+		// $._PPP_.updateEventPanel(app.project.activeSequence.name + " changed, in some way.");
 	},
 
 	mySequenceActivatedFxn : function () {

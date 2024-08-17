@@ -569,7 +569,12 @@ void YdvrReader::lookupBangField(int64_t val, int64_t key) {
             break;
         case BANG_KEY_PILOT_TARGET_TWA: // "Pilot Target Wind Angle", "ANGLE_FIX16" Value
             if ( isInt16Valid(val) ) {
-                m_epoch.pilotTwa = Angle::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs);
+                double twaRads = double(val) * RES_RADIANS;
+                // FIXME: For some reasons the negative value always more by fifteen degrees, so we correct it
+                double correctedTwa = twaRads;
+                if( twaRads < 0 || twaRads > M_PI )
+                    correctedTwa -= 15.4 * M_PI / 180;
+                m_epoch.pilotTwa = Angle::fromRadians(correctedTwa, m_ulLatestGpsTimeMs);
             } else {
                 m_epoch.pilotTwa = Angle::INVALID;
             }

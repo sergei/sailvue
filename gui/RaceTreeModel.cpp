@@ -1148,6 +1148,13 @@ void RaceTreeModel::importAdobeMarkers(const QString &markersFile) {
     std::set_difference(existingUuids.begin(), existingUuids.end(), importedUuids.begin(), importedUuids.end(),
                         std::inserter(deleteUuids, deleteUuids.end()));
 
+    // Also delete all SPEED_PERFORMANCE chapters as they will need to be recreated
+    for( auto chapter : existingChapters){
+        if ( chapter->getChapterType() == ChapterTypes::SPEED_PERFORMANCE ){
+            deleteUuids.emplace(chapter->getUuid());
+        }
+    }
+
     // Delete chapters
     for( auto chapter : existingChapters){
         if ( deleteUuids.find(chapter->getUuid()) != deleteUuids.end()  )  {
