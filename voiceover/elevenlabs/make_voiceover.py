@@ -9,6 +9,7 @@ VOICE_IDS = {
     'Paul': 'WLKp2jV6nrS8aMkPPDRO',
     'Alexander': 'bWD9lIQeeSXBIWPT0mu4',
     'Jacob': 'KHx6YfZBu23HH6GJtSrW',
+    'CS': 'tWGXkYJGea4wMBN4mLD1',
 }
 
 
@@ -64,7 +65,7 @@ def make_voiceover_file(number, text, api_key, voice_id, output_dir):
 
 
 def make_voiceover(param):
-    voice_id = VOICE_IDS['Alexander']
+    voice_id = VOICE_IDS['CS']
     output_dir = os.path.expanduser(param.output_dir)
     srt_name = os.path.expanduser(param.srt_name)
 

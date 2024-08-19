@@ -103,7 +103,7 @@ void MovieProducer::produce() {
         overlayMaker.addOverlayElement(polarOverlayMaker);
         overlayMaker.addOverlayElement(rudderOverlayMaker);
         overlayMaker.addOverlayElement(startTimerOverlayMaker);
-        overlayMaker.addOverlayElement(performanceOverlayMaker);
+//        overlayMaker.addOverlayElement(performanceOverlayMaker);
 
         int chapterCount = 0;
         int numChapters = chapterList.size();

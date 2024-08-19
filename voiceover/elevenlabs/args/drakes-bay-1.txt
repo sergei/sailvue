@@ -1,0 +1,2 @@
+--srt-name=/Users/sergei/SailingVideos/2024-08-10-DRAKES-BAY-1/05-PROJECTS/04-DRAKES-BAY-FLAT-INTRO.srt
+--output-dir=/Users/sergei/SailingVideos/2024-08-10-DRAKES-BAY-1/08-VOICEOVER/INTRO
