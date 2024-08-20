@@ -1,5 +1,6 @@
 #include <iostream>
 #include "StartTimerOverlayMaker.h"
+#include "ColorPalette.h"
 
 
 StartTimerOverlayMaker::StartTimerOverlayMaker(std::vector<InstrumentInput>  &instrData, int width, int height, int x, int y)
@@ -33,10 +34,10 @@ void StartTimerOverlayMaker::addEpoch(QPainter &painter, const InstrumentInput &
     int64_t timeToStartSec = (int64_t(m_gunUtcTimeMs) - int64_t(epoch.utc.getUnixTimeMs())) / 1000;
 
     if ( timeToStartSec < 0 ){
-        painter.setPen(m_afterStartPen);
+        painter.setPen(AFTER_START_PEN);
         timeToStartSec = -timeToStartSec;
     } else {
-        painter.setPen(m_beforeStartPen);
+        painter.setPen(BEFORE_START_PEN);
     }
 
     int64_t timeToStartMin = timeToStartSec / 60;

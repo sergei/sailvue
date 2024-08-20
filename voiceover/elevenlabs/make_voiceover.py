@@ -10,6 +10,9 @@ VOICE_IDS = {
     'Alexander': 'bWD9lIQeeSXBIWPT0mu4',
     'Jacob': 'KHx6YfZBu23HH6GJtSrW',
     'CS': 'tWGXkYJGea4wMBN4mLD1',
+    'Pirate': 'PPzYpIqttlTYA83688JI',
+    'Joe': 'PPzYpIqttlTYA83688JI',
+    'Shirley': 'L4so9SudEsIYzE9j4qlR',
 }
 
 
@@ -43,9 +46,12 @@ def make_voiceover_file(number, text, api_key, voice_id, output_dir):
 
     data = {
         "text": text,
+        "model_id": "eleven_multilingual_v2",
         "voice_settings": {
-            "stability": 0.5,
-            "similarity_boost": 0.5
+            "stability": 0.6,
+            "similarity_boost": 0.6,
+            "style": 0.5,
+            "use_speaker_boost": True,
         }
     }
 
@@ -65,9 +71,10 @@ def make_voiceover_file(number, text, api_key, voice_id, output_dir):
 
 
 def make_voiceover(param):
-    voice_id = VOICE_IDS['CS']
     output_dir = os.path.expanduser(param.output_dir)
     srt_name = os.path.expanduser(param.srt_name)
+    require_voice_name = param.require_voice_name
+    default_voice_id = VOICE_IDS['Pirate']
 
     with open('elevenlabs-key.txt', 'rt') as key_file:
         key = key_file.read().strip()
@@ -79,12 +86,16 @@ def make_voiceover(param):
         for line in srt_file:
             line = line.strip()
             if not got_number:
+                if require_voice_name:
+                    voice_id = None
                 number = int(line)
                 got_number = True
             elif not got_time:
                 got_time = True
             elif line == '':
                 print(f'Chapter {number}:\n[{text}]')
+                # Find the name of the speaker denoted as [name]: in the text
+                text, voice_id = get_voice_id(require_voice_name, text, default_voice_id)
                 make_voiceover_file(number, text, key, voice_id, output_dir)
                 got_number = False
                 got_time = False
@@ -95,11 +106,32 @@ def make_voiceover(param):
         # Process the last chapter
         if text != '':
             print(f'Chapter {number}:\n[{text}]')
+            text, voice_id = get_voice_id(require_voice_name, text, default_voice_id)
             make_voiceover_file(number, text, key, voice_id, output_dir)
+
+
+def get_voice_id(require_voice_name, text, default_voice_id):
+    speaker = re.search(r'\[(.*?)\]:', text)
+    if speaker:
+        speaker = speaker.group(1)
+        print(f'Speaker: {speaker}')
+        if speaker in VOICE_IDS:
+            default_voice_id = VOICE_IDS[speaker]
+        else:
+            print(f'Unknown speaker: {speaker}')
+        # Remove speaker name from the text along with the leading and training spaces
+        text = re.sub(r'\[(.*?)\]:', '', text).strip()
+    else:
+        if require_voice_name:
+            print('No speaker found in the text')
+            return text, None
+
+    return text, default_voice_id
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(fromfile_prefix_chars='@')  # Allow arguments to be read from file
     parser.add_argument("--srt-name", help="Name of .SRT file", required=True)
     parser.add_argument("--output-dir", help="Output directory", required=True)
+    parser.add_argument("--require-voice-name", help="Require voice name in the text", action='store_true')
     make_voiceover(parser.parse_args())

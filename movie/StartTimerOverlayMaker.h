@@ -18,8 +18,6 @@ private:
     bool m_isStart = false;
     uint64_t m_gunUtcTimeMs = 0;
     QFont m_timeStampFont;
-    QPen m_beforeStartPen = QPen(QColor(255, 0, 0, 220));
-    QPen m_afterStartPen = QPen(QColor(0, 255, 0, 220));
 };
 
 

@@ -35,6 +35,11 @@ static const QPen RUDDER_FONT_PEN = QPen(RUDDER_RUDDER_FONT_COLOR);
 static const QPen AUTO_PEN = QPen(RUDDER_AUTO_COLOR, 8, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
 static const QPen AUTO_FONT_PEN = QPen(RUDDER_AUTO_FONT_COLOR);
 
+// Start overlay colors and pens
+static const QColor BEFORE_START_COLOR = QColor::fromString("#F16704");
+static const QColor AFTER_START_COLOR = QColor::fromString("#eef8fe");
+static const QPen BEFORE_START_PEN = QPen(BEFORE_START_COLOR);
+static const QPen AFTER_START_PEN = QPen(AFTER_START_COLOR);
 
 static const QColor PERFORMANCE_SLOW_COLOR = QColor::fromString("#FFF16704");
 static const QColor PERFORMANCE_FAST_COLOR = QColor::fromString("#DC726E63");
