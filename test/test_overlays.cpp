@@ -202,10 +202,12 @@ TEST(MedianTests, PerformanceOverlayTest) {
     Performance bad;
     bad.raceTimeLostToTargetSec = 10;
     bad.legTimeLostToTargetSec = 5;
+    bad.legDistLostToTargetMeters = 15;
     bad.isValid = true;
     Performance good;
     good.raceTimeLostToTargetSec = -10;
     good.legTimeLostToTargetSec = -5;
+    good.legDistLostToTargetMeters = -6;
     good.isValid = true;
     std::map<uint64_t, Performance> performanceMap;
     performanceMap[iiVector[0].utc.getUnixTimeMs()] = bad;

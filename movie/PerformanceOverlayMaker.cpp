@@ -28,19 +28,33 @@ void PerformanceOverlayMaker::addEpoch(QPainter &painter, const InstrumentInput 
 
     auto utcMs = epoch.utc.getUnixTimeMs();
     if( m_rPerformanceVector[utcMs].isValid ){
-        auto thisLegDeltaMs = int64_t(m_rPerformanceVector[utcMs].legTimeLostToTargetSec * 1000);
-        auto thisRaceDeltaMs = int64_t(m_rPerformanceVector[utcMs].raceTimeLostToTargetSec * 1000);
+        if ( m_chapterType == ChapterTypes::TACK_GYBE) {
+            auto thisLegBoatLength = m_rPerformanceVector[utcMs].legDistLostToTargetMeters / 10;
 
-        painter.setFont(m_labelTimeFont);
-        painter.setPen(PERF_LABEL_PEN);
-        painter.drawText(0, m_height * 5 / 8, "  entire video");
+            bool isDistanceLost = thisLegBoatLength > 0;
+            painter.setFont(m_currentTimeFont);
+            painter.setPen(isDistanceLost ? SLOW_TIME_PEN : FAST_TIME_PEN);
+            painter.drawText(0, m_height * 1 / 4,  isDistanceLost ? "Lost" : "Gained");
+            painter.setFont(m_totalTimeFont);
+            painter.setPen(isDistanceLost ? SLOW_TIME_PEN : FAST_TIME_PEN);
+            QString str = QString::asprintf("%.1f BL", abs(thisLegBoatLength));
+            painter.drawText(0, m_height * 2 / 4,  str);
 
-        painter.setFont(m_currentTimeFont);
-        painter.setPen(thisLegDeltaMs > 0 ? SLOW_TIME_PEN : FAST_TIME_PEN);
-        painter.drawText(0, m_height * 1 / 4,  " " + formatTime(thisLegDeltaMs) );
-        painter.setFont(m_totalTimeFont);
-        painter.setPen(thisRaceDeltaMs > 0 ? SLOW_TIME_PEN : FAST_TIME_PEN);
-        painter.drawText(0, m_height * 2 / 4,  "(" + formatTime(thisRaceDeltaMs) + ")");
+        }else{
+//            auto thisLegDeltaMs = int64_t(m_rPerformanceVector[utcMs].legTimeLostToTargetSec * 1000);
+//            auto thisRaceDeltaMs = int64_t(m_rPerformanceVector[utcMs].raceTimeLostToTargetSec * 1000);
+//
+//            painter.setFont(m_labelTimeFont);
+//            painter.setPen(PERF_LABEL_PEN);
+//            painter.drawText(0, m_height * 5 / 8, "  entire video");
+//
+//            painter.setFont(m_currentTimeFont);
+//            painter.setPen(thisLegDeltaMs > 0 ? SLOW_TIME_PEN : FAST_TIME_PEN);
+//            painter.drawText(0, m_height * 1 / 4,  " " + formatTime(thisLegDeltaMs) );
+//            painter.setFont(m_totalTimeFont);
+//            painter.setPen(thisRaceDeltaMs > 0 ? SLOW_TIME_PEN : FAST_TIME_PEN);
+//            painter.drawText(0, m_height * 2 / 4,  "(" + formatTime(thisRaceDeltaMs) + ")");
+        }
     }
 
 }
