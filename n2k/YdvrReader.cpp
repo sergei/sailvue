@@ -23,8 +23,8 @@ std::string trim(const std::string& str,
 }
 
 YdvrReader::YdvrReader(const std::string& stYdvrDir, const std::string& stCacheDir, const std::string& stPgnSrcCsv,
-                       bool bSummaryOnly, bool bMappingOnly, IProgressListener& rProgressListener)
-: m_rProgressListener(rProgressListener)
+                       bool bSummaryOnly, bool bMappingOnly, IProgressListener& rProgressListener, bool ignoreSourcesMap)
+: m_rProgressListener(rProgressListener), m_ignoreSourcesMap(ignoreSourcesMap)
 {
     if ( ! m_sCanBoatInitialized ){
         initCanBoat();  // Initialize canboat library
@@ -428,8 +428,9 @@ void YdvrReader::ProcessPgn(const YdvrMessage &msg, std::ofstream& cache)  {
         processProductInformationPgn(msg.src, pgn, data, len);
     } else {
         // Here we check if it's coming from approved source address
+        bool bCorrectSource = m_mapSrcForPgn[pgn->pgn] == msg.src;
         // Accept B&G key value from any source
-        if ( m_mapSrcForPgn[pgn->pgn] == msg.src || PGN_BANG_KEY_VALUE == pgn->pgn)
+        if (m_ignoreSourcesMap || bCorrectSource || PGN_BANG_KEY_VALUE == pgn->pgn)
         {
             switch(pgn->pgn){
                 case 129029:
@@ -488,6 +489,8 @@ void YdvrReader::processBangProprietary(const Pgn *pgn, uint8_t *data, uint8_t d
     int64_t maxValue;
     int fieldNo = pgn->repeatingStart1 - 1;
     const Field *field;
+
+    BangStartLineData startLineData;
     while(true) {
         int64_t val;
         int64_t valueLen;
@@ -509,14 +512,20 @@ void YdvrReader::processBangProprietary(const Pgn *pgn, uint8_t *data, uint8_t d
         extractNumber(field, data, dataLen, startBit, valueLen, &val, &maxValue);
         startBit += valueLen;
 
-        lookupBangField(val, key);
+        lookupBangField(val, key, startLineData);
+        // Check if we got valid start line data
+        if( startLineData.portEndLat != DBL_MAX && startLineData.portEndLon != DBL_MAX &&
+            startLineData.stbdEndLat != DBL_MAX && startLineData.stbdEndLon != DBL_MAX ) {
+            m_epoch.startLinePortEnd = GeoLoc::fromDegrees(startLineData.portEndLat, startLineData.portEndLon, m_ulLatestGpsTimeMs);
+            m_epoch.startLineStbdEnd = GeoLoc::fromDegrees(startLineData.stbdEndLat, startLineData.stbdEndLon, m_ulLatestGpsTimeMs);
+        }
     }
 }
 
-void YdvrReader::lookupBangField(int64_t val, int64_t key) {
+void YdvrReader::lookupBangField(int64_t val, int64_t key, BangStartLineData &startLineData) {
     switch(key){
         case BANG_KEY_RACE_TIMER:  // "Race Timer", "TIME_UFIX32_MS"
-            m_epoch.raceTimer = val;
+            m_epoch.raceTimer = (int32_t)val;
             break;
         case BANG_KEY_TARGET_SPEED: // "Target Boat Speed", "SPEED_FIX16_CM"
             if ( isInt16Valid(val) ) {
@@ -562,7 +571,7 @@ void YdvrReader::lookupBangField(int64_t val, int64_t key) {
             break;
         case BANG_KEY_DIST_TO_START: // "Distance to Start", "DISTANCE_FIX32_CM"
             if ( isUint32Valid(val) ) {
-                m_epoch.distToStart = Distance::fromMeters(double(val) * RES_MPS, m_ulLatestGpsTimeMs);
+                m_epoch.distToStart = Distance::fromMeters(double((int32_t)val) * RES_MPS, m_ulLatestGpsTimeMs);
             } else {
                 m_epoch.distToStart = Distance::INVALID;
             }
@@ -578,6 +587,29 @@ void YdvrReader::lookupBangField(int64_t val, int64_t key) {
             } else {
                 m_epoch.pilotTwa = Angle::INVALID;
             }
+            break;
+            case BANG_KEY_START_LINE_PORT_END_LAT:
+            if ( isInt32Valid(val) ) {
+                startLineData.portEndLat = double((int32_t)val) * RES_LL_32;
+            }
+            break;
+        case BANG_KEY_START_LINE_PORT_END_LON:
+            if ( isInt32Valid(val) ) {
+                startLineData.portEndLon = double((int32_t)val) * RES_LL_32;
+            }
+            break;
+        case BANG_KEY_START_LINE_STBD_END_LAT:
+            if ( isInt32Valid(val) ) {
+                startLineData.stbdEndLat = double((int32_t)val) * RES_LL_32;
+            }
+            break;
+        case BANG_KEY_START_LINE_STBD_END_LON:
+            if ( isInt32Valid(val) ) {
+                startLineData.stbdEndLon = double((int32_t)val) * RES_LL_32;
+            }
+            break;
+        default:
+//            printf("Unknown key %d with value %08X,%d, %.5f\n", key, val, val, double(val) *  RES_LL_32);
             break;
     }
 }
@@ -636,7 +668,7 @@ bool YdvrReader::processGpsFixPgn(const Pgn *pgn, const uint8_t *data, size_t le
 
         auto ulGpsTime = date * 86400 * 1000 + time / 10;
         if ( ulGpsTime <= m_ulLatestGpsTimeMs ){
-            std::cout << "GPS time went backward";
+            std::cout << "GPS time went backward" << std::endl;
             return false;
         }
         m_ulLatestGpsTimeMs = ulGpsTime;
@@ -812,7 +844,7 @@ void YdvrReader::ProcessEpochBatch(std::ofstream &cache) {
         m_ulPrevEpochUtcMs = 0;
     }
     if( (thisEpochUtcMs - m_ulPrevEpochUtcMs) > 10000 ){
-        std::cerr << "Too rage gaps between epochs" << std::endl;
+        std::cerr << "Too large gaps between epochs" << std::endl;
         m_ulPrevEpochUtcMs = 0;
     }
 

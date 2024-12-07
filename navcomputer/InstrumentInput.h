@@ -38,6 +38,8 @@ static const char *const ITEM_LEEWAY = "leeway_deg";
 static const char *const ITEM_CURRENT_DRIFT = "current_drift_kts";
 static const char *const ITEM_CURRENT_SET = "current_set_deg";
 static const char *const ITEM_DIST_TO_START = "dist_to_start_m";
+static const char *const ITEM_START_LINE_PORT_LOC = "start_line_port_loc";
+static const char *const ITEM_START_LINE_STBD_LOC = "start_line_stbd_loc";
 static const char *const ITEM_PILOT_TWA = "pilot_twa_deg";
 
 class InstrumentInput {
@@ -77,6 +79,10 @@ public:
     Speed currentDrift = Speed::INVALID;
     // Current set
     Direction currentSet = Direction::INVALID;
+    // Start line port end
+    GeoLoc startLinePortEnd = GeoLoc::INVALID;
+    // Start line stbd end
+    GeoLoc startLineStbdEnd = GeoLoc::INVALID;
     // Distance to start line
     Distance distToStart = Distance::INVALID;
     // Pilot Target Wind Angle
@@ -98,7 +104,7 @@ public:
             bool isName  = (count % 2) != 0;
             bool isValue = (count % 2) == 0;
             bool doPrint = (isName && isHeader) || (isValue && !isHeader);
-            if (item == ITEM_LOC)
+            if (item == ITEM_LOC || item == ITEM_START_LINE_PORT_LOC || item == ITEM_START_LINE_STBD_LOC)
                 isLocValue = true;
             if ( doPrint ){
                 // Special treatment of location object to make uniform CSV
@@ -152,6 +158,8 @@ public:
               <<  "," << ITEM_CURRENT_DRIFT << "," << currentDrift.toString(utc.getUnixTimeMs())
               <<  "," << ITEM_CURRENT_SET << "," << currentSet.toString(utc.getUnixTimeMs())
               <<  "," << ITEM_DIST_TO_START << "," << distToStart.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_START_LINE_PORT_LOC << "," << startLinePortEnd.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_START_LINE_STBD_LOC << "," << startLineStbdEnd.toString(utc.getUnixTimeMs())
               <<  "," << ITEM_PILOT_TWA << "," << pilotTwa.toString(utc.getUnixTimeMs())
               ;
         return ss.str();
@@ -169,69 +177,81 @@ public:
         while (std::getline(tokenStream, item, ',')) {
             std::string value;
             std::getline(tokenStream, value, ',');
-            if ( value.empty() )
+            if (value.empty())
                 continue;
 
-            if(item == ITEM_LOC) {
+            if (item == ITEM_LOC) {
                 std::stringstream ss(value);
                 std::string lat, lon;
                 std::getline(ss, lat, ';');
-                std::getline(ss, lon );
+                std::getline(ss, lon);
                 ii.loc = GeoLoc::fromDegrees(std::stod(lat), std::stod(lon), ulGpsTimeMs);
-            } else if(item == ITEM_COG)
+            } else if (item == ITEM_COG)
                 ii.cog = Direction::fromDegrees(std::stod(value), ulGpsTimeMs);
-            else if(item == ITEM_SOG)
+            else if (item == ITEM_SOG)
                 ii.sog = Speed::fromKnots(std::stod(value), ulGpsTimeMs);
-            else if(item == ITEM_AWS)
+            else if (item == ITEM_AWS)
                 ii.aws = Speed::fromKnots(std::stod(value), ulGpsTimeMs);
-            else if(item == ITEM_AWA)
+            else if (item == ITEM_AWA)
                 ii.awa = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
-            else if(item == ITEM_TWS)
+            else if (item == ITEM_TWS)
                 ii.tws = Speed::fromKnots(std::stod(value), ulGpsTimeMs);
-            else if(item == ITEM_TWA)
+            else if (item == ITEM_TWA)
                 ii.twa = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
-            else if(item == ITEM_MAG)
+            else if (item == ITEM_MAG)
                 ii.mag = Direction::fromDegrees(std::stod(value), ulGpsTimeMs);
-            else if(item == ITEM_SOW)
+            else if (item == ITEM_SOW)
                 ii.sow = Speed::fromKnots(std::stod(value), ulGpsTimeMs);
-            else if(item == ITEM_RDR)
+            else if (item == ITEM_RDR)
                 ii.rdr = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
-            else if(item == ITEM_CMD_RDR)
+            else if (item == ITEM_CMD_RDR)
                 ii.cmdRdr = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
-            else if(item == ITEM_HDG_TO_STEER)
+            else if (item == ITEM_HDG_TO_STEER)
                 ii.hdgToSteer = Direction::fromDegrees(std::stod(value), ulGpsTimeMs);
-            else if(item == ITEM_YAW)
+            else if (item == ITEM_YAW)
                 ii.yaw = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
-            else if(item == ITEM_PITCH)
+            else if (item == ITEM_PITCH)
                 ii.pitch = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
-            else if(item == ITEM_ROLL)
+            else if (item == ITEM_ROLL)
                 ii.roll = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
-            else if(item == ITEM_LOG)
+            else if (item == ITEM_LOG)
                 ii.log = Distance::fromMeters(std::stod(value), ulGpsTimeMs);
-            else if(item == ITEM_MAG_VAR)
+            else if (item == ITEM_MAG_VAR)
                 ii.magVar = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
-            else if(item == ITEM_DEPTH)
+            else if (item == ITEM_DEPTH)
                 ii.depth = Distance::fromMillimeters(std::stod(value) * 1000, ulGpsTimeMs);
-            else if(item == ITEM_RACE_TIMER)
+            else if (item == ITEM_RACE_TIMER)
                 ii.raceTimer = std::stoll(value);
-            else if(item == ITEM_TARGET_SPEED)
+            else if (item == ITEM_TARGET_SPEED)
                 ii.targetSpeed = Speed::fromKnots(std::stod(value), ulGpsTimeMs);
-            else if(item == ITEM_POLAR_SPEED)
+            else if (item == ITEM_POLAR_SPEED)
                 ii.polarSpeed = Speed::fromKnots(std::stod(value), ulGpsTimeMs);
-            else if(item == ITEM_VMG)
+            else if (item == ITEM_VMG)
                 ii.vmg = Speed::fromKnots(std::stod(value), ulGpsTimeMs);
-            else if(item == ITEM_LEEWAY)
+            else if (item == ITEM_LEEWAY)
                 ii.leeway = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
-            else if(item == ITEM_CURRENT_DRIFT)
+            else if (item == ITEM_CURRENT_DRIFT)
                 ii.currentDrift = Speed::fromKnots(std::stod(value), ulGpsTimeMs);
-            else if(item == ITEM_CURRENT_SET)
+            else if (item == ITEM_CURRENT_SET)
                 ii.currentSet = Direction::fromDegrees(std::stod(value), ulGpsTimeMs);
-            else if(item == ITEM_DIST_TO_START)
+            else if (item == ITEM_DIST_TO_START)
                 ii.distToStart = Distance::fromMeters(std::stod(value), ulGpsTimeMs);
-            else if(item == ITEM_PILOT_TWA)
+            else if (item == ITEM_PILOT_TWA)
                 ii.pilotTwa = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
+            else if (item == ITEM_START_LINE_PORT_LOC) {
+                std::stringstream ss(value);
+                std::string lat, lon;
+                std::getline(ss, lat, ';');
+                std::getline(ss, lon);
+                ii.startLinePortEnd = GeoLoc::fromDegrees(std::stod(lat), std::stod(lon), ulGpsTimeMs);
+            } else if (item == ITEM_START_LINE_STBD_LOC) {
+                std::stringstream ss(value);
+                std::string lat, lon;
+                std::getline(ss, lat, ';');
+                std::getline(ss, lon);
+                ii.startLineStbdEnd = GeoLoc::fromDegrees(std::stod(lat), std::stod(lon), ulGpsTimeMs);
+            }
         }
-
         return ii;
     }
 

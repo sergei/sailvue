@@ -25,11 +25,12 @@ TEST(N2kTests, YdvrTest)
 
     setLogLevel(LOGLEVEL_INFO);
 
-    YdvrReader ydvrReader(stYdvrDir, stCacheDir, stPgnSrcCsv, false, false, progressListener);
+    YdvrReader ydvrReader(stYdvrDir, stCacheDir, stPgnSrcCsv, false, false,
+                          progressListener, true);
     std::list<InstrumentInput> ii;
     ydvrReader.read(0, 0xFFFFFFFFFFF, ii);
 
 
-    ASSERT_EQ( 1 , 0);
+    ASSERT_NE( ii.size() , 0);
 }
 

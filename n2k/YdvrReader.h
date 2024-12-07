@@ -73,6 +73,10 @@ enum BangKeys{
     BANG_KEY_CURRENT_SET = 132,
     BANG_KEY_DIST_TO_START = 152,
     BANG_KEY_PILOT_TARGET_TWA = 385,
+    BANG_KEY_START_LINE_PORT_END_LAT = 0x114,
+    BANG_KEY_START_LINE_PORT_END_LON = 0x115,
+    BANG_KEY_START_LINE_STBD_END_LAT = 0x116,
+    BANG_KEY_START_LINE_STBD_END_LON = 0x117,
 };
 
 typedef struct
@@ -86,6 +90,14 @@ typedef struct
     bool     used;
 } Packet;
 
+class BangStartLineData
+{
+public:
+    double portEndLat = DBL_MAX;
+    double portEndLon = DBL_MAX;
+    double stbdEndLat = DBL_MAX;
+    double stbdEndLon = DBL_MAX;
+};
 
 const size_t  REASSEMBLY_BUFFER_SIZE = 64;
 
@@ -93,14 +105,13 @@ const size_t  REASSEMBLY_BUFFER_SIZE = 64;
 class YdvrReader : public InstrDataReader {
 public:
     YdvrReader(const std::string& stYdvrDir, const std::string& stCacheDir, const std::string& stPgnSrcCsv,
-               bool bSummaryOnly, bool bMappingOnly, IProgressListener& rProgressListener);
+               bool bSummaryOnly, bool bMappingOnly, IProgressListener& rProgressListener, bool ignoreSourcesMap = false);
     ~YdvrReader();
 
     void read(uint64_t ulStartUtcMs, uint64_t ulEndUtcMs, std::list<InstrumentInput> &listInputs) override;
 
     void getPgnData(std::map<uint32_t, std::vector<std::string>> &mapPgnDevices,
                     std::map<uint32_t, std::string> &mapPgnDescription);
-
 private:
     void processYdvrDir(const std::string& stYdvrDir, const std::string& stCacheDir, bool bSummaryOnly, bool bMappingOnly);
     void processDatFile(const std::string &ydvrFile, const std::string& stWorkDir,  const std::string& stSummaryDir, bool bSummaryOnly, bool bMappingOnly);
@@ -128,7 +139,9 @@ private:
     void ProcessEpochBatch(std::ofstream &cache);
     bool isUint16Valid(int64_t val) const { return val < 65532; }
     bool isUint32Valid(int64_t val) const { return val < 4294967293; }
-    bool isInt16Valid(int64_t val) const { return val != 32767; }
+
+    bool isInt32Valid(int64_t val) const { return val != 0x7FFFFFFF; }
+    bool isInt16Valid(int64_t val) const { return val != 0x7FFFF; }
 
 private:
     static bool m_sCanBoatInitialized;
@@ -146,6 +159,7 @@ private:
     // Use this map to accept PGNs coming from this source only
     std::map<uint32_t, uint8_t> m_mapSrcForPgn;
 
+    bool m_ignoreSourcesMap = false;  // Used for unite tests
 
     uint64_t m_ulLatestGpsTimeMs = 0;  // Time of last GPS fix in Unix time (ms) unlike m_ulGpsFixUnixTimeMs it is carried from file to file
 
@@ -169,7 +183,7 @@ private:
 
     Packet reassemblyBuffer[REASSEMBLY_BUFFER_SIZE];
 
-    void lookupBangField(int64_t val, int64_t key);
+    void lookupBangField(int64_t val, int64_t key, BangStartLineData &startLineData);
 };
 
 
