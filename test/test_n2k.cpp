@@ -4,7 +4,6 @@
 
 TEST(N2kTests, YdvrTest)
 {
-
     class EncodingProgressListener : public IProgressListener {
     public:
         void progress(const std::string& state, int progress) override {
@@ -17,7 +16,7 @@ TEST(N2kTests, YdvrTest)
 
     EncodingProgressListener progressListener;
 
-    std::string stYdvrDir="data/ydvr";
+    std::string stYdvrDir="data/ydvr-1";
     const std::string stCacheDir="/tmp/sailvue-unit-test";
     const std::string stPgnSrcCsv = "/Users/sergei/Documents/sailing/pgns/sun-dragons-pgns.csv";
 

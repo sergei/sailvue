@@ -301,17 +301,24 @@ void YdvrReader::readDatFile(const std::string &ydvrFile, const std::filesystem:
     summary.close();
 }
 
+static void resetPacketBuffer(Packet *p){
+    p->frames = 0;
+    p->used   = false;
+    p->allFrames = 0;
+}
+
 
 Packet *YdvrReader::assembleFastPacket(YdvrMessage *msg) {
     size_t     buffer;
     Packet    *p;
 
     // Find slot containing the sequence for given PGN from given SRC
+    uint32_t seq      = msg->data[0] & 0xe0;
     for (buffer = 0; buffer < REASSEMBLY_BUFFER_SIZE; buffer++)
     {
         p = &reassemblyBuffer[buffer];
 
-        if (p->used && p->pgn == msg->pgn && p->src == msg->src)
+        if (p->used && p->pgn == msg->pgn && p->src == msg->src && p->seq == seq)
         {
             // Found existing slot
             break;
@@ -339,12 +346,12 @@ Packet *YdvrReader::assembleFastPacket(YdvrMessage *msg) {
         p->src    = msg->src;
         p->pgn    = msg->pgn;
         p->frames = 0;
+        p->seq    = seq;
     }
 
 
     // YDWG can receive frames out of order, so handle this.
     uint32_t frame    = msg->data[0] & 0x1f;
-    uint32_t seq      = msg->data[0] & 0xe0;
     size_t   idx      = (frame == 0) ? 0 : FASTPACKET_BUCKET_0_SIZE + (frame - 1) * FASTPACKET_BUCKET_N_SIZE;
     size_t   frameLen = (frame == 0) ? FASTPACKET_BUCKET_0_SIZE : FASTPACKET_BUCKET_N_SIZE;
     size_t   msgIdx   = (frame == 0) ? FASTPACKET_BUCKET_0_OFFSET : FASTPACKET_BUCKET_N_OFFSET;
@@ -352,21 +359,23 @@ Packet *YdvrReader::assembleFastPacket(YdvrMessage *msg) {
     if ((p->frames & (1 << frame)) != 0)
     {
         logError("Received incomplete fast packet PGN %u from source %u\n", msg->pgn, msg->src);
-        p->frames = 0;
+        resetPacketBuffer(p);
+        return nullptr;
     }
 
     if (frame == 0 && p->frames == 0)
     {
         p->size      = msg->data[1];
-        p->allFrames = (1 << (1 + (p->size / 7))) - 1;
+        p->allFrames = (1ULL << (1 + (p->size / 7))) - 1;
     }
 
     memcpy(&p->data[idx], &msg->data[msgIdx], frameLen);
     p->frames |= 1 << frame;
 
-    logDebug("Using buffer %u for reassembly of PGN %u: size %zu frame %u sequence %u idx=%zu frames=%x mask=%x\n",
+    logDebug("Using buffer %u for reassembly of PGN %u src %u: size %zu frame %u sequence %u idx=%zu frames=%x mask=%x\n",
              buffer,
              msg->pgn,
+             msg->src,
              p->size,
              frame,
              seq,
@@ -377,8 +386,7 @@ Packet *YdvrReader::assembleFastPacket(YdvrMessage *msg) {
     if (p->frames == p->allFrames)
     {
         // Received all data
-        p->used   = false;
-        p->frames = 0;
+        resetPacketBuffer(p);
         return p;
     }
 
@@ -667,7 +675,7 @@ bool YdvrReader::processGpsFixPgn(const Pgn *pgn, const uint8_t *data, size_t le
         extractNumberByOrder(pgn, 3, data, len, &time);
 
         auto ulGpsTime = date * 86400 * 1000 + time / 10;
-        if ( ulGpsTime <= m_ulLatestGpsTimeMs ){
+        if ( ulGpsTime <= m_ulLatestGpsTimeMs && !m_ignoreSourcesMap){  // If we ignore sources the GPS from other source can be out of order
             std::cout << "GPS time went backward" << std::endl;
             return false;
         }

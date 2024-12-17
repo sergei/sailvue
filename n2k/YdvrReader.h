@@ -88,6 +88,7 @@ typedef struct
     int      pgn;
     int      src;
     bool     used;
+    uint32_t seq;
 } Packet;
 
 class BangStartLineData

@@ -39,7 +39,9 @@ static const char *const ITEM_CURRENT_DRIFT = "current_drift_kts";
 static const char *const ITEM_CURRENT_SET = "current_set_deg";
 static const char *const ITEM_DIST_TO_START = "dist_to_start_m";
 static const char *const ITEM_START_LINE_PORT_LOC = "start_line_port_loc";
+static const char *const ITEMS_START_LINE_PORT_LAT_LON = "start_line_port_lat_deg,start_line_port_lon_deg";
 static const char *const ITEM_START_LINE_STBD_LOC = "start_line_stbd_loc";
+static const char *const ITEMS_START_LINE_STBD_LAT_LON = "start_stbd_port_lat_deg,start_line_stbd_lon_deg";
 static const char *const ITEM_PILOT_TWA = "pilot_twa_deg";
 
 class InstrumentInput {
@@ -115,8 +117,12 @@ public:
                     std::replace( item.begin(), item.end(), ';', ',');
                 }
                 // Replace loc with lat,lon
-                if (item == ITEM_LOC){
+                if (item == ITEM_LOC) {
                     ss << ITEMS_LAT_LON;
+                }else if ( item == ITEM_START_LINE_PORT_LOC ){
+                        ss << ITEMS_START_LINE_PORT_LAT_LON;
+                }else if ( item == ITEM_START_LINE_STBD_LOC ){
+                        ss << ITEMS_START_LINE_STBD_LAT_LON;
                 }else{
                     ss << item;
                 }
