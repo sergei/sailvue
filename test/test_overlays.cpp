@@ -10,6 +10,7 @@
 #include "movie/InstrOverlayMaker.h"
 #include "navcomputer/Performance.h"
 #include "movie/PerformanceOverlayMaker.h"
+#include "movie/StartTimerOverlayMaker.h"
 
 TEST(MedianTests, PolarTest)
 {
@@ -231,4 +232,52 @@ TEST(MedianTests, DescriptionFormatTest) {
     tws = 10.1;
     ss << "TWS " << std::fixed << std::setprecision(0) << tws;
     ASSERT_EQ(ss.str(), "TWS 10");
+}
+
+
+
+TEST(MedianTests, StartTest) {
+    std::vector<InstrumentInput> iiVector;
+
+    std::string iiFile = "./data/ii-start.csv";
+    std::cout << "Reading data file: " << iiFile << std::endl;
+    std::ifstream cache (iiFile, std::ios::in);
+    std::string line;
+    while (std::getline(cache, line)) {
+        std::stringstream ss(line);
+        std::string item;
+        std::getline(ss, item, ',');
+        InstrumentInput ii = InstrumentInput::fromString(line);
+        iiVector.push_back(ii);
+    }
+    ASSERT_FALSE(iiVector.empty());
+
+    Chapter chapter(0, iiVector.size()-1);
+    chapter.setChapterType(ChapterTypes::START);
+    chapter.SetGunIdx(110);
+
+    std::list<InstrumentInput> chapterEpochs;
+    for(auto & epoch: iiVector) {
+        chapterEpochs.push_back(epoch);
+    }
+
+    Polars polars;
+    polars.loadPolar("./data/polars-arkana.csv");
+
+    int width = 480;
+    int height = 256;
+    StartTimerOverlayMaker startTimerOverlayMaker(polars, iiVector, width, height, 0, 0);
+
+
+    const char *const overlayDir = "./overlays_start";
+    std::filesystem::remove_all(overlayDir);
+    OverlayMaker overlayMaker(overlayDir, 1920, 1080);
+
+    overlayMaker.addOverlayElement(startTimerOverlayMaker);
+    overlayMaker.setChapter(chapter, chapterEpochs);
+
+    for(int i = 0;  i < iiVector.size() && i < 50; i++) {
+        overlayMaker.addEpoch(iiVector[i], true);
+    }
+
 }

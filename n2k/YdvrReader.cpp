@@ -577,8 +577,8 @@ void YdvrReader::lookupBangField(int64_t val, int64_t key, BangStartLineData &st
                 m_epoch.currentSet = Direction::INVALID;
             }
             break;
-        case BANG_KEY_DIST_TO_START: // "Distance to Start", "DISTANCE_FIX32_CM"
-            if ( isUint32Valid(val) ) {
+        case BANG_KEY_DIST_BEHIND_START: // "Distance behind Start line", "DISTANCE_FIX32_CM"
+            if ( isInt32Valid(val) ) {
                 m_epoch.distToStart = Distance::fromMeters(double((int32_t)val) * RES_MPS, m_ulLatestGpsTimeMs);
             } else {
                 m_epoch.distToStart = Distance::INVALID;

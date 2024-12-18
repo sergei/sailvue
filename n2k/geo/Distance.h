@@ -9,17 +9,17 @@ public:
     explicit Distance(): Quantity(false, 0) {};
 
     static Distance fromMiles(double nauticalMiles, uint64_t utcMs) {
-        return Distance(uint32_t(nauticalMiles * 1852.) , utcMs);
+        return Distance(int32_t(nauticalMiles * 1852.) , utcMs);
     }
-    static Distance fromMeters(uint32_t meters, uint64_t utcMs) {
+    static Distance fromMeters(int32_t meters, uint64_t utcMs) {
         return Distance(meters, utcMs);
     }
-    static Distance fromMillimeters(uint32_t mm, uint64_t utcMs) {
+    static Distance fromMillimeters(int32_t mm, uint64_t utcMs) {
         return Distance(mm / 1000., utcMs);
     }
 
-    [[nodiscard]] uint32_t getMeters() const { return lround(m_dMeters); }
-    [[nodiscard]] uint32_t getMillimeters() const { return lround(m_dMeters * 1000 ); }
+    [[nodiscard]] int32_t getMeters() const { return lround(m_dMeters); }
+    [[nodiscard]] int32_t getMillimeters() const { return lround(m_dMeters * 1000 ); }
     [[nodiscard]] std::string toString(uint64_t utcMs) const {
         std::stringstream ss;
         if( isValid(utcMs))

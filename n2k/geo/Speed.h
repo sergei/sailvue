@@ -18,6 +18,7 @@ public:
     static Speed median(const std::list<Speed> &values, uint64_t utcMs);
 
     [[nodiscard]] double getKnots() const { return m_dKnots; }
+    [[nodiscard]] double getMetersPerSec() const { return m_dKnots * 1852. / 3600.; }
     [[nodiscard]] std::string toString(uint64_t utcMs) const {
         std::stringstream ss;
         if( isValid(utcMs))

@@ -41,6 +41,11 @@ static const QColor AFTER_START_COLOR = QColor::fromString("#eef8fe");
 static const QPen BEFORE_START_PEN = QPen(BEFORE_START_COLOR);
 static const QPen AFTER_START_PEN = QPen(AFTER_START_COLOR);
 
+static const QColor OCS_COLOR = QColor::fromString("#F16704");
+static const QColor NOT_OCS_COLOR = QColor::fromString("#eef8fe");
+static const QPen OCS_PEN = QPen(OCS_COLOR);
+static const QPen NOT_OCS_PEN = QPen(NOT_OCS_COLOR);
+
 static const QColor PERFORMANCE_SLOW_COLOR = QColor::fromString("#FFF16704");
 static const QColor PERFORMANCE_FAST_COLOR = QColor::fromString("#DC726E63");
 

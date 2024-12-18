@@ -69,7 +69,8 @@ void MovieProducer::produce() {
         int startIdx = (int)chapterList.front()->getStartIdx();
         int endIdx = (int)chapterList.back()->getEndIdx();
 
-        int timerHeight = 128;
+        int timerHeight = 256;
+        int timerWidth = 320;
         int timerX = -1;  // Right aligned
 
         int perf_ovl_width = 200;
@@ -90,7 +91,7 @@ void MovieProducer::produce() {
 
         RudderOverlayMaker rudderOverlayMaker(rudder_ovl_width, rudder_ovl_height, 0, polar_ovl_height);
 
-        StartTimerOverlayMaker startTimerOverlayMaker(m_rInstrDataVector, timerHeight, timerHeight, timerX, 0);
+        StartTimerOverlayMaker startTimerOverlayMaker(m_polars, m_rInstrDataVector, timerWidth, timerHeight, timerX, 0);
 
         PerformanceOverlayMaker performanceOverlayMaker(m_rPerformanceVector,
                                                         perf_ovl_width, perf_ovl_height, perfX, perfY);
