@@ -92,6 +92,15 @@ function makeUUid() {
 	});
 }
 
+ function isInArray(value, array) {
+	for( var i = 0; i < array.length; i++) {
+		if(array[i] === value) {
+			return true;
+		}
+	}
+	return false;
+}
+
 $._PPP_={
 
 	isSailvueTrackAvailable : function (seq) {
@@ -404,6 +413,186 @@ $._PPP_={
 			}
 		} else {
 			$._PPP_.updateEventPanel("Project is empty.");
+		}
+	},
+
+	insertSailVueVoiceOver : function () {
+		var destBin = app.project.getInsertionBin();
+		if ( destBin ) {
+			$._PPP_.updateEventPanel("destBin.name [" + destBin.name + "]");
+			if ( destBin.name !== "60-VOICEOVER" ) {
+				alert("Please select 60-VOICEOVER bin");
+				return;
+			}
+
+			var srtFile = File.openDialog("Choose .SRT file to import", // title
+				"Subtitles:*.srt", // filter available files?
+				false); // allow multiple?
+
+			if ( !srtFile ){
+				return;
+			}
+
+			// Check if this file is already imported
+			var srtProjectItem = null;
+			var projItemIdx;
+			for (projItemIdx = 0; projItemIdx < destBin.children.numItems; projItemIdx++) {
+				if (destBin.children[projItemIdx].getMediaPath() === srtFile.fsName) {
+					srtProjectItem = destBin.children[projItemIdx];
+					break;
+				}
+			}
+
+			if ( srtProjectItem === null ){
+				// Import .SRT file
+				$._PPP_.updateEventPanel("Importing  [" + srtFile.fsName + "]");
+				var importThese = [];
+				importThese.push(srtFile.fsName);
+				app.project.importFiles(importThese,
+					true,
+					destBin,
+					false);
+				for (projItemIdx = 0; projItemIdx < destBin.children.numItems; projItemIdx++) {
+					if (destBin.children[projItemIdx].getMediaPath() === srtFile.fsName) {
+						srtProjectItem = destBin.children[projItemIdx];
+						break;
+					}
+				}
+			}else{
+				// Don't import, just refresh media
+				$._PPP_.updateEventPanel("Refreshing media for [" + srtProjectItem + "]");
+				srtProjectItem.refreshMedia();
+			}
+			// Create caption track
+			if ( srtProjectItem === null ){
+				alert("Failed to import " + srtFile.fsName);
+				return
+			}
+			var activeSeq = app.project.activeSequence;
+			if (activeSeq) {
+				var startAtTime = 0;
+				activeSeq.createCaptionTrack(srtProjectItem, startAtTime);
+			} else {
+				alert("No active sequence.");
+			}
+
+			// Get list of MP3 files in the same folder as SRT file and import them
+			var srtPath = srtFile.path;
+			var srtFolder = new Folder(srtPath);
+			var files = srtFolder.getFiles("*.mp3");
+
+			$._PPP_.updateEventPanel("Found " + files.length + " MP3 files in " + srtPath);
+
+			// Get list of already imported MP3 files
+			var mp3ProjectItemsMediaNames = [];
+			for (projItemIdx = 0; projItemIdx < destBin.children.numItems; projItemIdx++) {
+				destBin.children[projItemIdx].refreshMedia();  // Just in case
+				mp3ProjectItemsMediaNames.push(destBin.children[projItemIdx].getMediaPath())
+			}
+			$._PPP_.updateEventPanel("Found " + mp3ProjectItemsMediaNames.length + " project items ");
+
+			var filesToImport = [];
+			var i;
+			for ( i = 0; i < files.length; i++) {
+				if ( ! isInArray(files[i].fsName, mp3ProjectItemsMediaNames) ){
+					filesToImport.push(files[i].fsName);
+				}else{
+				}
+			}
+			$._PPP_.updateEventPanel("Import " + filesToImport.length + " files ");
+
+			if ( filesToImport.length > 0 ) {
+				$._PPP_.updateEventPanel("Import " + filesToImport.length + " MP3 files");
+				app.project.importFiles(filesToImport, false, destBin, false);
+			}else{
+				$._PPP_.updateEventPanel("No new MP3 to import");
+			}
+
+			// Now put these MP3 files on the audio track
+			// Add video track to keep sailvue overlays
+			var tracks = activeSeq.audioTracks;
+			var voiceOverTrack = null;
+			for (i = 0; i < tracks.numTracks; i++) {
+				if (tracks[i].name === "voiceover") {
+					voiceOverTrack = tracks[i];
+					break;
+				}
+			}
+
+			if( voiceOverTrack === null ){
+				alert("Please add a audio track named 'voiceover' to the sequence.");
+				return;
+			}
+
+			// Create map of the clips indexed by the chapter number
+			var clips = {};
+			for (i = 0; i < destBin.children.numItems; i++) {
+				var projectItem = destBin.children[i];
+				var ext = projectItem.name.split('.').pop();
+				if (ext.toLowerCase() === "mp3") {
+					var t = projectItem.name.split("-");
+					var chapter_num = Number(t[0]);
+					clips[chapter_num] = projectItem;
+				}
+			}
+
+			// Now read the .SRT file and insert the clips
+			$._PPP_.updateEventPanel("Opening " + srtFile.fsName);
+			srtFile.open("r", "TEXT", "????");
+			$._PPP_.updateEventPanel("Reading " + srtFile.fsName);
+			var fileContents = srtFile.read();
+			$._PPP_.updateEventPanel("Splitting " + srtFile.fsName);
+			var allTextLines = fileContents.split("\n");
+			$._PPP_.updateEventPanel("Found " + allTextLines.length + " lines in " + srtFile.fsName);
+
+			var gotChapter = false;
+			var gotTimeCode	= false
+			var gotText		= false
+			var text = ""
+			for(i=0; i < allTextLines.length; i++) {
+				var line = allTextLines[i];
+				if (!gotChapter) {
+					if (line.length > 0) {
+						var chapter = Number(line);
+						if (clips[chapter]) {
+							// $._PPP_.updateEventPanel("Chapter " + chapter + " found");
+							gotChapter = true;
+						}
+					}
+				} else if (!gotTimeCode) {
+					if (line.length > 0) {
+						// Parse time code line 00:02:16,612 --> 00:02:19,376
+						var from = line.split("-->")[0];
+						var fromParts = from.split(":");
+						var fromSeconds = Number(fromParts[0]) * 3600 + Number(fromParts[1]) * 60 + Number(fromParts[2].split(",")[0]);
+						// $._PPP_.updateEventPanel("TimeCode " + timeCode + " found, seconds=" + fromSeconds);
+						gotTimeCode = true;
+					}
+				} else if (!gotText) {
+					if (line.length > 0) {
+						text += line + "\n";
+					} else {
+						// $._PPP_.updateEventPanel("Text " + text + " found");
+						gotText = true;
+					}
+				}
+				if ( gotChapter && gotTimeCode && gotText) {
+					// Insert the clip
+					var clipInTime = new Time();
+					clipInTime.seconds = fromSeconds;
+					// $._PPP_.updateEventPanel("Inserting " + clips[chapter].name + " at " + fromSeconds);
+					voiceOverTrack.overwriteClip(clips[chapter], clipInTime.seconds);
+					gotChapter = false;
+					gotTimeCode = false;
+					gotText = false;
+					text = "";
+				}
+
+			}
+
+
+		}else{
+			alert("Please select 60-VOICEOVER bin");
 		}
 	},
 
