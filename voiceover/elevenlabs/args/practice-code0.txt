@@ -1,0 +1,2 @@
+--srt-name=/Users/sergei/SailingVideos/2024-12-25-PRACTICE/07-VOICEOVER/03-FLAT-UNCUT-SPEEDUP.srt
+--output-dir=/Users/sergei/SailingVideos/2024-12-25-PRACTICE/07-VOICEOVER/

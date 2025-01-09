@@ -2,7 +2,12 @@ import argparse
 import hashlib
 import re
 import os
+import shutil
+from datetime import datetime, timedelta
+
 import requests
+from mutagen.mp3 import MP3
+
 CHUNK_SIZE = 1024
 
 VOICE_IDS = {
@@ -14,6 +19,25 @@ VOICE_IDS = {
     'Joe': 'PPzYpIqttlTYA83688JI',
     'Shirley': 'L4so9SudEsIYzE9j4qlR',
 }
+
+
+def get_voice_id(require_voice_name, text, default_voice_id):
+    speaker = re.search(r'\[(.*?)]:', text)
+    if speaker:
+        speaker = speaker.group(1)
+        print(f'Speaker: {speaker}')
+        if speaker in VOICE_IDS:
+            default_voice_id = VOICE_IDS[speaker]
+        else:
+            print(f'Unknown speaker: {speaker}')
+        # Remove speaker name from the text along with the leading and training spaces
+        text = re.sub(r'\[(.*?)\]:', '', text).strip()
+    else:
+        if require_voice_name:
+            print('No speaker found in the text')
+            return text, None
+
+    return text, default_voice_id
 
 
 def make_voiceover_file(number, text, api_key, voice_id, output_dir):
@@ -33,8 +57,9 @@ def make_voiceover_file(number, text, api_key, voice_id, output_dir):
     for file in files:
         t = file.split('-')
         if len(t) > 1 and t[2] == text_hash + '.mp3':
-            print(f'File {file_name} already exists, skipping ...')
-            return
+            current_name = output_dir + os.sep + file
+            print(f'File {current_name} for this text already exists, skipping ...')
+            return current_name
 
     # Make the voiceover using eleven labs API
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
@@ -60,7 +85,7 @@ def make_voiceover_file(number, text, api_key, voice_id, output_dir):
     # Check if the request was successful
     if response.status_code != 200:
         print(f'Error making voiceover: {response.text}')
-        return
+        return None
 
     with open(file_name, 'wb') as f:
         for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
@@ -68,17 +93,58 @@ def make_voiceover_file(number, text, api_key, voice_id, output_dir):
                 f.write(chunk)
 
     print(f'File name: {file_name} created')
+    return file_name
+
+
+def decode_time(line):
+    """ Decodes SRT time stamp such as 00:03:20,476 --> 00:03:22,671
+    """
+    idx = line.find('-->')
+    s = line[0:idx].strip()
+    time_from = datetime.strptime(s, "%H:%M:%S,%f")
+    s = line[idx+3:].strip()
+    time_to = datetime.strptime(s, "%H:%M:%S,%f")
+    return time_from, time_to
+
+
+def make_chapter(number, start_time, end_time, text, file_name):
+    audio = MP3(file_name)
+    mp3_duration_sec = timedelta(seconds=audio.info.length)
+    text_hash = os.path.splitext(os.path.basename(file_name))[0].split('-')[2]
+    return {
+        'number': number,
+        'start_time': start_time,
+        'end_time': end_time,
+        'text': text,
+        'mp3_duration_sec': mp3_duration_sec,
+        'hash': text_hash,
+        'file_name': file_name,
+    }
+
+
+def adjust_time_stamps(chapters):
+    # For each chapter make sure that time difference between start_time and start_time is equal to duration of MP3
+    for chapter in chapters:
+        chapter['end_time'] = chapter['start_time'] + chapter['mp3_duration_sec']
+
+    # For each chapter make sure that it's end_time is greater or equal than
+    # start_time of the previous chapter, if not adjust start and end time of the chapter
+    for i in range(1, len(chapters)):
+        if chapters[i]['start_time'] < chapters[i-1]['end_time']:
+            chapters[i]['start_time'] = chapters[i-1]['end_time']
+            chapters[i]['end_time'] = chapters[i]['start_time'] + chapters[i]['mp3_duration_sec']
 
 
 def make_voiceover(param):
     output_dir = os.path.expanduser(param.output_dir)
     srt_name = os.path.expanduser(param.srt_name)
     require_voice_name = param.require_voice_name
-    default_voice_id = VOICE_IDS['Pirate']
+    default_voice_id = VOICE_IDS['Paul']
 
     with open('elevenlabs-key.txt', 'rt') as key_file:
         key = key_file.read().strip()
 
+    chapters = []
     with open(srt_name, 'rt', encoding="utf-8-sig") as srt_file:
         got_number = False
         got_time = False
@@ -91,12 +157,14 @@ def make_voiceover(param):
                 number = int(line)
                 got_number = True
             elif not got_time:
+                start_time, end_time = decode_time(line)
                 got_time = True
             elif line == '':
                 print(f'Chapter {number}:\n[{text}]')
                 # Find the name of the speaker denoted as [name]: in the text
                 text, voice_id = get_voice_id(require_voice_name, text, default_voice_id)
-                make_voiceover_file(number, text, key, voice_id, output_dir)
+                file_name = make_voiceover_file(number, text, key, voice_id, output_dir)
+                chapters.append(make_chapter(number, start_time, end_time, text, file_name))
                 got_number = False
                 got_time = False
                 text = ''
@@ -107,26 +175,51 @@ def make_voiceover(param):
         if text != '':
             print(f'Chapter {number}:\n[{text}]')
             text, voice_id = get_voice_id(require_voice_name, text, default_voice_id)
-            make_voiceover_file(number, text, key, voice_id, output_dir)
+            file_name = make_voiceover_file(number, text, key, voice_id, output_dir)
+            chapters.append(make_chapter(number, start_time, end_time, text, file_name))
 
+    adjust_time_stamps(chapters)
 
-def get_voice_id(require_voice_name, text, default_voice_id):
-    speaker = re.search(r'\[(.*?)\]:', text)
-    if speaker:
-        speaker = speaker.group(1)
-        print(f'Speaker: {speaker}')
-        if speaker in VOICE_IDS:
-            default_voice_id = VOICE_IDS[speaker]
-        else:
-            print(f'Unknown speaker: {speaker}')
-        # Remove speaker name from the text along with the leading and training spaces
-        text = re.sub(r'\[(.*?)\]:', '', text).strip()
-    else:
-        if require_voice_name:
-            print('No speaker found in the text')
-            return text, None
+    # Make new .SRT file with adjusted time stamps
+    # Create new .SRT file name
+    srt_output_name = os.path.splitext(srt_name)[0] + '_adjusted.srt'
+    with open(srt_output_name, 'wt', encoding="utf-8") as srt_output_file:
+        for chapter in chapters:
+            srt_output_file.write(f"{chapter['number']}\n")
+            srt_output_file.write(
+                f"{chapter['start_time'].strftime('%H:%M:%S,000')} --> {chapter['end_time'].strftime('%H:%M:%S,000')}\n")
+            srt_output_file.write(f"{chapter['text']}\n")
 
-    return text, default_voice_id
+    # Make sure that chapter number in file name matches actual chapter number
+    for chapter in chapters:
+        file_name = chapter['file_name']
+        t = os.path.splitext(os.path.basename(file_name))[0].split('-')
+        file_no = int(t[0])
+        chapter_no = int(chapter['number'])
+        if file_no != chapter['number']:
+            desired_name = output_dir + os.sep + f'{chapter_no:03d}-' + t[1] + '-' + t[2] + '.mp3'
+            print(f'Renaming {file_name} to {desired_name}')
+            os.rename(file_name, desired_name)
+            chapter['file_name'] = desired_name
+
+    proper_files = set()
+    for chapter in chapters:
+        proper_files.add(chapter['file_name'])
+
+    # Move orphan MP3 files to the separate directory
+    files = os.listdir(output_dir)
+    for file in files:
+        if file.lower().endswith('.mp3'):
+            t = file.split('-')
+            if len(t) > 1:
+                file_name = output_dir + os.sep + file
+                if file_name not in proper_files:
+                    orphans_dir = output_dir + os.sep + 'orphans'
+                    print(f'Moving orphan file {file_name} to {orphans_dir}')
+                    os.makedirs(orphans_dir, exist_ok=True)
+                    shutil.move(output_dir + os.sep + file, orphans_dir)
+
+    print(f'{srt_output_name} created')
 
 
 if __name__ == '__main__':
