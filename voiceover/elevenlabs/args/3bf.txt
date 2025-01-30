@@ -1,0 +1,2 @@
+--srt-name=/Users/sergei/SailingVideos/2025-3BF/60-VOICEOVER/02-WHOLE-MOVIE-TAKE-1/03-3bf.srt
+--output-dir=/Users/sergei/SailingVideos/2025-3BF/60-VOICEOVER/02-WHOLE-MOVIE-TAKE-1

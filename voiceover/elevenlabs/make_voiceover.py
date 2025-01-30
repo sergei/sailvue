@@ -37,7 +37,7 @@ def get_voice_id(require_voice_name, text, default_voice_id):
             print('No speaker found in the text')
             return text, None
 
-    return text, default_voice_id
+    return text, default_voice_id, speaker
 
 
 def make_voiceover_file(number, text, api_key, voice_id, output_dir):
@@ -52,14 +52,15 @@ def make_voiceover_file(number, text, api_key, voice_id, output_dir):
     file_name += '-' + text_hash
     file_name = output_dir + os.sep + f'{number:03d}-' + file_name + '.mp3'
 
-    # Check if the file with the same hash already exists in the output directory
+    # Check if MP3 file with the same hash already exists in the output directory
     files = os.listdir(output_dir)
     for file in files:
-        t = file.split('-')
-        if len(t) > 1 and t[2] == text_hash + '.mp3':
-            current_name = output_dir + os.sep + file
-            print(f'File {current_name} for this text already exists, skipping ...')
-            return current_name
+        if file.lower().endswith('.mp3'):
+            t = file.split('-')
+            if len(t) > 1 and t[2] == text_hash + '.mp3':
+                current_name = output_dir + os.sep + file
+                print(f'File {current_name} for this text already exists, skipping ...')
+                return current_name
 
     # Make the voiceover using eleven labs API
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
@@ -107,7 +108,7 @@ def decode_time(line):
     return time_from, time_to
 
 
-def make_chapter(number, start_time, end_time, text, file_name):
+def make_chapter(number, start_time, end_time, text, file_name, speaker):
     audio = MP3(file_name)
     mp3_duration_sec = timedelta(seconds=audio.info.length)
     text_hash = os.path.splitext(os.path.basename(file_name))[0].split('-')[2]
@@ -119,6 +120,7 @@ def make_chapter(number, start_time, end_time, text, file_name):
         'mp3_duration_sec': mp3_duration_sec,
         'hash': text_hash,
         'file_name': file_name,
+        'speaker': speaker
     }
 
 
@@ -162,9 +164,9 @@ def make_voiceover(param):
             elif line == '':
                 print(f'Chapter {number}:\n[{text}]')
                 # Find the name of the speaker denoted as [name]: in the text
-                text, voice_id = get_voice_id(require_voice_name, text, default_voice_id)
+                text, voice_id, speaker = get_voice_id(require_voice_name, text, default_voice_id)
                 file_name = make_voiceover_file(number, text, key, voice_id, output_dir)
-                chapters.append(make_chapter(number, start_time, end_time, text, file_name))
+                chapters.append(make_chapter(number, start_time, end_time, text, file_name, speaker))
                 got_number = False
                 got_time = False
                 text = ''
@@ -174,9 +176,9 @@ def make_voiceover(param):
         # Process the last chapter
         if text != '':
             print(f'Chapter {number}:\n[{text}]')
-            text, voice_id = get_voice_id(require_voice_name, text, default_voice_id)
+            text, voice_id, speaker = get_voice_id(require_voice_name, text, default_voice_id)
             file_name = make_voiceover_file(number, text, key, voice_id, output_dir)
-            chapters.append(make_chapter(number, start_time, end_time, text, file_name))
+            chapters.append(make_chapter(number, start_time, end_time, text, file_name, speaker))
 
     adjust_time_stamps(chapters)
 
@@ -188,7 +190,9 @@ def make_voiceover(param):
             srt_output_file.write(f"{chapter['number']}\n")
             srt_output_file.write(
                 f"{chapter['start_time'].strftime('%H:%M:%S,000')} --> {chapter['end_time'].strftime('%H:%M:%S,000')}\n")
-            srt_output_file.write(f"{chapter['text']}\n")
+            if chapter['speaker'] is not None:
+                srt_output_file.write(f"[{chapter['speaker']}]: ")
+            srt_output_file.write(f"{chapter['text']}\n\n")
 
     # Make sure that chapter number in file name matches actual chapter number
     for chapter in chapters:

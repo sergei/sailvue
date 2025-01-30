@@ -384,7 +384,14 @@ $._PPP_={
 
 					for(var j =0 ; j < clipList.length; j++) {
 						var clip = clipList[j];
+						// If clip has extension .srt skip it
+						if (clip.name.toLowerCase().indexOf('.srt') > 0) {
+							continue;
+						}
+
+						$._PPP_.updateEventPanel("Checking Clip " + clip.name);
 						var markers = clip.getMarkers();
+						$._PPP_.updateEventPanel("Clip " + clip.name + " has " + markers.numMarkers + " markers");
 
 						// Get list of sailvue markers in this clip
 						var sailvueMarkers = [];
