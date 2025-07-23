@@ -241,6 +241,56 @@ $._PPP_={
 		}
 	},
 
+	exportMarkersForSequence : function () {
+
+		var seq = app.project.activeSequence;
+		if (seq) {
+
+			var outString = "";
+			var tracks = seq.videoTracks;
+			for (var trackIdx = 0; trackIdx < tracks.numTracks; trackIdx++) {
+				if (tracks[trackIdx].mediaType === "Video") {
+					var clips = tracks[trackIdx].clips;
+					$._PPP_.updateEventPanel('Looking for clips in track ' + tracks[trackIdx].name + ' with ' + clips.numItems + ' items');
+
+					for (var clipIdx = 0; clipIdx < clips.numItems; clipIdx++) {
+						var trackItem = clips[clipIdx];
+						var trackItemIn = trackItem.inPoint.seconds;
+						var trackItemOut = trackItem.outPoint.seconds;
+						var projectItem = trackItem.projectItem;
+
+						if( trackItem.name.indexOf('.insv') !== -1) {
+							var newline = projectItem.getMediaPath() + "'"
+								+ ", " + trackItemIn
+								+ ", " + trackItemOut
+								+ ", " + 'clip_' + clipIdx
+								+ ", " + '0'
+								+ ", " + makeUUid() + ",\n";
+							$._PPP_.updateEventPanel("" + newline);
+							outString += newline;
+						}
+					}
+				}
+			}
+			if ( outString.length > 0 ) {
+				var fileToOpen = File.saveDialog("Select markers file",
+														"*.csv");
+				if (fileToOpen) {
+					fileToOpen.encoding = "UTF8";
+					fileToOpen.open("w", "TEXT", "????");
+					fileToOpen.write("Clip filename, In, Out, Description, Chapter type, UUID, Overlay filename\n");
+					fileToOpen.write(outString);
+					fileToOpen.close();
+					$._PPP_.updateEventPanel("Exported markers to " + fileToOpen.fsName);
+				} else {
+					$._PPP_.updateEventPanel("No valid marker file chosen.");
+				}
+			}
+		} else {
+			$._PPP_.updateEventPanel('No active sequence to export markers.');
+		}
+	},
+
 
 	getClipList : function (projectItem) {
 
