@@ -103,6 +103,28 @@ function makeUUid() {
 
 $._PPP_={
 
+	formatMarker: function (marker) {
+		var currentSeqSettings = app.project.activeSequence.getSettings();
+		// return marker.name;
+		return marker.name + " "
+		    + marker.start.getFormatted(currentSeqSettings.videoFrameRate, app.project.activeSequence.videoDisplayFormat)
+			+ " - "
+			+ marker.end.getFormatted(currentSeqSettings.videoFrameRate, app.project.activeSequence.videoDisplayFormat)
+			+ '(' + marker.start.seconds + ' - ' + marker.end.seconds + ')'
+			;
+	},
+
+	formatClip: function (clip) {
+		var currentSeqSettings = app.project.activeSequence.getSettings();
+		// return marker.name;
+		return clip.name + " "
+			+ clip.inPoint.getFormatted(currentSeqSettings.videoFrameRate, app.project.activeSequence.videoDisplayFormat)
+			+ " - " +
+			clip.outPoint.getFormatted(currentSeqSettings.videoFrameRate, app.project.activeSequence.videoDisplayFormat)
+			+ '(' + clip.inPoint.seconds + ' - ' + clip.outPoint.seconds + ')'
+			;
+	},
+
 	isSailvueTrackAvailable : function (seq) {
 		// Add video track to keep sailvue overlays
 		var tracks = seq.videoTracks;
@@ -143,7 +165,7 @@ $._PPP_={
 
 		var seq = app.project.activeSequence;
 		if (seq) {
-
+			var currentSeqSettings	= seq.getSettings();
 			var sailVueVideoTrack = $._PPP_.isSailvueTrackAvailable(seq);
 			if ( sailVueVideoTrack === null ) {
 				// There is no API to add a video track, so we need to ask the user to add it manually
@@ -171,23 +193,27 @@ $._PPP_={
 						var projectItem = trackItem.projectItem;
 						var markers = projectItem.getMarkers();
 
-						$._PPP_.updateEventPanel('projectItem ' + projectItem.name + ' has ' + markers.numMarkers + ' markers');
+						$._PPP_.updateEventPanel('Processing clip ' + $._PPP_.formatClip(trackItem) + ' in track ' + tracks[trackIdx].name);
+						$._PPP_.updateEventPanel('Clip projectItem ' + projectItem.name + ' has ' + markers.numMarkers + ' markers');
 						for (var markerIdx = 0; markerIdx < markers.numMarkers; markerIdx++) {
 							var marker = markers[markerIdx];
 							if (marker.type === "Segmentation") {
+								// Check if the marker is between in and out of the clip
+								// spot one second on both sides, to allow for some slop
+								var markerIsInsideTrackItem = (marker.start.seconds >= (trackItemIn-1)
+									&& marker.end.seconds <= (trackItemOut + 1)) ;
 
-								// Check if marker is between in and out of the clip
-								if (marker.start.seconds < trackItemIn  ) {  // FIXME check the end as well, but now since it interferes with current production :-)
-									$._PPP_.updateEventPanel('Marker ' + marker.name + ' is outside of the clip');
+								if ( ! markerIsInsideTrackItem  ) {
+									$._PPP_.updateEventPanel('Marker ' + $._PPP_.formatMarker(marker) + ' is outside of the clip');
 									continue;
 								}
 
-								$._PPP_.updateEventPanel('Found sailvue marker within clip' + marker.name);
+								$._PPP_.updateEventPanel('Marker ' +  $._PPP_.formatMarker(marker) + ' is within clip');
 
 								var data = marker.comments.split(',');
 								// Type, uuid, overlayPath
-								$._PPP_.updateEventPanel('Marker ' + marker.name + ' has ' + data.length + ' items');
 								if (data.length < 3) {
+									$._PPP_.updateEventPanel('Marker ' + marker.name + ' has ' + data.length + ' items');
 									$._PPP_.updateEventPanel('No overlay path found in marker ' + marker.name);
 									continue;
 								}
@@ -223,7 +249,12 @@ $._PPP_={
 									if ( overlayProjectItem != null) {
 										overlayProjectItem.setColorLabel(overlayType === 1  ? 15 : 8);
 										var start = trackItemStart - trackItemIn  + marker.start.seconds
-										$._PPP_.updateEventPanel('Inserting overlay ' + overlayProjectItem.name + ' at start ' + start + ' = trackItemStart ' + trackItemStart + ' - trackItemIn ' + trackItemIn + ' + marker.start.seconds ' + marker.start.seconds);
+										var startTime = new Time();
+										startTime.seconds = start;
+										var startFormatted= startTime.getFormatted(currentSeqSettings.videoFrameRate, app.project.activeSequence.videoDisplayFormat);
+										$._PPP_.updateEventPanel('Inserting overlay ' + overlayProjectItem.name + ' at start ' +
+											startFormatted + ' ( '
+											+ start + ' = trackItemStart ' + trackItemStart + ' - trackItemIn ' + trackItemIn + ' + marker.start.seconds ' + marker.start.seconds + ')');
 										sailVueVideoTrack.overwriteClip(overlayProjectItem, start);
 									}else{
 										$._PPP_.updateEventPanel('Failed to import ' + overlayPath );
@@ -260,7 +291,7 @@ $._PPP_={
 						var projectItem = trackItem.projectItem;
 
 						if( trackItem.name.indexOf('.insv') !== -1) {
-							var newline = projectItem.getMediaPath() + "'"
+							var newline = projectItem.getMediaPath()
 								+ ", " + trackItemIn
 								+ ", " + trackItemOut
 								+ ", " + 'clip_' + clipIdx
@@ -320,12 +351,37 @@ $._PPP_={
 		return clipList;
 	},
 
+	getSequenceClips : function (seq) {
+
+		// Create list of all clips
+		$._PPP_.updateEventPanel("Looking for clips in " + seq.name);
+
+		var clipList = [];
+		var tracks = seq.videoTracks;
+		for (var trackIdx = 0; trackIdx < tracks.numTracks; trackIdx++) {
+			if (tracks[trackIdx].mediaType === "Video") {
+				var clips = tracks[trackIdx].clips;
+				$._PPP_.updateEventPanel('Looking for clips in track ' + tracks[trackIdx].name + ' with ' + clips.numItems + ' items');
+				for (var clipIdx = 0; clipIdx < clips.numItems; clipIdx++) {
+					var trackItem = clips[clipIdx];
+					var projectItem = trackItem.projectItem;
+					$._PPP_.updateEventPanel('Processing clip ' + $._PPP_.formatClip(trackItem) + ' in track ' + tracks[trackIdx].name);
+					$._PPP_.updateEventPanel('Clip projectItem.name: ' + projectItem.name);
+					clipList.push(projectItem)
+				}
+			}
+		}
+
+		return clipList;
+	},
+
 	importSailvueMarkers : function () {
 		if (app.project.rootItem.children.numItems > 0) {
 			var projectItem = app.project.rootItem;
 			if (projectItem) {
 				// Create list of all clips
-				var clipList = $._PPP_.getClipList(projectItem);
+				// var clipList = $._PPP_.getClipList(projectItem);
+				var clipList = $._PPP_.getSequenceClips(app.project.activeSequence);
 				var fileToOpen = File.openDialog("Select Markers file", "*.csv", false);
 				var i, j, clip, markers;
 				if (fileToOpen) {
@@ -382,6 +438,7 @@ $._PPP_={
 									$._PPP_.updateEventPanel("overlayPath.length [" + overlayPath.length + "]");
 
 									// Find clip for this marker
+									$._PPP_.updateEventPanel("Searching for clip " + clipFileName);
 									for(j =0 ; j < clipList.length; j++){
 										clip = clipList[j];
 										if( clip.getMediaPath() === clipFileName){
@@ -397,6 +454,8 @@ $._PPP_={
 											newMarker.setTypeAsSegmentation();
 											newMarker.setColorByIndex( chapterType === 1  ? 4 : 2);
 											break;
+										}else{
+											$._PPP_.updateEventPanel("Clip [" + clip.getMediaPath() + "] does not match [" + clipFileName + ']');
 										}
 									}
 								}
