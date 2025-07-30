@@ -352,22 +352,35 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
       }
 
       // Initialize SwsContext if needed
+    // In the frame processing loop of produceChapter:
+    if (!swsCtx) {
+      // Use BGRA instead of RGBA as source format
+      int srcFormat = AV_PIX_FMT_BGRA;
+
+      swsCtx = sws_getContext(
+              outFrame->width, outFrame->height, (AVPixelFormat)srcFormat,
+              outFrame->width, outFrame->height, AV_PIX_FMT_YUVA444P10LE,
+              SWS_BICUBIC, nullptr, nullptr, nullptr
+      );
+
       if (!swsCtx) {
-          // Determine source format (assume RGBA if not specified)
-          int srcFormat = frame->format > 0 ? frame->format : AV_PIX_FMT_RGBA;
-
-          swsCtx = sws_getContext(
-                outFrame->width, outFrame->height, (AVPixelFormat)srcFormat,
-                outFrame->width, outFrame->height, AV_PIX_FMT_YUVA444P10LE,  // Changed pixel format
-                SWS_BICUBIC, nullptr, nullptr, nullptr
-          );
-
-          if (!swsCtx) {
-              std::cerr << "Failed to create SwsContext" << std::endl;
-              av_frame_free(&outFrame);
-              continue;
-          }
+        std::cerr << "Failed to create SwsContext" << std::endl;
+        av_frame_free(&outFrame);
+        continue;
       }
+
+      // Set proper colorspace conversion parameters
+      int srcRange = 1; // Full range source
+      int dstRange = 1; // Full range destination for ProRes
+
+      // Configure colorspace details - this fixes orange/blue inversion
+      sws_setColorspaceDetails(
+              swsCtx,
+              sws_getCoefficients(SWS_CS_DEFAULT), srcRange,
+              sws_getCoefficients(SWS_CS_ITU709), dstRange,
+              0, 1 << 16, 1 << 16
+      );
+    }
 
       // Prepare source pointers and strides
       const uint8_t* srcSlice[4] = {nullptr};
