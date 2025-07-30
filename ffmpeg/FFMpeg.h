@@ -9,6 +9,7 @@
 #include <filesystem>
 
 #include <list>
+#include <QImage>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -135,6 +136,10 @@ public:
     bool initializeEncoder(const std::string &outputPath, int width, int height, float fps, bool useAlpha);
     bool encodeFrame(AVFrame* frame);
     bool finalizeEncoding();
+
+    AVFrame* convertQImageToAVFrame(const QImage& image);
+    bool encodeQImageSequence(const std::vector<QImage>& images, float fps,
+                              FfmpegProgressListener& progressListener);
 
 private:
     static std::string s_ffmpeg;

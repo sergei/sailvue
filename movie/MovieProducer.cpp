@@ -307,120 +307,18 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
 
   // Set up direct frame encoding
   ffmpeg.initializeEncoder(clipFulPathName.string(), overlayMaker.getWidth(), overlayMaker.getHeight(), overlaysFps, transparencyNeeded);
-  ffmpeg.addOverlayFrameSequence(0, 0, overlaysFps);
 
-
-  // Process all frames from the queue
-  const auto& frameQueue = overlayMaker.getFrameQueue();
-
-  SwsContext* swsCtx = nullptr;
-
-  for (size_t i = 0; i < frameQueue.size(); i++) {
-      if (m_stopRequested) break;
-
-      AVFrame* frame = frameQueue[i];
-      if (!frame) continue;
-
-      // Create output frame
-      AVFrame* outFrame = av_frame_alloc();
-      if (!outFrame) {
-          std::cerr << "Failed to allocate output frame" << std::endl;
-          continue;
-      }
-
-      outFrame->format = AV_PIX_FMT_YUVA444P10LE;  // Changed from YUVA420P to YUVA444P10LE for ProRes
-      outFrame->width = frame->width > 0 ? frame->width : overlayMaker.getWidth();
-      outFrame->height = frame->height > 0 ? frame->height : overlayMaker.getHeight();
-      outFrame->pts = i;
-
-      // Allocate buffer
-      int ret = av_frame_get_buffer(outFrame, 32);
-      if (ret < 0) {
-          char errBuf[AV_ERROR_MAX_STRING_SIZE];
-          av_strerror(ret, errBuf, AV_ERROR_MAX_STRING_SIZE);
-          std::cerr << "Failed to allocate frame buffer: " << errBuf << std::endl;
-          av_frame_free(&outFrame);
-          continue;
-      }
-
-      // Make writable
-      ret = av_frame_make_writable(outFrame);
-      if (ret < 0) {
-          std::cerr << "Failed to make frame writable" << std::endl;
-          av_frame_free(&outFrame);
-          continue;
-      }
-
-      // Initialize SwsContext if needed
-    // In the frame processing loop of produceChapter:
-    if (!swsCtx) {
-      // Use BGRA instead of RGBA as source format
-      int srcFormat = AV_PIX_FMT_BGRA;
-
-      swsCtx = sws_getContext(
-              outFrame->width, outFrame->height, (AVPixelFormat)srcFormat,
-              outFrame->width, outFrame->height, AV_PIX_FMT_YUVA444P10LE,
-              SWS_BICUBIC, nullptr, nullptr, nullptr
-      );
-
-      if (!swsCtx) {
-        std::cerr << "Failed to create SwsContext" << std::endl;
-        av_frame_free(&outFrame);
-        continue;
-      }
-
-      // Set proper colorspace conversion parameters
-      int srcRange = 1; // Full range source
-      int dstRange = 1; // Full range destination for ProRes
-
-      // Configure colorspace details - this fixes orange/blue inversion
-      sws_setColorspaceDetails(
-              swsCtx,
-              sws_getCoefficients(SWS_CS_DEFAULT), srcRange,
-              sws_getCoefficients(SWS_CS_ITU709), dstRange,
-              0, 1 << 16, 1 << 16
-      );
-    }
-
-      // Prepare source pointers and strides
-      const uint8_t* srcSlice[4] = {nullptr};
-      int srcStride[4] = {0};
-
-      for (int p = 0; p < 4 && frame->data[p]; p++) {
-          srcSlice[p] = frame->data[p];
-          srcStride[p] = frame->linesize[p] > 0 ? frame->linesize[p] :
-                        (p == 0 ? frame->width * 4 : 0);  // Assume 4 bytes per pixel for RGBA
-      }
-
-      // Perform conversion
-      ret = sws_scale(swsCtx, srcSlice, srcStride, 0, outFrame->height,
-                     outFrame->data, outFrame->linesize);
-
-      if (ret <= 0) {
-          std::cerr << "Failed to convert frame" << std::endl;
-          av_frame_free(&outFrame);
-          continue;
-      }
-
-      // Encode the frame
-      ffmpeg.encodeFrame(outFrame);
-
-      // Free the output frame
-      av_frame_free(&outFrame);
-  }
-
-  // Clean up
-  if (swsCtx) {
-      sws_freeContext(swsCtx);
-  }
-
-  // Finalize encoding
-  ffmpeg.finalizeEncoding();
   uint64_t clipDurationMs = presentationDuration * 1000;
   EncodingProgressListener progressListener(chapterWithNum, clipDurationMs, m_rProgressListener);
 
+  // Encode all images from the queue
+  if (!ffmpeg.encodeQImageSequence(overlayMaker.getImageQueue(), overlaysFps, progressListener)) {
+    m_stopRequested = true;
+    return "";
+  }
+
   // makeClip is still needed for adding the background video
-//  ffmpeg.makeClip(clipFulPathName, progressListener);
+  //  ffmpeg.makeClip(clipFulPathName, progressListener);
   m_stopRequested = progressListener.isStopRequested();
 
   if (m_stopRequested) {
@@ -428,14 +326,6 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
   }
 
   makeSummaryFile(summaryFile, chapter);
-
-  // Clear frames after encoding is complete
-  for (auto frame : frameQueue) {
-    if (frame) {
-      av_frame_free(&frame);
-    }
-  }
-  overlayMaker.getFrameQueue().clear();
 
   return clipFulPathName;
 }

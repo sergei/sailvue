@@ -607,3 +607,131 @@ bool FFMpeg::finalizeEncoding() {
 
     return true;
 }
+
+
+AVFrame* FFMpeg::convertQImageToAVFrame(const QImage& image) {
+    // First create a frame in the source format
+    AVFrame* srcFrame = av_frame_alloc();
+    if (!srcFrame) {
+        return nullptr;
+    }
+
+    // Create a frame in the destination format
+    AVFrame* dstFrame = av_frame_alloc();
+    if (!dstFrame) {
+        av_frame_free(&srcFrame);
+        return nullptr;
+    }
+
+    // Set source frame properties
+    srcFrame->width = image.width();
+    srcFrame->height = image.height();
+    srcFrame->format = AV_PIX_FMT_BGRA; // QImage::Format_ARGB32 is actually BGRA in memory
+
+    // Set destination frame properties based on codec context
+    dstFrame->width = image.width();
+    dstFrame->height = image.height();
+    dstFrame->format = m_codecContext->pix_fmt;
+
+    // Allocate source frame buffer
+    if (av_frame_get_buffer(srcFrame, 0) < 0) {
+        av_frame_free(&srcFrame);
+        av_frame_free(&dstFrame);
+        return nullptr;
+    }
+
+    // Allocate destination frame buffer
+    if (av_frame_get_buffer(dstFrame, 0) < 0) {
+        av_frame_free(&srcFrame);
+        av_frame_free(&dstFrame);
+        return nullptr;
+    }
+
+    // Make source frame writable
+    if (av_frame_make_writable(srcFrame) < 0) {
+        av_frame_free(&srcFrame);
+        av_frame_free(&dstFrame);
+        return nullptr;
+    }
+
+    // Copy data from QImage to source AVFrame
+    for (int y = 0; y < srcFrame->height; y++) {
+        memcpy(srcFrame->data[0] + y * srcFrame->linesize[0],
+               image.constScanLine(y),
+               srcFrame->width * 4);
+    }
+
+    // Create SwsContext for pixel format conversion
+    SwsContext* swsCtx = sws_getContext(
+        srcFrame->width, srcFrame->height, (AVPixelFormat)srcFrame->format,
+        dstFrame->width, dstFrame->height, (AVPixelFormat)dstFrame->format,
+        SWS_BICUBIC, nullptr, nullptr, nullptr
+    );
+
+    if (!swsCtx) {
+        av_frame_free(&srcFrame);
+        av_frame_free(&dstFrame);
+        return nullptr;
+    }
+
+    // Set proper colorspace conversion parameters
+    int srcRange = 1; // Full range source
+    int dstRange = 1; // Full range destination
+    sws_setColorspaceDetails(
+        swsCtx,
+        sws_getCoefficients(SWS_CS_DEFAULT), srcRange,
+        sws_getCoefficients(SWS_CS_ITU709), dstRange,
+        0, 1 << 16, 1 << 16
+    );
+
+    // Convert pixel format
+    sws_scale(swsCtx, srcFrame->data, srcFrame->linesize, 0, srcFrame->height,
+              dstFrame->data, dstFrame->linesize);
+
+    // Free SwsContext
+    sws_freeContext(swsCtx);
+
+    // Free source frame
+    av_frame_free(&srcFrame);
+
+    return dstFrame;
+}
+
+bool FFMpeg::encodeQImageSequence(const std::vector<QImage>& images, float fps,
+                                 FfmpegProgressListener& progressListener) {
+    if (!m_codecContext || !m_formatContext) {
+        std::cerr << "Encoder not initialized" << std::endl;
+        return false;
+    }
+
+    uint64_t totalFrames = images.size();
+
+    for (size_t i = 0; i < images.size(); i++) {
+        // Convert QImage to AVFrame
+        AVFrame* frame = convertQImageToAVFrame(images[i]);
+        if (!frame) {
+            std::cerr << "Failed to convert QImage to AVFrame" << std::endl;
+            return false;
+        }
+
+        // Encode the frame
+        bool success = encodeFrame(frame);
+
+        // Free the frame
+        av_frame_free(&frame);
+
+        if (!success) {
+            std::cerr << "Failed to encode frame " << i << std::endl;
+            return false;
+        }
+
+        // Report progress
+        uint64_t msEncoded = static_cast<uint64_t>(1000 * (i + 1) / fps);
+        if (progressListener.ffmpegProgress(msEncoded)) {
+            return false; // Stop requested
+        }
+    }
+
+    // Finalize encoding
+    return finalizeEncoding();
+}
