@@ -310,3 +310,300 @@ void FFMpeg::joinChapters(std::list<std::string> &chaptersList, const std::basic
 }
 
 
+void FFMpeg::addOverlayFrameSequence(int x, int y, float fps) {
+    m_frameOverlays.emplace_back(x, y, fps);
+}
+
+void FFMpeg::addFrameToOverlay(AVFrame* frame) {
+    if (m_frameOverlays.empty()) {
+        throw std::runtime_error("No frame overlay sequence initialized");
+    }
+    m_frameOverlays.back().frames.push_back(frame);
+}
+
+bool FFMpeg::initializeEncoder(const std::string &filename, int width, int height, float fps, bool useAlpha = false) {
+    // Clean up any existing resources
+    if (m_formatContext) {
+        avformat_free_context(m_formatContext);
+        m_formatContext = nullptr;
+    }
+    if (m_codecContext) {
+        avcodec_free_context(&m_codecContext);
+        m_codecContext = nullptr;
+    }
+
+    m_stream = nullptr;
+    m_nextPts = 0;
+
+    // Create output format context - use QuickTime container for ProRes
+    const char* format_name = useAlpha ? "mov" : nullptr;
+    avformat_alloc_output_context2(&m_formatContext, nullptr, format_name, filename.c_str());
+    if (!m_formatContext) {
+        std::cerr << "Could not create output context" << std::endl;
+        return false;
+    }
+
+    // Find encoder
+    const AVCodec *codec;
+    if (useAlpha) {
+        codec = avcodec_find_encoder_by_name("prores_ks");
+        if (!codec) {
+            std::cerr << "ProRes codec not found" << std::endl;
+            return false;
+        }
+    } else {
+        codec = avcodec_find_encoder(AV_CODEC_ID_H264);
+        if (!codec) {
+            std::cerr << "H.264 codec not found" << std::endl;
+            return false;
+        }
+    }
+
+    // Create stream
+    m_stream = avformat_new_stream(m_formatContext, nullptr);
+    if (!m_stream) {
+        std::cerr << "Could not create stream" << std::endl;
+        return false;
+    }
+
+    // Create codec context
+    m_codecContext = avcodec_alloc_context3(codec);
+    if (!m_codecContext) {
+        std::cerr << "Could not create codec context" << std::endl;
+        return false;
+    }
+
+    // Set codec parameters
+    m_codecContext->width = width;
+    m_codecContext->height = height;
+    m_codecContext->time_base = (AVRational){1, int(fps + 0.5)};
+    m_stream->time_base = m_codecContext->time_base;
+
+    if (useAlpha) {
+        // ProRes 4444 settings for alpha support
+        m_codecContext->pix_fmt = AV_PIX_FMT_YUVA444P10LE;
+        av_opt_set(m_codecContext->priv_data, "profile", "4444", 0);
+        // Higher quality settings
+        av_opt_set(m_codecContext->priv_data, "bits_per_mb", "8000", 0);
+    } else {
+        m_codecContext->pix_fmt = AV_PIX_FMT_YUV420P;
+        m_codecContext->gop_size = 12;
+        m_codecContext->max_b_frames = 2;
+        av_opt_set(m_codecContext->priv_data, "preset", "medium", 0);
+    }
+
+    // Open codec
+    int ret = avcodec_open2(m_codecContext, codec, nullptr);
+    if (ret < 0) {
+        char errBuf[AV_ERROR_MAX_STRING_SIZE];
+        av_strerror(ret, errBuf, AV_ERROR_MAX_STRING_SIZE);
+        std::cerr << "Could not open codec: " << errBuf << std::endl;
+        return false;
+    }
+
+    // Copy parameters from codec context to stream
+    avcodec_parameters_from_context(m_stream->codecpar, m_codecContext);
+
+    // Open output file
+    if (!(m_formatContext->oformat->flags & AVFMT_NOFILE)) {
+        if (avio_open(&m_formatContext->pb, filename.c_str(), AVIO_FLAG_WRITE) < 0) {
+            std::cerr << "Could not open output file" << std::endl;
+            return false;
+        }
+    }
+
+    // Write header
+    if (avformat_write_header(m_formatContext, nullptr) < 0) {
+        std::cerr << "Could not write header" << std::endl;
+        return false;
+    }
+
+    return true;
+}
+bool FFMpeg::encodeFrame(AVFrame* frame) {
+    if (!m_codecContext) {
+        std::cerr << "Encoder not initialized" << std::endl;
+        return false;
+    }
+
+    if (!frame) {
+        // For flushing, use avcodec_send_frame directly
+        int ret = avcodec_send_frame(m_codecContext, nullptr);
+        if (ret < 0) {
+            char errBuf[AV_ERROR_MAX_STRING_SIZE];
+            av_strerror(ret, errBuf, AV_ERROR_MAX_STRING_SIZE);
+            std::cerr << "Error flushing encoder: " << errBuf << std::endl;
+            return false;
+        }
+        return true;
+    }
+
+    // Check if frame has valid linesize
+    bool validLinesize = true;
+    for (int i = 0; i < AV_NUM_DATA_POINTERS && frame->data[i]; i++) {
+        if (frame->linesize[i] <= 0) {
+            validLinesize = false;
+            break;
+        }
+    }
+
+    // If linesize is invalid, create a new frame with correct linesize
+    AVFrame* frameToEncode = frame;
+    if (!validLinesize) {
+        // Create a new frame with correct linesize
+        AVFrame* newFrame = av_frame_alloc();
+        newFrame->format = frame->format;
+        newFrame->width = frame->width;
+        newFrame->height = frame->height;
+
+        // Allocate buffer for the new frame
+        int ret = av_frame_get_buffer(newFrame, 32); // 32 for alignment
+        if (ret < 0) {
+            std::cerr << "Could not allocate frame data" << std::endl;
+            av_frame_free(&newFrame);
+            return false;
+        }
+
+        // Make the frame writable
+        ret = av_frame_make_writable(newFrame);
+        if (ret < 0) {
+            std::cerr << "Could not make frame writable" << std::endl;
+            av_frame_free(&newFrame);
+            return false;
+        }
+
+        // Manually copy the pixel data
+        for (int i = 0; i < AV_NUM_DATA_POINTERS && frame->data[i]; i++) {
+            if (newFrame->data[i]) {
+                // Calculate plane size based on format
+                int planeHeight = (i == 0) ? frame->height : frame->height / 2;
+                int planeWidth = (i == 0) ? frame->width : frame->width / 2;
+
+                // Copy line by line
+                for (int h = 0; h < planeHeight; h++) {
+                    memcpy(newFrame->data[i] + h * newFrame->linesize[i],
+                           frame->data[i] + h * (frame->linesize[i] > 0 ? frame->linesize[i] : planeWidth),
+                           planeWidth);
+                }
+            }
+        }
+
+        frameToEncode = newFrame;
+    }
+
+    // Set frame PTS
+    frameToEncode->pts = m_nextPts++;
+
+    // Send frame to encoder
+    int ret = avcodec_send_frame(m_codecContext, frameToEncode);
+
+    // Free the new frame if we created one
+    if (frameToEncode != frame) {
+        av_frame_free(&frameToEncode);
+    }
+
+    if (ret < 0) {
+        char errBuf[AV_ERROR_MAX_STRING_SIZE];
+        av_strerror(ret, errBuf, AV_ERROR_MAX_STRING_SIZE);
+        std::cerr << "Error sending frame to encoder: " << errBuf << std::endl;
+        return false;
+    }
+
+    // Get packets from encoder
+    while (true) {
+        AVPacket* packet = av_packet_alloc();
+        ret = avcodec_receive_packet(m_codecContext, packet);
+        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
+            av_packet_free(&packet);
+            break;
+        } else if (ret < 0) {
+            av_packet_free(&packet);
+            char errBuf[AV_ERROR_MAX_STRING_SIZE];
+            av_strerror(ret, errBuf, AV_ERROR_MAX_STRING_SIZE);
+            std::cerr << "Error receiving packet: " << errBuf << std::endl;
+            return false;
+        }
+
+        // Rescale packet timestamps
+        av_packet_rescale_ts(packet, m_codecContext->time_base, m_stream->time_base);
+        packet->stream_index = m_stream->index;
+
+        // Write packet to file
+        ret = av_interleaved_write_frame(m_formatContext, packet);
+        av_packet_free(&packet);
+        if (ret < 0) {
+            char errBuf[AV_ERROR_MAX_STRING_SIZE];
+            av_strerror(ret, errBuf, AV_ERROR_MAX_STRING_SIZE);
+            std::cerr << "Error writing packet: " << errBuf << std::endl;
+            return false;
+        }
+    }
+
+    return true;
+}
+bool FFMpeg::finalizeEncoding() {
+    if (!m_codecContext || !m_formatContext) {
+        std::cerr << "Encoder not initialized" << std::endl;
+        return false;
+    }
+
+    // Flush the encoder without calling encodeFrame(nullptr)
+    int ret = avcodec_send_frame(m_codecContext, nullptr);
+    if (ret < 0) {
+        char errBuf[AV_ERROR_MAX_STRING_SIZE];
+        av_strerror(ret, errBuf, AV_ERROR_MAX_STRING_SIZE);
+        std::cerr << "Error flushing encoder: " << errBuf << std::endl;
+        return false;
+    }
+
+    // Get remaining packets
+    while (true) {
+        AVPacket* packet = av_packet_alloc();
+        ret = avcodec_receive_packet(m_codecContext, packet);
+        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
+            av_packet_free(&packet);
+            break;
+        } else if (ret < 0) {
+            av_packet_free(&packet);
+            char errBuf[AV_ERROR_MAX_STRING_SIZE];
+            av_strerror(ret, errBuf, AV_ERROR_MAX_STRING_SIZE);
+            std::cerr << "Error receiving packet: " << errBuf << std::endl;
+            return false;
+        }
+
+        // Rescale packet timestamps
+        av_packet_rescale_ts(packet, m_codecContext->time_base, m_stream->time_base);
+        packet->stream_index = m_stream->index;
+
+        // Write packet to file
+        ret = av_interleaved_write_frame(m_formatContext, packet);
+        av_packet_free(&packet);
+        if (ret < 0) {
+            char errBuf[AV_ERROR_MAX_STRING_SIZE];
+            av_strerror(ret, errBuf, AV_ERROR_MAX_STRING_SIZE);
+            std::cerr << "Error writing packet: " << errBuf << std::endl;
+            return false;
+        }
+    }
+
+    // Write trailer
+    ret = av_write_trailer(m_formatContext);
+    if (ret < 0) {
+        std::cerr << "Error writing trailer" << std::endl;
+        return false;
+    }
+
+    // Close file
+    avio_closep(&m_formatContext->pb);
+
+    // Free resources
+    avcodec_free_context(&m_codecContext);
+    avformat_free_context(m_formatContext);
+
+    m_codecContext = nullptr;
+    m_formatContext = nullptr;
+    m_stream = nullptr;
+    m_nextPts = 0;
+
+    return true;
+}

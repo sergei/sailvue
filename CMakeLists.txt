@@ -20,6 +20,13 @@ set_source_files_properties(${app_icon_macos} PROPERTIES
         MACOSX_PACKAGE_LOCATION "Resources")
 
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET libavcodec libavformat libavutil libswscale)
+
+include_directories(${FFMPEG_INCLUDE_DIRS})
+link_directories(${FFMPEG_LIBRARY_DIRS})
+
+add_definitions(${FFMPEG_CFLAGS_OTHER})
 
 # FFMPEG executbales
 set(ffmpgeg_bin ffmpeg/bin/osx/ffmpeg)
@@ -203,6 +210,8 @@ target_link_libraries(sailvue PUBLIC
         Qt::Qml
         Qt::Quick
         Qt6::Multimedia
+        PkgConfig::FFMPEG
+
 )
 
 enable_testing ()

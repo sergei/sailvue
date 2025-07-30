@@ -2,6 +2,7 @@ include(FetchContent)
 
 find_package(Qt6 COMPONENTS Gui)
 find_package(Qt6 COMPONENTS Qml)
+find_package(Qt6 COMPONENTS Location)
 
 FetchContent_Declare(
         googletest
@@ -16,6 +17,7 @@ add_executable (TestPolars
         ../navcomputer/polars.h
         ../navcomputer/polars.cpp
         ../navcomputer/Chapter.cpp
+        ../navcomputer/RaceData.cpp
 
         ../n2k/geo/Quantity.cpp
         ../n2k/YdvrReader.cpp
@@ -40,9 +42,13 @@ add_executable (TestPolars
         ../movie/InstrOverlayMaker.cpp
         ../movie/PerformanceOverlayMaker.cpp
         ../movie/StartTimerOverlayMaker.cpp
+        ../movie/MovieProducer.cpp
         ../adobe_premiere/MarkerReader.cpp
         ../Insta360/Insta360.cpp
         ../cameras/CameraBase.cpp
+        ../ffmpeg/FFMpeg.cpp
+
+        ../utils/Caffeine.cpp
 
         test_polars.cpp
         test_median.cpp
@@ -64,6 +70,9 @@ target_link_libraries(TestPolars
         GTest::GTest
         Qt::Gui
         Qt::Qml
+        Qt::LocationPrivate
+        Qt::Positioning
+        PkgConfig::FFMPEG
 
         )
 

@@ -11,6 +11,13 @@
 #include "navcomputer/Performance.h"
 #include "movie/PerformanceOverlayMaker.h"
 #include "movie/StartTimerOverlayMaker.h"
+#include "movie/MovieProducer.h"
+
+class ProgressListener: public IProgressListener {
+public:
+  virtual void progress(const std::string& state, int progress) {};
+  virtual bool stopRequested() { return false;};
+};
 
 TEST(MedianTests, PolarTest)
 {
@@ -262,7 +269,8 @@ TEST(MedianTests, StartTest) {
     }
 
     Polars polars;
-    polars.loadPolar("./data/polars-arkana.csv");
+    const std::string  polarPath = "./data/polars-arkana.csv";
+    polars.loadPolar(polarPath);
 
     int width = 480;
     int height = 256;
@@ -279,5 +287,13 @@ TEST(MedianTests, StartTest) {
     for(int i = 0;  i < iiVector.size() && i < 50; i++) {
         overlayMaker.addEpoch(iiVector[i], true);
     }
+
+    std::list<GoProClipInfo> clipsList;
+    ProgressListener progressListener;
+    std::map<uint64_t, Performance> performanceVector;
+    std::list<RaceData *> raceList;
+    MovieProducer movieProducer(overlayDir, polarPath, clipsList, iiVector, performanceVector, raceList, progressListener );
+
+    movieProducer.produceChapter(overlayMaker, chapter, 1, 1);
 
 }

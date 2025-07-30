@@ -3,7 +3,15 @@
 
 
 #include <string>
+#include <set>       // For std::set
 #include "OverlayElement.h"
+
+extern "C" {
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+#include <libavutil/avutil.h>
+#include <libavutil/imgutils.h>
+}
 
 class OverlayMaker {
 public:
@@ -12,6 +20,13 @@ public:
     std::filesystem::path & setChapter(Chapter &chapter, const std::list<InstrumentInput> &chapterEpochs);
     void addEpoch(const InstrumentInput &epoch, bool ignoreCache=false);
     static std::string getFileNamePattern(Chapter &chapter);
+    std::vector<AVFrame*>& getFrameQueue() {
+      return m_frameQueue;
+    }
+    int getWidth() const { return m_width; }
+    int getHeight() const { return m_height; }
+private:
+    AVFrame* convertQImageToAVFrame(const QImage& image);
 private:
     std::list<OverlayElement *> m_elements;
     const std::filesystem::path &m_workDir;
@@ -21,6 +36,8 @@ private:
     int m_ChapterCount = 0;
     int m_OverlayCount = 0;
     std::map<std::string, std::string> m_chapterNamePatterns;
+    std::vector<AVFrame*> m_frameQueue;
+    std::set<int> m_ffmpegFrameCache;
 };
 
 

@@ -11,6 +11,12 @@
 #include "OverlayMaker.h"
 #include "RudderOverlayMaker.h"
 
+extern "C" {
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+#include <libavutil/avutil.h>
+}
+
 MovieProducer::MovieProducer(const std::string &path, const std::string &polarPath, std::list<GoProClipInfo> &clipsList,
                              std::vector<InstrumentInput> &instrDataVector,
                              std::map<uint64_t, Performance> &performanceVector,
@@ -185,6 +191,15 @@ void MovieProducer::makeChapterDescription(std::ofstream &df, const Chapter *cha
     df << std::endl;
 }
 
+bool checkProResAvailable() {
+  const AVCodec* codec = avcodec_find_encoder_by_name("prores_ks");
+  if (!codec) {
+    std::cerr << "ProRes codec not available. Please install or verify your FFmpeg build includes ProRes support." << std::endl;
+    return false;
+  }
+  return true;
+}
+
 std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &chapter, int chapterNum, int totalChapters) {
     uint64_t startUtcMs = m_rInstrDataVector[chapter.getStartIdx()].utc.getUnixTimeMs();
     uint64_t stopUtcMs = m_rInstrDataVector[chapter.getEndIdx()].utc.getUnixTimeMs();
@@ -246,9 +261,11 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
 
     std::filesystem::path chapterFolder = overlayMaker.setChapter(chapter, chapterEpochs);  // This call creates new chapter name
     std::ostringstream oss;
-    oss << "CHAPTER-OVERLAY-" << chapter.getUuid().toStdString() << ".MOV";
+    oss << "CHAPTER-OVERLAY-" << chapter.getUuid().toStdString() << ".mov";
 
     std::filesystem::path clipFulPathName = chapterFolder.parent_path()  / oss.str() ;
+
+
     chapter.setChapterClipFileName(clipFulPathName.native());
 
     // Check if the chapter already exists
@@ -275,27 +292,139 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
         count ++;
     }
 
-    FFMpeg ffmpeg;
-    float durationScale = presentationDuration / duration ;
-    ffmpeg.setBackgroundClip(&goProclipFragments, changeDuration, durationScale);
+  // Initialize FFmpeg encoder
+  FFMpeg ffmpeg;
+  float durationScale = presentationDuration / duration;
+  ffmpeg.setBackgroundClip(&goProclipFragments, changeDuration, durationScale);
 
-    // Add  overlay
-    ffmpeg.addOverlayPngSequence(0, 0, overlaysFps, chapterFolder,
-                                 OverlayMaker::getFileNamePattern(chapter));
+  // Then check before encoding:
+  bool transparencyNeeded = true; // Assume we need transparency for overlays
+  if (transparencyNeeded && !checkProResAvailable()) {
+    std::cerr << "VP9 not available, falling back to H.264 without transparency" << std::endl;
+    // Fall back to H.264 here
+    transparencyNeeded = false;
+  }
 
-    uint64_t  clipDurationMs = presentationDuration * 1000;
-    EncodingProgressListener progressListener(chapterWithNum, clipDurationMs, m_rProgressListener);
+  // Set up direct frame encoding
+  ffmpeg.initializeEncoder(clipFulPathName.string(), overlayMaker.getWidth(), overlayMaker.getHeight(), overlaysFps, transparencyNeeded);
+  ffmpeg.addOverlayFrameSequence(0, 0, overlaysFps);
 
-    ffmpeg.makeClip(clipFulPathName, progressListener);
-    m_stopRequested = progressListener.isStopRequested();
 
-    if ( m_stopRequested ){
-        return "";
+  // Process all frames from the queue
+  const auto& frameQueue = overlayMaker.getFrameQueue();
+
+  SwsContext* swsCtx = nullptr;
+
+  for (size_t i = 0; i < frameQueue.size(); i++) {
+      if (m_stopRequested) break;
+
+      AVFrame* frame = frameQueue[i];
+      if (!frame) continue;
+
+      // Create output frame
+      AVFrame* outFrame = av_frame_alloc();
+      if (!outFrame) {
+          std::cerr << "Failed to allocate output frame" << std::endl;
+          continue;
+      }
+
+      outFrame->format = AV_PIX_FMT_YUVA444P10LE;  // Changed from YUVA420P to YUVA444P10LE for ProRes
+      outFrame->width = frame->width > 0 ? frame->width : overlayMaker.getWidth();
+      outFrame->height = frame->height > 0 ? frame->height : overlayMaker.getHeight();
+      outFrame->pts = i;
+
+      // Allocate buffer
+      int ret = av_frame_get_buffer(outFrame, 32);
+      if (ret < 0) {
+          char errBuf[AV_ERROR_MAX_STRING_SIZE];
+          av_strerror(ret, errBuf, AV_ERROR_MAX_STRING_SIZE);
+          std::cerr << "Failed to allocate frame buffer: " << errBuf << std::endl;
+          av_frame_free(&outFrame);
+          continue;
+      }
+
+      // Make writable
+      ret = av_frame_make_writable(outFrame);
+      if (ret < 0) {
+          std::cerr << "Failed to make frame writable" << std::endl;
+          av_frame_free(&outFrame);
+          continue;
+      }
+
+      // Initialize SwsContext if needed
+      if (!swsCtx) {
+          // Determine source format (assume RGBA if not specified)
+          int srcFormat = frame->format > 0 ? frame->format : AV_PIX_FMT_RGBA;
+
+          swsCtx = sws_getContext(
+                outFrame->width, outFrame->height, (AVPixelFormat)srcFormat,
+                outFrame->width, outFrame->height, AV_PIX_FMT_YUVA444P10LE,  // Changed pixel format
+                SWS_BICUBIC, nullptr, nullptr, nullptr
+          );
+
+          if (!swsCtx) {
+              std::cerr << "Failed to create SwsContext" << std::endl;
+              av_frame_free(&outFrame);
+              continue;
+          }
+      }
+
+      // Prepare source pointers and strides
+      const uint8_t* srcSlice[4] = {nullptr};
+      int srcStride[4] = {0};
+
+      for (int p = 0; p < 4 && frame->data[p]; p++) {
+          srcSlice[p] = frame->data[p];
+          srcStride[p] = frame->linesize[p] > 0 ? frame->linesize[p] :
+                        (p == 0 ? frame->width * 4 : 0);  // Assume 4 bytes per pixel for RGBA
+      }
+
+      // Perform conversion
+      ret = sws_scale(swsCtx, srcSlice, srcStride, 0, outFrame->height,
+                     outFrame->data, outFrame->linesize);
+
+      if (ret <= 0) {
+          std::cerr << "Failed to convert frame" << std::endl;
+          av_frame_free(&outFrame);
+          continue;
+      }
+
+      // Encode the frame
+      ffmpeg.encodeFrame(outFrame);
+
+      // Free the output frame
+      av_frame_free(&outFrame);
+  }
+
+  // Clean up
+  if (swsCtx) {
+      sws_freeContext(swsCtx);
+  }
+
+  // Finalize encoding
+  ffmpeg.finalizeEncoding();
+  uint64_t clipDurationMs = presentationDuration * 1000;
+  EncodingProgressListener progressListener(chapterWithNum, clipDurationMs, m_rProgressListener);
+
+  // makeClip is still needed for adding the background video
+//  ffmpeg.makeClip(clipFulPathName, progressListener);
+  m_stopRequested = progressListener.isStopRequested();
+
+  if (m_stopRequested) {
+    return "";
+  }
+
+  makeSummaryFile(summaryFile, chapter);
+
+  // Clear frames after encoding is complete
+  for (auto frame : frameQueue) {
+    if (frame) {
+      av_frame_free(&frame);
     }
+  }
+  overlayMaker.getFrameQueue().clear();
 
-    makeSummaryFile(summaryFile, chapter);
-
-    return clipFulPathName;
+  return clipFulPathName;
 }
 
 void MovieProducer::findGoProClipFragments(std::list<ClipFragment> &clipFragments, uint64_t startUtcMs, uint64_t stopUtcMs) {

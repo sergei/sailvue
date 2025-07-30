@@ -10,6 +10,14 @@
 
 #include <list>
 
+extern "C" {
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+#include <libavutil/avutil.h>
+#include <libswscale/swscale.h>
+#include <libavutil/opt.h>
+}
+
 struct ClipFragment {
     ClipFragment(int64_t in, int64_t out, const std::string &fileName, int w, int h):
             in(in), out(out),
@@ -96,6 +104,15 @@ public:
     virtual bool ffmpegProgress(uint64_t msEncoded) = 0;
 };
 
+// New struct for direct frame overlay
+struct OverlayFrameSequence {
+  OverlayFrameSequence(int x, int y, float fps) : x(x), y(y), fps(fps) {}
+
+  int x;
+  int y;
+  float fps;
+  std::vector<AVFrame*> frames;
+};
 
 class FFMpeg {
 public:
@@ -104,11 +121,20 @@ public:
 
     void setBackgroundClip(std::list<ClipFragment> *pClipFragments, bool changeDuration, float durationScale);
     void addOverlayPngSequence(int x, int y, float fps, const std::filesystem::path &path, const std::string &filePattern);
+    // New method to add frames directly
+    void addOverlayFrameSequence(int x, int y, float fps);
+    // New method to add a frame to the latest frame sequence
+    void addFrameToOverlay(AVFrame* frame);
 
     void makeClip(const std::string &clipPath, FfmpegProgressListener &progress);
 
     static void joinChapters(std::list<std::string> &chaptersList, const std::basic_string<char> &moviePath,
                       FfmpegProgressListener &progressListener);
+
+    // New methods for direct frame encoding
+    bool initializeEncoder(const std::string &outputPath, int width, int height, float fps, bool useAlpha);
+    bool encodeFrame(AVFrame* frame);
+    bool finalizeEncoding();
 
 private:
     static std::string s_ffmpeg;
@@ -123,6 +149,15 @@ private:
     static std::string makeJoinChaptersFfmpegArgs(std::list<std::string> &chaptersList,const std::basic_string<char> &outPath);
 
     static bool executeFfmpeg( const std::string &ffmpegArgs, FfmpegProgressListener &progress) ;
+
+    // Private members for direct encoding
+    AVFormatContext* m_formatContext = nullptr;
+    AVCodecContext* m_codecContext = nullptr;
+    AVStream* m_stream = nullptr;
+    int64_t m_nextPts = 0;
+
+    // New member for frame overlays
+    std::list<OverlayFrameSequence> m_frameOverlays;
 
 };
 
