@@ -275,6 +275,9 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
         return clipFulPathName;
     }
 
+    // Start timing image creation
+    auto startImageGeneration = std::chrono::high_resolution_clock::now();
+
     int count = 0;
     for(auto &epoch: chapterEpochs){
 
@@ -292,33 +295,69 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
         count ++;
     }
 
+    // End timing image creation
+    auto endImageGeneration = std::chrono::high_resolution_clock::now();
+    auto imageGenerationTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+            endImageGeneration - startImageGeneration).count();
+    std::cout << "Generated " << overlayMaker.getImageQueue().size() << " frames in "
+              << imageGenerationTime << "ms ("
+              << (overlayMaker.getImageQueue().size() > 0 ?
+                  imageGenerationTime / overlayMaker.getImageQueue().size() : 0)
+              << "ms per frame)" << std::endl;
+
+
   // Initialize FFmpeg encoder
   FFMpeg ffmpeg;
   float durationScale = presentationDuration / duration;
   ffmpeg.setBackgroundClip(&goProclipFragments, changeDuration, durationScale);
 
-  // Then check before encoding:
+  // Check transparency support
   bool transparencyNeeded = true; // Assume we need transparency for overlays
   if (transparencyNeeded && !checkProResAvailable()) {
-    std::cerr << "VP9 not available, falling back to H.264 without transparency" << std::endl;
-    // Fall back to H.264 here
+    std::cerr << "ProRes not available, falling back to H.264 without transparency" << std::endl;
     transparencyNeeded = false;
   }
 
-  // Set up direct frame encoding
-  ffmpeg.initializeEncoder(clipFulPathName.string(), overlayMaker.getWidth(), overlayMaker.getHeight(), overlaysFps, transparencyNeeded);
+  // Start timing encoding process
+  auto startEncoding = std::chrono::high_resolution_clock::now();
+
+  // Initialize the encoder and check for success
+  std::cout << "Initializing encoder..." << std::endl;
+  bool initSuccess = ffmpeg.initializeEncoder(
+          clipFulPathName.string(),
+          overlayMaker.getWidth(),
+          overlayMaker.getHeight(),
+          overlaysFps
+  );
+
+  if (!initSuccess) {
+    std::cerr << "Failed to initialize encoder for " << clipFulPathName.string() << std::endl;
+    return "";
+  }
 
   uint64_t clipDurationMs = presentationDuration * 1000;
   EncodingProgressListener progressListener(chapterWithNum, clipDurationMs, m_rProgressListener);
 
   // Encode all images from the queue
-  if (!ffmpeg.encodeQImageSequence(overlayMaker.getImageQueue(), overlaysFps, progressListener)) {
+  std::cout << "Starting encoding of " << overlayMaker.getImageQueue().size() << " frames..." << std::endl;
+  bool encodingSuccess = ffmpeg.encodeQImageSequence(overlayMaker.getImageQueue(), overlaysFps, progressListener);
+
+  // End timing encoding process
+  auto endEncoding = std::chrono::high_resolution_clock::now();
+  auto encodingTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+          endEncoding - startEncoding).count();
+  std::cout << "Encoded " << overlayMaker.getImageQueue().size() << " frames in "
+            << encodingTime << "ms ("
+            << (overlayMaker.getImageQueue().size() > 0 ?
+                encodingTime / overlayMaker.getImageQueue().size() : 0)
+            << "ms per frame)" << std::endl;
+
+  if (!encodingSuccess) {
+    std::cerr << "Failed to encode image sequence" << std::endl;
     m_stopRequested = true;
     return "";
   }
 
-  // makeClip is still needed for adding the background video
-  //  ffmpeg.makeClip(clipFulPathName, progressListener);
   m_stopRequested = progressListener.isStopRequested();
 
   if (m_stopRequested) {

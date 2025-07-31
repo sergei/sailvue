@@ -30,21 +30,20 @@ std::string OverlayMaker::getFileNamePattern(Chapter &chapter) {
 
 
 void OverlayMaker::addEpoch(const InstrumentInput &epoch, bool ignoreCache) {
-    std::ostringstream oss;
-    oss << "overlay_" << std::setw(5) << std::setfill('0') << m_OverlayCount << ".png";
     m_OverlayCount++;
-    std::filesystem::path pngName = m_ChapterFolder / oss.str();
+
+    std::filesystem::path pngName;
+    if ( m_makeDebugPngs ) {
+      std::ostringstream oss;
+      oss << "overlay_" << std::setw(5) << std::setfill('0') << m_OverlayCount << ".png";
+      pngName = m_ChapterFolder / oss.str();
+    }
 
     if (std::filesystem::is_regular_file(pngName) && !ignoreCache) {
         return;
     }
 
     int frameIndex = m_OverlayCount++;
-
-    // Skip processing if using cache
-    if (!ignoreCache && m_imageCache.find(frameIndex) != m_imageCache.end()) {
-        return;
-    }
 
     // Create image for the frame
     QImage fullImage(m_width, m_height, QImage::Format_ARGB32);
@@ -64,9 +63,9 @@ void OverlayMaker::addEpoch(const InstrumentInput &epoch, bool ignoreCache) {
         fullPainter.drawImage(x, element->getY(), elementImage);
     }
 
-    fullImage.save(QString::fromStdString(pngName.string()), "PNG");
+    if( m_makeDebugPngs ){
+      fullImage.save(QString::fromStdString(pngName.string()), "PNG");
+    }
 
-    // Store QImage in queue instead of converting to AVFrame
     m_imageQueue.push_back(fullImage);
-    m_imageCache.insert(frameIndex);
 }

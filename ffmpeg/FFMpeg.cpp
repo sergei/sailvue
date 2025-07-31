@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <csignal>
 #include <fstream>
+#include <algorithm>
 
 std::string FFMpeg::s_ffmpeg = "/dev/null";
  std::string FFMpeg::s_ffprobe = "/dev/null";
@@ -321,7 +322,7 @@ void FFMpeg::addFrameToOverlay(AVFrame* frame) {
     m_frameOverlays.back().frames.push_back(frame);
 }
 
-bool FFMpeg::initializeEncoder(const std::string &filename, int width, int height, float fps, bool useAlpha = false) {
+bool FFMpeg::initializeEncoder(const std::string &filename, int width, int height, float fps) {
     // Clean up any existing resources
     if (m_formatContext) {
         avformat_free_context(m_formatContext);
@@ -334,29 +335,33 @@ bool FFMpeg::initializeEncoder(const std::string &filename, int width, int heigh
 
     m_stream = nullptr;
     m_nextPts = 0;
+    m_initialized = false; // Reset initialization flag for convertQImageToAVFrame
 
-    // Create output format context - use QuickTime container for ProRes
-    const char* format_name = useAlpha ? "mov" : nullptr;
-    avformat_alloc_output_context2(&m_formatContext, nullptr, format_name, filename.c_str());
+    // Create output format context for MOV (required for ProRes with alpha)
+    avformat_alloc_output_context2(&m_formatContext, nullptr, "mov", filename.c_str());
     if (!m_formatContext) {
         std::cerr << "Could not create output context" << std::endl;
         return false;
     }
 
-    // Find encoder
-    const AVCodec *codec;
-    if (useAlpha) {
+    // Find ProRes encoder
+    const AVCodec *codec = nullptr;
+    AVPixelFormat pixFmt;
+
+    // Try hardware-accelerated ProRes encoder first
+    codec = avcodec_find_encoder_by_name("prores_videotoolbox");
+    if (codec) {
+        std::cout << "Using hardware-accelerated ProRes encoder (VideoToolbox)" << std::endl;
+        pixFmt = AV_PIX_FMT_BGRA;
+    } else {
+        // Fall back to software ProRes encoder
         codec = avcodec_find_encoder_by_name("prores_ks");
         if (!codec) {
             std::cerr << "ProRes codec not found" << std::endl;
             return false;
         }
-    } else {
-        codec = avcodec_find_encoder(AV_CODEC_ID_H264);
-        if (!codec) {
-            std::cerr << "H.264 codec not found" << std::endl;
-            return false;
-        }
+        std::cout << "Using software ProRes encoder" << std::endl;
+        pixFmt = AV_PIX_FMT_YUVA444P10LE;
     }
 
     // Create stream
@@ -378,18 +383,29 @@ bool FFMpeg::initializeEncoder(const std::string &filename, int width, int heigh
     m_codecContext->height = height;
     m_codecContext->time_base = (AVRational){1, int(fps + 0.5)};
     m_stream->time_base = m_codecContext->time_base;
+    m_codecContext->pix_fmt = pixFmt;
+    m_codecContext->thread_count = 16; // Use more threads for better performance
+    m_codecContext->thread_type = FF_THREAD_FRAME | FF_THREAD_SLICE; // Use both threading models
 
-    if (useAlpha) {
-        // ProRes 4444 settings for alpha support
-        m_codecContext->pix_fmt = AV_PIX_FMT_YUVA444P10LE;
-        av_opt_set(m_codecContext->priv_data, "profile", "4444", 0);
-        // Higher quality settings
-        av_opt_set(m_codecContext->priv_data, "bits_per_mb", "8000", 0);
+    // ProRes settings
+    if (std::string(codec->name) == "prores_videotoolbox") {
+
+        // Hardware ProRes settings for VideoToolbox
+        // Explicitly set color space and range for BGRA
+        m_codecContext->color_range = AVCOL_RANGE_JPEG;    // Full range (0-255)
+        m_codecContext->colorspace = AVCOL_SPC_RGB;        // RGB color space
+        m_codecContext->color_primaries = AVCOL_PRI_BT709; // Standard color primaries
+        m_codecContext->color_trc = AVCOL_TRC_IEC61966_2_1; // sRGB transfer characteristics
+
+        av_opt_set_int(m_codecContext->priv_data, "profile", 4, 0); // Use profile 4 (ProRes 4444)
+        av_opt_set_int(m_codecContext->priv_data, "allow_hw_accel", 1, 0);
+        av_opt_set_int(m_codecContext->priv_data, "realtime", 1, 0); // Prioritize speed
+        m_codecContext->flags |= AV_CODEC_FLAG_LOW_DELAY; // Lower latency
     } else {
-        m_codecContext->pix_fmt = AV_PIX_FMT_YUV420P;
-        m_codecContext->gop_size = 12;
-        m_codecContext->max_b_frames = 2;
-        av_opt_set(m_codecContext->priv_data, "preset", "medium", 0);
+        // Software ProRes settings
+        av_opt_set(m_codecContext->priv_data, "profile", "4444", 0);
+        av_opt_set(m_codecContext->priv_data, "bits_per_mb", "8000", 0);
+        av_opt_set(m_codecContext->priv_data, "qscale", "11", 0); // Higher value = lower quality but faster
     }
 
     // Open codec
@@ -398,10 +414,47 @@ bool FFMpeg::initializeEncoder(const std::string &filename, int width, int heigh
         char errBuf[AV_ERROR_MAX_STRING_SIZE];
         av_strerror(ret, errBuf, AV_ERROR_MAX_STRING_SIZE);
         std::cerr << "Could not open codec: " << errBuf << std::endl;
-        return false;
+
+        // If hardware encoding failed, try falling back to software
+        if (std::string(codec->name) == "prores_videotoolbox") {
+            std::cout << "Hardware ProRes encoding failed, falling back to software..." << std::endl;
+            avcodec_free_context(&m_codecContext);
+
+            codec = avcodec_find_encoder_by_name("prores_ks");
+            if (!codec) {
+                std::cerr << "ProRes software codec not found" << std::endl;
+                return false;
+            }
+
+            m_codecContext = avcodec_alloc_context3(codec);
+            if (!m_codecContext) {
+                std::cerr << "Could not create codec context" << std::endl;
+                return false;
+            }
+
+            m_codecContext->width = width;
+            m_codecContext->height = height;
+            m_codecContext->time_base = (AVRational){1, int(fps + 0.5)};
+            m_codecContext->pix_fmt = AV_PIX_FMT_YUVA444P10LE;
+            m_codecContext->thread_count = 16;
+            m_codecContext->thread_type = FF_THREAD_FRAME | FF_THREAD_SLICE;
+
+            av_opt_set(m_codecContext->priv_data, "profile", "4444", 0);
+            av_opt_set(m_codecContext->priv_data, "bits_per_mb", "8000", 0);
+            av_opt_set(m_codecContext->priv_data, "qscale", "11", 0);
+
+            ret = avcodec_open2(m_codecContext, codec, nullptr);
+            if (ret < 0) {
+                av_strerror(ret, errBuf, AV_ERROR_MAX_STRING_SIZE);
+                std::cerr << "Could not open software codec: " << errBuf << std::endl;
+                return false;
+            }
+        } else {
+            return false;
+        }
     }
 
-    // Copy parameters from codec context to stream
+    // Copy parameters to stream
     avcodec_parameters_from_context(m_stream->codecpar, m_codecContext);
 
     // Open output file
@@ -438,70 +491,11 @@ bool FFMpeg::encodeFrame(AVFrame* frame) {
         return true;
     }
 
-    // Check if frame has valid linesize
-    bool validLinesize = true;
-    for (int i = 0; i < AV_NUM_DATA_POINTERS && frame->data[i]; i++) {
-        if (frame->linesize[i] <= 0) {
-            validLinesize = false;
-            break;
-        }
-    }
-
-    // If linesize is invalid, create a new frame with correct linesize
-    AVFrame* frameToEncode = frame;
-    if (!validLinesize) {
-        // Create a new frame with correct linesize
-        AVFrame* newFrame = av_frame_alloc();
-        newFrame->format = frame->format;
-        newFrame->width = frame->width;
-        newFrame->height = frame->height;
-
-        // Allocate buffer for the new frame
-        int ret = av_frame_get_buffer(newFrame, 32); // 32 for alignment
-        if (ret < 0) {
-            std::cerr << "Could not allocate frame data" << std::endl;
-            av_frame_free(&newFrame);
-            return false;
-        }
-
-        // Make the frame writable
-        ret = av_frame_make_writable(newFrame);
-        if (ret < 0) {
-            std::cerr << "Could not make frame writable" << std::endl;
-            av_frame_free(&newFrame);
-            return false;
-        }
-
-        // Manually copy the pixel data
-        for (int i = 0; i < AV_NUM_DATA_POINTERS && frame->data[i]; i++) {
-            if (newFrame->data[i]) {
-                // Calculate plane size based on format
-                int planeHeight = (i == 0) ? frame->height : frame->height / 2;
-                int planeWidth = (i == 0) ? frame->width : frame->width / 2;
-
-                // Copy line by line
-                for (int h = 0; h < planeHeight; h++) {
-                    memcpy(newFrame->data[i] + h * newFrame->linesize[i],
-                           frame->data[i] + h * (frame->linesize[i] > 0 ? frame->linesize[i] : planeWidth),
-                           planeWidth);
-                }
-            }
-        }
-
-        frameToEncode = newFrame;
-    }
-
     // Set frame PTS
-    frameToEncode->pts = m_nextPts++;
+    frame->pts = m_nextPts++;
 
     // Send frame to encoder
-    int ret = avcodec_send_frame(m_codecContext, frameToEncode);
-
-    // Free the new frame if we created one
-    if (frameToEncode != frame) {
-        av_frame_free(&frameToEncode);
-    }
-
+    int ret = avcodec_send_frame(m_codecContext, frame);
     if (ret < 0) {
         char errBuf[AV_ERROR_MAX_STRING_SIZE];
         av_strerror(ret, errBuf, AV_ERROR_MAX_STRING_SIZE);
@@ -608,130 +602,144 @@ bool FFMpeg::finalizeEncoding() {
     return true;
 }
 
+bool FFMpeg::copyQImageToAVFrame(const QImage& image, AVFrame* frame) {
+    // Check if frame is valid
+    if (!frame) return false;
 
-AVFrame* FFMpeg::convertQImageToAVFrame(const QImage& image) {
-    // First create a frame in the source format
-    AVFrame* srcFrame = av_frame_alloc();
-    if (!srcFrame) {
-        return nullptr;
+    // For direct BGRA to BGRA copy (no conversion needed)
+    if (m_codecContext->pix_fmt == AV_PIX_FMT_BGRA &&
+        image.format() == QImage::Format_ARGB32) {
+
+      av_frame_make_writable(frame);
+
+      // Direct copy from QImage to AVFrame
+      for (int y = 0; y < image.height(); y++) {
+        memcpy(frame->data[0] + y * frame->linesize[0],
+               image.constScanLine(y),
+               std::min(image.bytesPerLine(), static_cast<qsizetype>(frame->linesize[0])));
+      }
+
+      return true;
     }
 
-    // Create a frame in the destination format
-    AVFrame* dstFrame = av_frame_alloc();
-    if (!dstFrame) {
-        av_frame_free(&srcFrame);
-        return nullptr;
+    // Initialize source frame if needed
+    if (!m_initialized) {
+        m_srcFrame = av_frame_alloc();
+        if (!m_srcFrame) return false;
+
+        m_srcFrame->width = image.width();
+        m_srcFrame->height = image.height();
+        m_srcFrame->format = AV_PIX_FMT_BGRA;  // QImage::Format_ARGB32 is BGRA in memory
+
+        if (av_frame_get_buffer(m_srcFrame, 32) < 0) {
+            av_frame_free(&m_srcFrame);
+            m_srcFrame = nullptr;
+            return false;
+        }
+
+        // Create SwsContext only once
+        m_swsCtx = sws_getContext(
+                image.width(), image.height(), AV_PIX_FMT_BGRA,
+                image.width(), image.height(), m_codecContext->pix_fmt,
+                SWS_BICUBIC, nullptr, nullptr, nullptr
+        );
+
+        if (!m_swsCtx) {
+            av_frame_free(&m_srcFrame);
+            m_srcFrame = nullptr;
+            return false;
+        }
+
+        m_initialized = true;
     }
 
-    // Set source frame properties
-    srcFrame->width = image.width();
-    srcFrame->height = image.height();
-    srcFrame->format = AV_PIX_FMT_BGRA; // QImage::Format_ARGB32 is actually BGRA in memory
-
-    // Set destination frame properties based on codec context
-    dstFrame->width = image.width();
-    dstFrame->height = image.height();
-    dstFrame->format = m_codecContext->pix_fmt;
-
-    // Allocate source frame buffer
-    if (av_frame_get_buffer(srcFrame, 0) < 0) {
-        av_frame_free(&srcFrame);
-        av_frame_free(&dstFrame);
-        return nullptr;
-    }
-
-    // Allocate destination frame buffer
-    if (av_frame_get_buffer(dstFrame, 0) < 0) {
-        av_frame_free(&srcFrame);
-        av_frame_free(&dstFrame);
-        return nullptr;
-    }
-
-    // Make source frame writable
-    if (av_frame_make_writable(srcFrame) < 0) {
-        av_frame_free(&srcFrame);
-        av_frame_free(&dstFrame);
-        return nullptr;
-    }
+    // Ensure frame is writable
+    av_frame_make_writable(m_srcFrame);
 
     // Copy data from QImage to source AVFrame
-    for (int y = 0; y < srcFrame->height; y++) {
-        memcpy(srcFrame->data[0] + y * srcFrame->linesize[0],
+    for (int y = 0; y < image.height(); y++) {
+        memcpy(m_srcFrame->data[0] + y * m_srcFrame->linesize[0],
                image.constScanLine(y),
-               srcFrame->width * 4);
+               image.width() * 4);
     }
 
-    // Create SwsContext for pixel format conversion
-    SwsContext* swsCtx = sws_getContext(
-        srcFrame->width, srcFrame->height, (AVPixelFormat)srcFrame->format,
-        dstFrame->width, dstFrame->height, (AVPixelFormat)dstFrame->format,
-        SWS_BICUBIC, nullptr, nullptr, nullptr
-    );
+    // Convert pixel format to the destination frame
+    int ret = sws_scale(m_swsCtx, m_srcFrame->data, m_srcFrame->linesize, 0, image.height(),
+              frame->data, frame->linesize);
 
-    if (!swsCtx) {
-        av_frame_free(&srcFrame);
-        av_frame_free(&dstFrame);
-        return nullptr;
-    }
-
-    // Set proper colorspace conversion parameters
-    int srcRange = 1; // Full range source
-    int dstRange = 1; // Full range destination
-    sws_setColorspaceDetails(
-        swsCtx,
-        sws_getCoefficients(SWS_CS_DEFAULT), srcRange,
-        sws_getCoefficients(SWS_CS_ITU709), dstRange,
-        0, 1 << 16, 1 << 16
-    );
-
-    // Convert pixel format
-    sws_scale(swsCtx, srcFrame->data, srcFrame->linesize, 0, srcFrame->height,
-              dstFrame->data, dstFrame->linesize);
-
-    // Free SwsContext
-    sws_freeContext(swsCtx);
-
-    // Free source frame
-    av_frame_free(&srcFrame);
-
-    return dstFrame;
+    return ret > 0;
 }
 
 bool FFMpeg::encodeQImageSequence(const std::vector<QImage>& images, float fps,
                                  FfmpegProgressListener& progressListener) {
-    if (!m_codecContext || !m_formatContext) {
-        std::cerr << "Encoder not initialized" << std::endl;
+    if (images.empty()) {
+        std::cerr << "No images to encode" << std::endl;
         return false;
     }
 
-    uint64_t totalFrames = images.size();
+    std::cout << "Starting encoding of " << images.size() << " frames..." << std::endl;
+    auto startTime = std::chrono::high_resolution_clock::now();
 
-    for (size_t i = 0; i < images.size(); i++) {
-        // Convert QImage to AVFrame
-        AVFrame* frame = convertQImageToAVFrame(images[i]);
-        if (!frame) {
-            std::cerr << "Failed to convert QImage to AVFrame" << std::endl;
-            return false;
+    // Set BATCH_SIZE to min of actual batch size and images.size()
+    const int BATCH_SIZE = std::min(MAX_BATCH_SIZE, static_cast<int>(images.size()));
+
+    // Create appropriately sized frame pool
+    FramePool framePool(BATCH_SIZE, m_codecContext->pix_fmt,
+                       images[0].width(), images[0].height());
+
+    for (size_t i = 0; i < images.size(); i += BATCH_SIZE) {
+        size_t endIdx = std::min(i + BATCH_SIZE, images.size());
+        std::vector<AVFrame*> frames(endIdx - i, nullptr);
+
+        // Convert batch of frames in parallel
+        #pragma omp parallel for if(endIdx - i > 4)
+        for (size_t j = i; j < endIdx; j++) {
+            // Get a frame from the pool
+            AVFrame* poolFrame = framePool.getFrame();
+            if (!poolFrame) {
+                std::cerr << "Failed to get frame from pool for frame " << j << std::endl;
+                continue;
+            }
+
+            // Copy QImage data to the frame
+            if (!copyQImageToAVFrame(images[j], poolFrame)) {
+                framePool.returnFrame(poolFrame);
+                continue;
+            }
+
+            frames[j-i] = poolFrame;
         }
 
-        // Encode the frame
-        bool success = encodeFrame(frame);
+        // Send frames to encoder
+        for (size_t j = 0; j < frames.size(); j++) {
+            if (!frames[j]) {
+                std::cerr << "Frame " << (i+j) << " is null, skipping" << std::endl;
+                continue;
+            }
 
-        // Free the frame
-        av_frame_free(&frame);
+            bool success = encodeFrame(frames[j]);
 
-        if (!success) {
-            std::cerr << "Failed to encode frame " << i << std::endl;
-            return false;
-        }
+            // Return the frame to the pool
+            framePool.returnFrame(frames[j]);
 
-        // Report progress
-        uint64_t msEncoded = static_cast<uint64_t>(1000 * (i + 1) / fps);
-        if (progressListener.ffmpegProgress(msEncoded)) {
-            return false; // Stop requested
+            if (!success) {
+                std::cerr << "Failed to encode frame " << (i+j) << std::endl;
+                return false;
+            }
+
+            uint64_t msEncoded = static_cast<uint64_t>(1000 * (i + j + 1) / fps);
+            if (progressListener.ffmpegProgress(msEncoded)) {
+                return false;
+            }
         }
     }
 
-    // Finalize encoding
-    return finalizeEncoding();
+    bool result = finalizeEncoding();
+
+    auto endTime = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+    std::cout << "Encoded " << images.size() << " frames in " << duration << "ms ("
+              << (images.size() > 0 ? duration/images.size() : 0) << "ms per frame)" << std::endl;
+
+    return result;
 }

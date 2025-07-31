@@ -9,20 +9,14 @@
 class OverlayMaker {
 public:
   OverlayMaker(const std::filesystem::path &folder, int width, int height);
-
   void addOverlayElement(OverlayElement &element) { m_elements.push_back(&element); }
-
   std::filesystem::path &setChapter(Chapter &chapter, const std::list<InstrumentInput> &chapterEpochs);
-
   void addEpoch(const InstrumentInput &epoch, bool ignoreCache = false);
-
   static std::string getFileNamePattern(Chapter &chapter);
-
   int getWidth() const { return m_width; }
-
   int getHeight() const { return m_height; }
-
   const std::vector<QImage>& getImageQueue() const { return m_imageQueue; }
+  void setMakeDebugPngs(bool makeDebugPngs) { m_makeDebugPngs = makeDebugPngs; }
 
 private:
   std::list<OverlayElement *> m_elements;
@@ -34,7 +28,7 @@ private:
   int m_OverlayCount = 0;
   std::map<std::string, std::string> m_chapterNamePatterns;
   std::vector<QImage> m_imageQueue;
-  std::set<int> m_imageCache;
+  bool m_makeDebugPngs = false; // Flag to control debug PNG creation
 };
 
 #endif //SAILVUE_OVERLAYMAKER_H

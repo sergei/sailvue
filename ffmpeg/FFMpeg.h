@@ -19,6 +19,8 @@ extern "C" {
 #include <libavutil/opt.h>
 }
 
+const int MAX_BATCH_SIZE = 1024*10;
+
 struct ClipFragment {
     ClipFragment(int64_t in, int64_t out, const std::string &fileName, int w, int h):
             in(in), out(out),
@@ -115,6 +117,75 @@ struct OverlayFrameSequence {
   std::vector<AVFrame*> frames;
 };
 
+class FramePool {
+private:
+    std::vector<AVFrame*> m_frames;
+    AVPixelFormat m_format;
+    int m_width, m_height;
+    std::mutex m_mutex;
+
+public:
+    FramePool(int size, AVPixelFormat fmt, int width, int height)
+        : m_format(fmt), m_width(width), m_height(height) {
+        for (int i = 0; i < size; i++) {
+            createFrame();
+        }
+    }
+
+    AVFrame* getFrame() {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_frames.empty()) {
+            return createFrame(false);
+        }
+
+        AVFrame* frame = m_frames.back();
+        m_frames.pop_back();
+
+        // Ensure frame is writable
+        av_frame_make_writable(frame);
+        return frame;
+    }
+
+    void returnFrame(AVFrame* frame) {
+        if (!frame) return;
+
+        std::lock_guard<std::mutex> lock(m_mutex);
+        av_frame_unref(frame);
+        m_frames.push_back(frame);
+    }
+
+    ~FramePool() {
+        for (auto frame : m_frames)
+            av_frame_free(&frame);
+    }
+
+private:
+    AVFrame* createFrame(bool addToPool = true) {
+        AVFrame* frame = av_frame_alloc();
+        if (!frame) return nullptr;
+
+        frame->format = m_format;
+        frame->width = m_width;
+        frame->height = m_height;
+
+        // Allocate buffer for the frame
+        int ret = av_frame_get_buffer(frame, 32);
+        if (ret < 0) {
+            av_frame_free(&frame);
+            return nullptr;
+        }
+
+        // Make sure the frame data is writable
+        av_frame_make_writable(frame);
+
+        if (addToPool) {
+            m_frames.push_back(frame);
+            return nullptr;
+        }
+        return frame;
+    }
+};
+
 class FFMpeg {
 public:
     static bool setBinDir(const std::string &binDir);
@@ -132,12 +203,11 @@ public:
     static void joinChapters(std::list<std::string> &chaptersList, const std::basic_string<char> &moviePath,
                       FfmpegProgressListener &progressListener);
 
-    // New methods for direct frame encoding
-    bool initializeEncoder(const std::string &outputPath, int width, int height, float fps, bool useAlpha);
+    bool initializeEncoder(const std::string &outputPath, int width, int height, float fps);
     bool encodeFrame(AVFrame* frame);
     bool finalizeEncoding();
 
-    AVFrame* convertQImageToAVFrame(const QImage& image);
+    bool copyQImageToAVFrame(const QImage& image, AVFrame* frame);
     bool encodeQImageSequence(const std::vector<QImage>& images, float fps,
                               FfmpegProgressListener& progressListener);
 
@@ -164,6 +234,11 @@ private:
     // New member for frame overlays
     std::list<OverlayFrameSequence> m_frameOverlays;
 
+    // Reusable conversion resources
+    SwsContext* m_swsCtx = nullptr;
+    AVFrame* m_srcFrame = nullptr;
+    bool m_initialized = false;
+    FramePool *m_dstFramePool= nullptr;
 };
 
 
