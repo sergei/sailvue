@@ -263,3 +263,11 @@ qt_add_qml_module(sailvue
         SOURCES gui/PgnSrcTreeModel.cpp
         SOURCES gui/ChapterTypes.h
 )
+
+add_executable(ffmpeg_test
+        ffmpeg/tmcd_test.cpp
+)
+target_link_libraries(ffmpeg_test
+        PRIVATE
+        PkgConfig::FFMPEG
+)

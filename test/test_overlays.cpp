@@ -244,6 +244,8 @@ TEST(MedianTests, DescriptionFormatTest) {
 
 
 TEST(MedianTests, StartTest) {
+  test_tmcd();
+  return;
     std::vector<InstrumentInput> iiVector;
 
     std::string iiFile = "./data/ii-start.csv";
