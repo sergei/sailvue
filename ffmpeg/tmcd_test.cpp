@@ -74,6 +74,8 @@ int main(){
   videoCodecContext->time_base = (AVRational){1, 30}; // Set FPS: 30
   videoCodecContext->bit_rate = 2000000;
 
+  videoStream->avg_frame_rate = (AVRational){30, 1};
+
   if (avcodec_open2(videoCodecContext, videoCodec, nullptr) < 0) {
     std::cerr << "Failed to open ProRes codec!" << std::endl;
     avcodec_free_context(&videoCodecContext);
