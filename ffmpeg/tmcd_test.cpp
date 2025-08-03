@@ -90,32 +90,6 @@ int main(){
     return -1;
   }
 
-  videoStream->time_base = videoCodecContext->time_base;
-  videoStream->avg_frame_rate = (AVRational){30, 1};
-
-  // Timecode stream setup
-  AVStream* timecodeStream = avformat_new_stream(formatContext, nullptr);
-  if (!timecodeStream) {
-    std::cerr << "Failed to create timecode stream!" << std::endl;
-    avcodec_free_context(&videoCodecContext);
-    avio_close(formatContext->pb);
-    avformat_free_context(formatContext);
-    return -1;
-  }
-
-  timecodeStream->codecpar->codec_type = AVMEDIA_TYPE_DATA;
-  timecodeStream->codecpar->codec_id = AV_CODEC_ID_TIMED_ID3;
-  timecodeStream->codecpar->codec_tag = MKTAG('t', 'm', 'c', 'd'); // Timecode tag
-  timecodeStream->time_base = (AVRational){1, 30}; // FPS: 30
-
-  if (av_dict_set(&timecodeStream->metadata, "timecode", "00:00:30:00", 0) < 0) {
-    std::cerr << "Failed to set timecode metadata!" << std::endl;
-    avcodec_free_context(&videoCodecContext);
-    avio_close(formatContext->pb);
-    avformat_free_context(formatContext);
-    return -1;
-  }
-
   if (av_dict_set(&videoStream->metadata, "timecode", "00:00:30:00", 0) < 0) {
     std::cerr << "Failed to set timecode metadata on videostream !" << std::endl;
     avcodec_free_context(&videoCodecContext);
@@ -184,17 +158,6 @@ int main(){
   }
 
   av_frame_free(&frame);
-
-  // Write a dummy packet for the timecode stream
-  AVPacket tmcdPacket;
-  av_init_packet(&tmcdPacket);
-  tmcdPacket.stream_index = timecodeStream->index;
-  tmcdPacket.flags |= AV_PKT_FLAG_KEY;
-  tmcdPacket.data = nullptr; // Empty packet for timecode
-  tmcdPacket.size = 0;
-  tmcdPacket.pts = 0; // Set necessary PTS
-  tmcdPacket.dts = 0;
-  av_interleaved_write_frame(formatContext, &tmcdPacket);
 
   // Write trailer
   if (av_write_trailer(formatContext) < 0) {
