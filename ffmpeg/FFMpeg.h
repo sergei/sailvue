@@ -203,7 +203,7 @@ public:
     static void joinChapters(std::list<std::string> &chaptersList, const std::basic_string<char> &moviePath,
                       FfmpegProgressListener &progressListener);
 
-    bool initializeEncoder(const std::string &outputPath, int width, int height, float fps);
+    bool initializeEncoder(const std::string &outputPath, int width, int height, float fps, uint64_t startTimeMs);
     bool encodeFrame(AVFrame* frame);
     bool finalizeEncoding();
 
@@ -222,6 +222,7 @@ private:
 
     std::string makeClipFfmpegArgs(const std::string &clipPath);
     static std::string makeJoinChaptersFfmpegArgs(std::list<std::string> &chaptersList,const std::basic_string<char> &outPath);
+    static void msToTimecode(uint64_t ms, double fps, char* timecodeBuf, size_t bufSize);
 
     static bool executeFfmpeg( const std::string &ffmpegArgs, FfmpegProgressListener &progress) ;
     // Private members for direct encoding

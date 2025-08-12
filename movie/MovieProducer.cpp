@@ -323,11 +323,13 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
 
   // Initialize the encoder and check for success
   std::cout << "Initializing encoder..." << std::endl;
+  uint64_t startTimeMs = m_rInstrDataVector[chapter.getStartIdx()].utc.getUnixTimeMs();
   bool initSuccess = ffmpeg.initializeEncoder(
           clipFulPathName.string(),
           overlayMaker.getWidth(),
           overlayMaker.getHeight(),
-          overlaysFps
+          overlaysFps,
+          startTimeMs
   );
 
   if (!initSuccess) {

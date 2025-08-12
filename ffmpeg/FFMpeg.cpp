@@ -608,8 +608,20 @@ bool FFMpeg::encodeQImageSequence(const std::vector<QImage>& images, float fps,
 
     return result;
 }
+void FFMpeg::msToTimecode(uint64_t ms, double fps, char* timecodeBuf, size_t bufSize) {
+  int64_t totalSeconds = ms / 1000;
+  int hours   = static_cast<int>(totalSeconds / 3600);
+  int minutes = static_cast<int>((totalSeconds % 3600) / 60);
+  int seconds = static_cast<int>(totalSeconds % 60);
+  int frames  = static_cast<int>((ms % 1000) * fps / 1000.0);
+  std::snprintf(
+          timecodeBuf, bufSize,
+          "%02d:%02d:%02d:%02d",
+          hours, minutes, seconds, frames
+  );
+}
 
-bool FFMpeg::initializeEncoder(const std::string &filename, int width, int height, float fps) {
+bool FFMpeg::initializeEncoder(const std::string &filename, int width, int height, float fps, uint64_t startTimeMs) {
   // Clean up any existing resources
   if (m_formatContext) {
     avformat_free_context(m_formatContext);
@@ -698,16 +710,18 @@ bool FFMpeg::initializeEncoder(const std::string &filename, int width, int heigh
     }
   }
 
-  uint64_t startTimeMs = 30 * 1000; // Default start time in milliseconds (30 seconds)
+  startTimeMs = startTimeMs % (24 * 60*60*1000); // Wrap around to stay within 24 hours
+  char timecode[12];
+  FFMpeg::msToTimecode(startTimeMs, fps, timecode, sizeof(timecode));
 
-  if (av_dict_set(&m_videoStream->metadata, "timecode", "00:00:30:00", 0) < 0) {
+  if (av_dict_set(&m_videoStream->metadata, "timecode", timecode, 0) < 0) {
     std::cerr << "Failed to set timecode metadata on videostream !" << std::endl;
     avcodec_free_context(&m_codecContext);
     avio_close(m_formatContext->pb);
     avformat_free_context(m_formatContext);
     return false;
   }
-  if (av_dict_set(&m_formatContext->metadata, "timecode", "00:00:30:00", 0) < 0) {
+  if (av_dict_set(&m_formatContext->metadata, "timecode", timecode, 0) < 0) {
     std::cerr << "Failed to set timecode metadata on videostream !" << std::endl;
     avcodec_free_context(&m_codecContext);
     avio_close(m_formatContext->pb);
