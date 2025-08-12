@@ -224,11 +224,10 @@ private:
     static std::string makeJoinChaptersFfmpegArgs(std::list<std::string> &chaptersList,const std::basic_string<char> &outPath);
 
     static bool executeFfmpeg( const std::string &ffmpegArgs, FfmpegProgressListener &progress) ;
-    bool addTimecodeStream(double fps, uint64_t startTimeMs);
     // Private members for direct encoding
     AVFormatContext* m_formatContext = nullptr;
     AVCodecContext* m_codecContext = nullptr;
-    AVStream* m_stream = nullptr;
+    AVStream* m_videoStream = nullptr;
     int64_t m_nextPts = 0;
 
     // New member for frame overlays
@@ -239,7 +238,5 @@ private:
     AVFrame* m_srcFrame = nullptr;
     bool m_initialized = false;
 };
-
-int test_tmcd();
 
 #endif //SAILVUE_FFMPEG_H
