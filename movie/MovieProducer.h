@@ -39,6 +39,7 @@ public:
                   std::list<RaceData *> &raceList, IProgressListener &rProgressListener);
 
     void produce();
+    void makePilotClips(std::list<CameraClipInfo *> &rCameraClipsList);
     std::string produceChapter(OverlayMaker &overlayMaker, Chapter &chapter, int chapterNum, int totalChapters);
 
 private:

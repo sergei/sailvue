@@ -156,6 +156,7 @@ RaceTreeModel::RaceTreeModel(QObject *parent)
     connect(worker, &Worker::pathAvailable, this, &RaceTreeModel::handleNewInstrDataVector);
 
     connect(this, &RaceTreeModel::produce, worker, &Worker::produce);
+    connect(this, &RaceTreeModel::makePilotClips, worker, &Worker::makePilotClips);
 
     connect(worker, &Worker::produceStarted, this, &RaceTreeModel::handleProduceStarted);
     connect(worker, &Worker::produceFinished, this, &RaceTreeModel::handleProduceFinished);
@@ -976,6 +977,18 @@ void RaceTreeModel::handleProduceFinished(const QString &moviePathUrl, const QSt
         exportAdobeMarkers(markerFileName);
     }
     emit produceFinished(message);
+}
+
+void RaceTreeModel::handleMakePilotClipsStarted() {
+    emit makePilotClipsStarted();
+}
+
+void RaceTreeModel::handleMakePilotClipsFinished(const QString &moviePathUrl, const QString &message) {
+    if ( !moviePathUrl.isEmpty() ){
+        auto markerFileName = moviePathUrl + "/markers.csv";
+        exportAdobeMarkers(markerFileName);
+    }
+    emit makePilotClipsFinished(message);
 }
 
 void RaceTreeModel::detectManeuvers() {

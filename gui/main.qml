@@ -119,6 +119,16 @@ ApplicationWindow {
             finishedDialog.open()
         }
 
+        onMakePilotClipsStarted: function () {
+            fileProgressDialog.open()
+        }
+
+        onMakePilotClipsFinished: function (message) {
+            fileProgressDialog.close()
+            finishedDialogText.text = message
+            finishedDialog.open()
+        }
+
     }
 
 
@@ -153,6 +163,13 @@ ApplicationWindow {
             }
 
             Action {
+                text: qsTr("&Make pilot clips...")
+                onTriggered: makePilotClipsDialog.open()
+                enabled: raceTreeModel.projectName !== "Untitled"
+            }
+
+
+            Action {
                 text: qsTr("&Import Adobe Pr markers...")
                 onTriggered: importAdobeMarkersFileDialog.open()
                 enabled: raceTreeModel.projectName !== "Untitled"
@@ -165,13 +182,13 @@ ApplicationWindow {
             }
 
             Action {
-                text: qsTr("&Export CSV...")
+                text: qsTr("Export &CSV...")
                 onTriggered: statsFileDialog.open()
                 enabled: raceTreeModel.projectName !== "Untitled"
             }
 
             Action {
-                text: qsTr("&Export GPX...")
+                text: qsTr("Export &GPX...")
                 onTriggered: gpxFileDialog.open()
                 enabled: raceTreeModel.projectName !== "Untitled"
             }
@@ -394,6 +411,15 @@ ApplicationWindow {
         title: "Select folder for produced video"
         onAccepted: {
             raceTreeModel.produce(selectedFolder, raceTreeModel.polarPath)
+        }
+    }
+
+    FolderDialog {
+        id: makePilotClipsDialog
+        visible: false
+        title: "Select folder for pilot clips"
+        onAccepted: {
+            raceTreeModel.makePilotClips(selectedFolder, raceTreeModel.polarPath)
         }
     }
 

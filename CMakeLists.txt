@@ -166,6 +166,7 @@ set (NAV_SRC
         net_sim/N2kDebugStream.h
         movie/RudderOverlayMaker.cpp
         movie/RudderOverlayMaker.h
+        movie/PilotClipOverlayMaker.cpp
 
         magnetic/wmm.c
         magnetic/GeomagnetismLibrary.c

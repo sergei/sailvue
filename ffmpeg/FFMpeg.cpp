@@ -608,6 +608,150 @@ bool FFMpeg::encodeQImageSequence(const std::vector<QImage>& images, float fps,
 
     return result;
 }
+
+bool FFMpeg::encodeQImageSequence(const std::vector<QImage>& images, float fps,
+                                 FfmpegProgressListener& progressListener,
+                                 const std::string& title) {
+    if (images.empty()) {
+        std::cerr << "No images to encode" << std::endl;
+        return false;
+    }
+
+    std::cout << "Starting encoding of " << images.size() << " frames";
+    if (!title.empty()) {
+        std::cout << " with subtitle: " << title;
+    }
+    std::cout << "..." << std::endl;
+
+    auto startTime = std::chrono::high_resolution_clock::now();
+
+    // Initialize subtitle encoder if title is provided
+    AVCodecContext* subtitleCodecContext = nullptr;
+    AVStream* subtitleStream = nullptr;
+
+    if (!title.empty()) {
+        // For MOV container, subtitle support is limited - try but don't fail if it doesn't work
+        const AVCodec* subtitleCodec = avcodec_find_encoder_by_name("mov_text");
+
+        if (!subtitleCodec) {
+            std::cout << "Subtitle codec not available for MOV format, skipping subtitle" << std::endl;
+        } else {
+            subtitleStream = avformat_new_stream(m_formatContext, nullptr);
+            if (subtitleStream) {
+                subtitleCodecContext = avcodec_alloc_context3(subtitleCodec);
+                if (subtitleCodecContext) {
+                    subtitleCodecContext->codec_type = AVMEDIA_TYPE_SUBTITLE;
+                    subtitleCodecContext->time_base = {1, 1000};
+
+                    // Try to open codec, but don't fail the entire encoding if it doesn't work
+                    int ret = avcodec_open2(subtitleCodecContext, subtitleCodec, nullptr);
+                    if (ret < 0) {
+                        char errBuf[AV_ERROR_MAX_STRING_SIZE];
+                        av_strerror(ret, errBuf, AV_ERROR_MAX_STRING_SIZE);
+                        std::cout << "Subtitle encoding not supported in this configuration: " << errBuf << std::endl;
+                        std::cout << "Continuing without subtitle track..." << std::endl;
+                        avcodec_free_context(&subtitleCodecContext);
+                        subtitleCodecContext = nullptr;
+                        subtitleStream = nullptr;
+                    } else {
+                        std::cout << "Subtitle track initialized successfully" << std::endl;
+                        subtitleStream->time_base = subtitleCodecContext->time_base;
+                        avcodec_parameters_from_context(subtitleStream->codecpar, subtitleCodecContext);
+
+                        // Create and write subtitle packet
+                        AVPacket* subtitlePacket = av_packet_alloc();
+                        if (subtitlePacket) {
+                            // Simple text format for mov_text
+                            uint8_t* packetData = static_cast<uint8_t*>(av_malloc(title.length()));
+                            memcpy(packetData, title.c_str(), title.length());
+
+                            subtitlePacket->data = packetData;
+                            subtitlePacket->size = static_cast<int>(title.length());
+                            subtitlePacket->pts = 0;
+                            subtitlePacket->dts = 0;
+                            subtitlePacket->duration = 3000;
+                            subtitlePacket->stream_index = subtitleStream->index;
+
+                            av_packet_rescale_ts(subtitlePacket, subtitleCodecContext->time_base, subtitleStream->time_base);
+
+                            ret = av_interleaved_write_frame(m_formatContext, subtitlePacket);
+                            if (ret < 0) {
+                                std::cout << "Failed to write subtitle, continuing without it" << std::endl;
+                            }
+
+                            av_freep(&subtitlePacket->data);
+                            av_packet_free(&subtitlePacket);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    const int BATCH_SIZE = std::min(MAX_BATCH_SIZE, static_cast<int>(images.size()));
+    FramePool framePool(BATCH_SIZE, m_codecContext->pix_fmt,
+                       images[0].width(), images[0].height());
+
+    for (size_t i = 0; i < images.size(); i += BATCH_SIZE) {
+        size_t endIdx = std::min(i + BATCH_SIZE, images.size());
+        std::vector<AVFrame*> frames(endIdx - i, nullptr);
+
+        #pragma omp parallel for if(endIdx - i > 4)
+        for (size_t j = i; j < endIdx; j++) {
+            AVFrame* poolFrame = framePool.getFrame();
+            if (!poolFrame) {
+                std::cerr << "Failed to get frame from pool for frame " << j << std::endl;
+                continue;
+            }
+
+            if (!copyQImageToAVFrame(images[j], poolFrame)) {
+                framePool.returnFrame(poolFrame);
+                continue;
+            }
+
+            frames[j-i] = poolFrame;
+        }
+
+        for (size_t j = 0; j < frames.size(); j++) {
+            if (!frames[j]) {
+                std::cerr << "Frame " << (i+j) << " is null, skipping" << std::endl;
+                continue;
+            }
+
+            bool success = encodeFrame(frames[j]);
+            framePool.returnFrame(frames[j]);
+
+            if (!success) {
+                std::cerr << "Failed to encode frame " << (i+j) << std::endl;
+                if (subtitleCodecContext) avcodec_free_context(&subtitleCodecContext);
+                return false;
+            }
+
+            uint64_t msEncoded = static_cast<uint64_t>(1000 * (i + j + 1) / fps);
+            if (progressListener.ffmpegProgress(msEncoded)) {
+                if (subtitleCodecContext) avcodec_free_context(&subtitleCodecContext);
+                return false;
+            }
+        }
+    }
+
+    if (subtitleCodecContext) {
+        avcodec_free_context(&subtitleCodecContext);
+    }
+
+    bool result = finalizeEncoding();
+
+    auto endTime = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+    std::cout << "Encoded " << images.size() << " frames";
+    if (!title.empty()) {
+        std::cout << " with subtitle";
+    }
+    std::cout << " in " << duration << "ms ("
+              << (images.size() > 0 ? duration/images.size() : 0) << "ms per frame)" << std::endl;
+
+    return result;
+}
 void FFMpeg::msToTimecode(uint64_t ms, double fps, char* timecodeBuf, size_t bufSize) {
   int64_t totalSeconds = ms / 1000;
   int hours   = static_cast<int>(totalSeconds / 3600);
@@ -739,6 +883,7 @@ bool FFMpeg::initializeEncoder(const std::string &filename, int width, int heigh
   std::cout << "Dumping format context after writing header:" << std::endl;
   av_dump_format(m_formatContext, 0, "output_path", 1);
 
+  std::cout << "FFMpeg::initializeEncoder: Encoder initialized successfully  for file " << filename << std::endl;
   return true;
 }
 

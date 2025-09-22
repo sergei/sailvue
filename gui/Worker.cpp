@@ -118,6 +118,26 @@ bool Worker::stopRequested() {
     return !b_keepRunning;
 }
 
+void Worker::makePilotClips(const QString &moviePathUrl, const QString &polarUrl){
+  std::cout << " makePilotClips " << moviePathUrl.toStdString() << std::endl;
+
+  std::string moviePath = QUrl(moviePathUrl).toLocalFile().toStdString();
+  std::string polarPath = QUrl(polarUrl).toLocalFile().toStdString();
+
+
+  emit makePilotClipsStarted();
+
+  computeStats(polarUrl);
+
+  MovieProducer movieProducer(moviePath, polarPath, m_rGoProClipInfoList, m_rInstrDataVector, m_rPerformanceMap,
+                              m_RaceDataList, *this);
+
+  movieProducer.makePilotClips(m_rCameraClipsList);
+
+  emit makePilotClipsFinished(moviePathUrl, "Done making pilot clips");
+
+}
+
 void Worker::produce(const QString &moviePathUrl, const QString &polarUrl) {
     std::cout << "produce " << moviePathUrl.toStdString() << std::endl;
     std::string moviePath = QUrl(moviePathUrl).toLocalFile().toStdString();

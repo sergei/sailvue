@@ -14,13 +14,18 @@ TEST(N2kTests, YdvrTest)
         }
     };
 
+
     EncodingProgressListener progressListener;
 
-    std::string stYdvrDir="/Users/sergei/SailingVideos/2025-CORW/2025-Coastal-Cup/20-DATA/10-YDVR";
+    std::string stYdvrDir="/Users/sergei/SailingVideos/2025-SSS-DRAKES-BAY/RACE-1/20-DATA/10-YDVR";
+    // UTC time stamps for start and finish
+    UtcTime raceStart = UtcTime::fromString("2025-08-16T09:35:00 PDT");
+    UtcTime raceFinish = UtcTime::fromString("2025-08-16T17:30:00 PDT");
+
     const std::string stCacheDir="/tmp/sailvue-unit-test";
     const std::string stPgnSrcCsv = "/Users/sergei/Documents/sailing/pgns/sun-dragons-pgns.csv";
 
-    std::filesystem::remove_all(stCacheDir);
+//    std::filesystem::remove_all(stCacheDir);
 
     setLogLevel(LOGLEVEL_INFO);
 
@@ -35,12 +40,11 @@ TEST(N2kTests, YdvrTest)
     // Create the directory to keep CSV files
     std::filesystem::path csvDir = std::filesystem::path(stCacheDir) / "csv";
     std::filesystem::create_directories(csvDir);
-    std::string csvFile = (csvDir / "2025-spin-cup.csv").string();
+    std::string csvFile = (csvDir / "2025-08-16-sss-drakes-bay-race-1.csv").string();
     std::ofstream ofs(csvFile);
     InstrumentInput iiFirst = ii.front();
     ofs << iiFirst.toCsv(true) << std::endl;
-    UtcTime raceStart = UtcTime::fromUnixTimeMs(1748286000L * 1000); // 05/26/2025 12:00 PM PDT
-    UtcTime raceFinish = UtcTime::fromUnixTimeMs(1748378400L * 1000); // 05/27/2025 13:40 PM PDT
+
     for (const auto& input : ii){
         if (input.utc.getUnixTimeMs() < raceStart.getUnixTimeMs() || input.utc.getUnixTimeMs() > raceFinish.getUnixTimeMs())
             continue; // Skip inputs outside

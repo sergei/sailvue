@@ -210,6 +210,8 @@ public:
     bool copyQImageToAVFrame(const QImage& image, AVFrame* frame);
     bool encodeQImageSequence(const std::vector<QImage>& images, float fps,
                               FfmpegProgressListener& progressListener);
+    bool encodeQImageSequence(const std::vector<QImage>& images, float fps,
+                              FfmpegProgressListener& progressListener, const std::string& title);
 
 private:
     static std::string s_ffmpeg;

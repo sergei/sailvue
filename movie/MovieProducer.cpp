@@ -10,6 +10,7 @@
 #include "PerformanceOverlayMaker.h"
 #include "OverlayMaker.h"
 #include "RudderOverlayMaker.h"
+#include "PilotClipOverlayMaker.h"
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -30,6 +31,105 @@ MovieProducer::MovieProducer(const std::string &path, const std::string &polarPa
 ,m_rProgressListener(rProgressListener)
 {
     m_polars.loadPolar(polarPath);
+}
+
+void MovieProducer::makePilotClips(std::list<CameraClipInfo *> &rCameraClipsList){
+  Caffeine caffeine;  // Prevent Mac from going to sleep while this variable is in scope
+  std::filesystem::path raceFolder = std::filesystem::path(m_moviePath) / "pilots";
+  std::cout << "Creating race folder " << raceFolder << std::endl;
+  std::filesystem::create_directories(raceFolder);
+
+  int width = 1920;
+  int height = 1080;
+  PilotClipOverlayMaker pilotClipOverlayMaker(width, height, 0, 0);
+  OverlayMaker overlayMaker(raceFolder, width, height);
+  overlayMaker.addOverlayElement(pilotClipOverlayMaker);
+
+  for( const auto& clip: rCameraClipsList){
+      std::cout << "Making pilot clip for " << clip->getFileName() << std::endl;
+      std::filesystem::path clipPath = std::filesystem::path(m_moviePath) / clip->getFileName();
+      if ( !std::filesystem::exists(clipPath) ){
+          std::cerr << "Clip file " << clipPath << " does not exist, skipping" << std::endl;
+          continue;
+      }
+
+      uint64_t startTimeMs = clip->getInstrData()->front().utc.getUnixTimeMs();
+      uint64_t endTimeMs = clip->getInstrData()->back().utc.getUnixTimeMs();
+      int totalCount = 0;
+
+      // Start timing image creation
+      auto startImageGeneration = std::chrono::high_resolution_clock::now();
+
+      uint64_t nextEpochMs = startTimeMs;
+      for( const auto& epoch: *clip->getInstrData()){
+        if ( epoch.utc.getUnixTimeMs() >= nextEpochMs ){
+          overlayMaker.addEpoch(epoch, true);
+          nextEpochMs = epoch.utc.getUnixTimeMs() + 1000;
+          totalCount ++;
+        }
+      }
+      // End timing image creation
+      auto endImageGeneration = std::chrono::high_resolution_clock::now();
+      auto imageGenerationTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+              endImageGeneration - startImageGeneration).count();
+      std::cout << "Generated " << overlayMaker.getImageQueue().size() << " frames in "
+                << imageGenerationTime << "ms ("
+                << (!overlayMaker.getImageQueue().empty() ?
+                    imageGenerationTime / overlayMaker.getImageQueue().size() : 0)
+                << "ms per frame)" << std::endl;
+
+      auto presentationDuration = float(endTimeMs - startTimeMs) / 1000;
+      float overlaysFps = float(totalCount) / presentationDuration;
+
+      std::filesystem::path clipFulPathName = raceFolder / std::filesystem::path(clip->getFileName() + ".pilot.mov");
+
+      FFMpeg ffmpeg;
+      std::cout << "Initializing encoder..." << std::endl;
+      bool initSuccess = ffmpeg.initializeEncoder(
+              clipFulPathName.string(),
+              overlayMaker.getWidth(),
+              overlayMaker.getHeight(),
+              overlaysFps,
+              startTimeMs
+      );
+
+      // Start timing encoding process
+      auto startEncoding = std::chrono::high_resolution_clock::now();
+      if (!initSuccess) {
+        std::cerr << "Failed to initialize encoder for " << clipFulPathName.string() << std::endl;
+        return;
+      }
+
+      uint64_t clipDurationMs = presentationDuration * 1000;
+      EncodingProgressListener progressListener("pilot", clipDurationMs, m_rProgressListener);
+
+      // Encode all images from the queue
+      std::cout << "Starting encoding of " << overlayMaker.getImageQueue().size() << " frames..." << std::endl;
+      bool encodingSuccess = ffmpeg.encodeQImageSequence(overlayMaker.getImageQueue(), overlaysFps, progressListener);
+
+      // End timing encoding process
+      auto endEncoding = std::chrono::high_resolution_clock::now();
+      auto encodingTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+              endEncoding - startEncoding).count();
+      std::cout << "Encoded " << overlayMaker.getImageQueue().size() << " frames in "
+                << encodingTime << "ms ("
+                << (overlayMaker.getImageQueue().size() > 0 ?
+                    encodingTime / overlayMaker.getImageQueue().size() : 0)
+                << "ms per frame)" << std::endl;
+
+      if (!encodingSuccess) {
+        std::cerr << "Failed to encode image sequence" << std::endl;
+        m_stopRequested = true;
+        return;
+      }
+
+      m_stopRequested = progressListener.isStopRequested();
+
+      if (m_stopRequested) {
+        return;
+      }
+
+    }
 }
 
 void MovieProducer::produce() {
@@ -342,7 +442,7 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
 
   // Encode all images from the queue
   std::cout << "Starting encoding of " << overlayMaker.getImageQueue().size() << " frames..." << std::endl;
-  bool encodingSuccess = ffmpeg.encodeQImageSequence(overlayMaker.getImageQueue(), overlaysFps, progressListener);
+  bool encodingSuccess = ffmpeg.encodeQImageSequence(overlayMaker.getImageQueue(), overlaysFps, progressListener, "Title");
 
   // End timing encoding process
   auto endEncoding = std::chrono::high_resolution_clock::now();

@@ -203,6 +203,10 @@ public slots:
 
     void handleProduceStarted();
     void handleProduceFinished(const QString &moviePathUrl, const QString &message);
+
+    void handleMakePilotClipsStarted();
+    void handleMakePilotClipsFinished(const QString &moviePathUrl, const QString &message);
+
     void handleMarkersImported();
 
 signals:
@@ -237,8 +241,12 @@ signals:
 
     // Production related signals
     void produce(const QString &produceFolder, const QString &polarFile);
+    void makePilotClips(const QString &produceFolder, const QString &polarFile);
     void produceStarted();
     void produceFinished(const QString &message);
+
+    void makePilotClipsStarted();
+    void makePilotClipsFinished(const QString &message);
 
     void exportStats(const QString &polarUrl, const QString &path);
     void exportGpx(const QString &path);

@@ -12,6 +12,7 @@
 #include "movie/PerformanceOverlayMaker.h"
 #include "movie/StartTimerOverlayMaker.h"
 #include "movie/MovieProducer.h"
+#include "movie/PilotClipOverlayMaker.h"
 
 class ProgressListener: public IProgressListener {
 public:
@@ -297,5 +298,54 @@ TEST(MedianTests, StartTest) {
     MovieProducer movieProducer(overlayDir, polarPath, clipsList, iiVector, performanceVector, raceList, progressListener );
 
     movieProducer.produceChapter(overlayMaker, chapter, 1, 1);
+
+}
+TEST(MedianTests, PilotClipOverlayTest) {
+    std::vector<InstrumentInput> iiVector;
+
+    std::string iiFile = "./data/ii.csv";
+    std::cout << "Reading data file: " << iiFile << std::endl;
+    std::ifstream cache (iiFile, std::ios::in);
+    std::string line;
+    while (std::getline(cache, line)) {
+        std::stringstream ss(line);
+        std::string item;
+        std::getline(ss, item, ',');
+        InstrumentInput ii = InstrumentInput::fromString(line);
+        iiVector.push_back(ii);
+    }
+    ASSERT_FALSE(iiVector.empty());
+
+    Chapter chapter(0, iiVector.size()-1);
+    std::list<InstrumentInput> chapterEpochs;
+    for(auto & epoch: iiVector) {
+        chapterEpochs.push_back(epoch);
+    }
+
+    int width = 1920;
+    int height = 1080;
+
+    PilotClipOverlayMaker pilotClipOverlayMaker(width, height, 0, 0);
+
+    const char *const overlayDir = "./overlays_pilot_clip";
+    std::filesystem::remove_all(overlayDir);
+    OverlayMaker overlayMaker(overlayDir, width, height);
+
+    overlayMaker.addOverlayElement(pilotClipOverlayMaker);
+    overlayMaker.setChapter(chapter, chapterEpochs);
+
+    for(int i = 0; i < iiVector.size() && i < 50; i++) {
+        overlayMaker.addEpoch(iiVector[i], true);
+    }
+
+  std::list<GoProClipInfo> clipsList;
+  ProgressListener progressListener;
+  std::map<uint64_t, Performance> performanceVector;
+  std::list<RaceData *> raceList;
+  const std::string  polarPath = "./data/polars-arkana.csv";
+  MovieProducer movieProducer(overlayDir, polarPath, clipsList, iiVector, performanceVector, raceList, progressListener );
+
+  movieProducer.produceChapter(overlayMaker, chapter, 1, 1);
+
 
 }

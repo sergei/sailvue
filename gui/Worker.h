@@ -34,15 +34,19 @@ public slots:
     void readData(const QString &goproDir, const QString &insta360Dir, const QString &logsType, const QString &nmeaDir, const QString &polarFile, bool bIgnoreCache);
     void stopWork() ;
     void produce(const QString &moviePathUrl, const QString &polarUrl);
+    void makePilotClips(const QString &produceFolder, const QString &polarFile);
     void exportStats(const QString &polarUrl, const QString &path);
     void exportGpx(const QString &path);
 signals:
+    void markersImported();
+
     void ProgressStatus(const QString &state, int progress);
     void pathAvailable();
 
-    // Production related signals
+    void makePilotClipsStarted();
+    void makePilotClipsFinished(const QString &moviePathUrl, const QString &message);
+
     void produceStarted();
-    void markersImported();
     void produceFinished(const QString &moviePathUrl, const QString &message);
 
 private:
