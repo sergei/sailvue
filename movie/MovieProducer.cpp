@@ -248,7 +248,7 @@ void MovieProducer::produce() {
         if ( m_stopRequested ){
             return;
         }
-        makeRaceVideo(raceFolder, chapterClips);
+
         raceCount ++;
         df.close();
     }
