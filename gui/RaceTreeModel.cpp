@@ -156,10 +156,13 @@ RaceTreeModel::RaceTreeModel(QObject *parent)
     connect(worker, &Worker::pathAvailable, this, &RaceTreeModel::handleNewInstrDataVector);
 
     connect(this, &RaceTreeModel::produce, worker, &Worker::produce);
-    connect(this, &RaceTreeModel::makePilotClips, worker, &Worker::makePilotClips);
-
     connect(worker, &Worker::produceStarted, this, &RaceTreeModel::handleProduceStarted);
     connect(worker, &Worker::produceFinished, this, &RaceTreeModel::handleProduceFinished);
+
+    connect(this, &RaceTreeModel::makePilotClips, worker, &Worker::makePilotClips);
+    connect(worker, &Worker::makePilotClipsStarted, this, &RaceTreeModel::handleMakePilotClipsStarted);
+    connect(worker, &Worker::makePilotClipsFinished, this, &RaceTreeModel::handleMakePilotClipsFinished);
+
     connect(worker, &Worker::markersImported, this, &RaceTreeModel::handleMarkersImported);
 
     connect(this, &RaceTreeModel::exportStats, worker, &Worker::exportStats);
@@ -984,10 +987,6 @@ void RaceTreeModel::handleMakePilotClipsStarted() {
 }
 
 void RaceTreeModel::handleMakePilotClipsFinished(const QString &moviePathUrl, const QString &message) {
-    if ( !moviePathUrl.isEmpty() ){
-        auto markerFileName = moviePathUrl + "/markers.csv";
-        exportAdobeMarkers(markerFileName);
-    }
     emit makePilotClipsFinished(message);
 }
 

@@ -54,6 +54,9 @@ void MovieProducer::makePilotClips(std::list<CameraClipInfo *> &rCameraClipsList
           continue;
       }
 
+      auto clipBaseName = std::filesystem::path(clip->getFileName()).filename();
+      auto pilotClipName = std::filesystem::path(clip->getFileName() + ".pilot.mov").filename();
+
       uint64_t startTimeMs = clip->getInstrData()->front().utc.getUnixTimeMs();
       uint64_t endTimeMs = clip->getInstrData()->back().utc.getUnixTimeMs();
       int totalCount = 0;
@@ -61,14 +64,20 @@ void MovieProducer::makePilotClips(std::list<CameraClipInfo *> &rCameraClipsList
       // Start timing image creation
       auto startImageGeneration = std::chrono::high_resolution_clock::now();
 
+      EncodingProgressListener epochsProgressListener("Epochs for " +
+          std::filesystem::path(clip->getFileName()).filename().string(), endTimeMs - startTimeMs,
+          m_rProgressListener);
+
       uint64_t nextEpochMs = startTimeMs;
       for( const auto& epoch: *clip->getInstrData()){
         if ( epoch.utc.getUnixTimeMs() >= nextEpochMs ){
+            epochsProgressListener.ffmpegProgress(nextEpochMs - startTimeMs);
           overlayMaker.addEpoch(epoch, true);
           nextEpochMs = epoch.utc.getUnixTimeMs() + 1000;
           totalCount ++;
         }
       }
+
       // End timing image creation
       auto endImageGeneration = std::chrono::high_resolution_clock::now();
       auto imageGenerationTime = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -82,7 +91,7 @@ void MovieProducer::makePilotClips(std::list<CameraClipInfo *> &rCameraClipsList
       auto presentationDuration = float(endTimeMs - startTimeMs) / 1000;
       float overlaysFps = float(totalCount) / presentationDuration;
 
-      std::filesystem::path clipFulPathName = raceFolder / std::filesystem::path(clip->getFileName() + ".pilot.mov").filename();
+      std::filesystem::path clipFulPathName = raceFolder / pilotClipName;
 
       // Convert startTimeMs from UTC to local so it matches time shown in the instrument cell
       QDateTime time = QDateTime::fromMSecsSinceEpoch(qint64(startTimeMs));
@@ -108,7 +117,7 @@ void MovieProducer::makePilotClips(std::list<CameraClipInfo *> &rCameraClipsList
       }
 
       uint64_t clipDurationMs = presentationDuration * 1000;
-      EncodingProgressListener progressListener("pilot", clipDurationMs, m_rProgressListener);
+      EncodingProgressListener progressListener("Creating " + pilotClipName.string(), clipDurationMs, m_rProgressListener);
 
       // Encode all images from the queue
       std::cout << "Starting encoding of " << overlayMaker.getImageQueue().size() << " frames..." << std::endl;

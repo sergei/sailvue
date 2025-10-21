@@ -405,11 +405,14 @@ ApplicationWindow {
         }
     }
 
+    property url lastProduceFolder: StandardPaths.writableLocation(StandardPaths.DocumentsLocation) // default
     FolderDialog {
         id: produceFolderDialog
         visible: false
         title: "Select folder for produced video"
+        currentFolder: lastProduceFolder
         onAccepted: {
+            lastProduceFolder = selectedFolder
             raceTreeModel.produce(selectedFolder, raceTreeModel.polarPath)
         }
     }
@@ -418,7 +421,9 @@ ApplicationWindow {
         id: makePilotClipsDialog
         visible: false
         title: "Select folder for pilot clips"
+        currentFolder: lastProduceFolder
         onAccepted: {
+            lastProduceFolder = selectedFolder
             raceTreeModel.makePilotClips(selectedFolder, raceTreeModel.polarPath)
         }
     }

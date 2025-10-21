@@ -21,6 +21,7 @@ public:
         m_prevPercent = -1;
     }
     [[nodiscard]] bool isStopRequested() const { return m_stopRequested; };
+    bool ffmpegProgress(uint64_t msEncoded) override;
 
 private:
     const std::string m_prefix;
@@ -29,7 +30,6 @@ private:
     bool m_stopRequested=false;
 private:
     int m_prevPercent = -1;
-    bool ffmpegProgress(uint64_t msEncoded) override;
 };
 
 class MovieProducer  {
