@@ -39,13 +39,14 @@ void MovieProducer::makePilotClips(std::list<CameraClipInfo *> &rCameraClipsList
   std::cout << "Creating race folder " << raceFolder << std::endl;
   std::filesystem::create_directories(raceFolder);
 
-  int width = 1920;
-  int height = 1080;
-  PilotClipOverlayMaker pilotClipOverlayMaker(width, height, 0, 0);
-  OverlayMaker overlayMaker(raceFolder, width, height);
-  overlayMaker.addOverlayElement(pilotClipOverlayMaker);
-
   for( const auto& clip: rCameraClipsList){
+      int width = 1920;
+      int height = 1080;
+
+      PilotClipOverlayMaker pilotClipOverlayMaker(width, height, 0, 0);
+      OverlayMaker overlayMaker(raceFolder, width, height);
+      overlayMaker.addOverlayElement(pilotClipOverlayMaker);
+
       std::cout << "Making pilot clip for " << clip->getFileName() << std::endl;
       std::filesystem::path clipPath = std::filesystem::path(m_moviePath) / clip->getFileName();
       if ( !std::filesystem::exists(clipPath) ){
@@ -81,7 +82,13 @@ void MovieProducer::makePilotClips(std::list<CameraClipInfo *> &rCameraClipsList
       auto presentationDuration = float(endTimeMs - startTimeMs) / 1000;
       float overlaysFps = float(totalCount) / presentationDuration;
 
-      std::filesystem::path clipFulPathName = raceFolder / std::filesystem::path(clip->getFileName() + ".pilot.mov");
+      std::filesystem::path clipFulPathName = raceFolder / std::filesystem::path(clip->getFileName() + ".pilot.mov").filename();
+
+      // Convert startTimeMs from UTC to local so it matches time shown in the instrument cell
+      QDateTime time = QDateTime::fromMSecsSinceEpoch(qint64(startTimeMs));
+      QTimeZone tz = time.timeZone();
+      int offsetSec = tz.offsetFromUtc(time);
+
 
       FFMpeg ffmpeg;
       std::cout << "Initializing encoder..." << std::endl;
@@ -90,7 +97,7 @@ void MovieProducer::makePilotClips(std::list<CameraClipInfo *> &rCameraClipsList
               overlayMaker.getWidth(),
               overlayMaker.getHeight(),
               overlaysFps,
-              startTimeMs
+              startTimeMs + offsetSec * 1000
       );
 
       // Start timing encoding process
