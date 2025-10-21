@@ -293,9 +293,9 @@ void Worker::exportGpx(const QString &path) {
             auto  ii = m_rInstrDataVector[idx];
             s.writeStartElement("trkpt");
             char acBuff[80];
-            sprintf(acBuff,"%.5f", ii.loc.getLat());
+            snprintf(acBuff,sizeof(acBuff), "%.5f", ii.loc.getLat());
             s.writeAttribute("lat", acBuff);
-            sprintf(acBuff,"%.5f", ii.loc.getLon());
+            snprintf(acBuff, sizeof(acBuff), "%.5f", ii.loc.getLon());
             s.writeAttribute("lon", acBuff);
 
             QDateTime time = QDateTime::fromMSecsSinceEpoch(qint64(ii.utc.getUnixTimeMs())).toUTC();

@@ -146,19 +146,21 @@ int main(){
   memset(frame->data[2], 128, frame->linesize[2] * frame->height / 2); // V plane
 
   // Encode the frame
-  AVPacket packet;
-  av_init_packet(&packet);
-  packet.data = nullptr;
-  packet.size = 0;
+  // AVPacket packet;
+  // av_init_packet(&packet);
+  AVPacket* packet = av_packet_alloc();
+  packet->data = nullptr;
+  packet->size = 0;
 
   if (avcodec_send_frame(videoCodecContext, frame) == 0) {
-    if (avcodec_receive_packet(videoCodecContext, &packet) == 0) {
-      packet.stream_index = videoStream->index;
-      av_interleaved_write_frame(formatContext, &packet);
-      av_packet_unref(&packet);
+    if (avcodec_receive_packet(videoCodecContext, packet) == 0) {
+      packet->stream_index = videoStream->index;
+      av_interleaved_write_frame(formatContext, packet);
+      av_packet_unref(packet);
     }
   }
 
+  av_packet_free(&packet);
   av_frame_free(&frame);
 
   // Write trailer

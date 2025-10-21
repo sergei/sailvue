@@ -177,7 +177,7 @@ void GoPro::readMp4File(const std::string &mp4FileName, std::list<InstrumentInpu
 
                     case STR2FOURCC("GPSU"): {
                         char *data = (char *) GPMF_RawData(&gs_stream);
-                        sprintf(utc,"20%2.2s-%2.2s-%2.2sT%2.2s:%2.2s:%2.2s.%3.3s",
+                        snprintf(utc,sizeof(utc)-1,"20%2.2s-%2.2s-%2.2sT%2.2s:%2.2s:%2.2s.%3.3s",
                                 data, data + 2, data + 4, data + 6, data + 8, data + 10 , data+13);
                         time_t t = strToTime(utc);
                         char acMsStr[4];

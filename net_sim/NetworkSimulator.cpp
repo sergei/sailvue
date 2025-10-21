@@ -39,7 +39,10 @@ void NetworkSimulator::startSimulator(const QString &addr, uint16_t port) {
 }
 
 void NetworkSimulator::sendEpoch(InstrumentInput &ii) {
-    long long now = duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()).count();
+    long long now = std::chrono::duration_cast<std::chrono::milliseconds>(
+       std::chrono::system_clock::now().time_since_epoch()
+   ).count();
+
     if ( now < m_lastEpochMs )  // User scrolled backward 
         m_lastEpochMs = 0;
 

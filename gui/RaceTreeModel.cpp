@@ -122,6 +122,7 @@ bool TreeItem::setData(const QVariant &value, int column) {
     }else{
         return false;
     }
+    return false;
 }
 
 
