@@ -76,6 +76,10 @@ void MovieProducer::makePilotClips(std::list<CameraClipInfo *> &rCameraClipsList
           nextEpochMs = epoch.utc.getUnixTimeMs() + 1000;
           totalCount ++;
         }
+          m_stopRequested = epochsProgressListener.isStopRequested();
+          if ( m_stopRequested ) {
+              return;
+          }
       }
 
       // End timing image creation
@@ -440,12 +444,18 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
   // Initialize the encoder and check for success
   std::cout << "Initializing encoder..." << std::endl;
   uint64_t startTimeMs = m_rInstrDataVector[chapter.getStartIdx()].utc.getUnixTimeMs();
+
+  // Convert startTimeMs from UTC to local so it matches time shown in the instrument cell
+  QDateTime time = QDateTime::fromMSecsSinceEpoch(qint64(startTimeMs));
+  QTimeZone tz = time.timeZone();
+  int offsetSec = tz.offsetFromUtc(time);
+
   bool initSuccess = ffmpeg.initializeEncoder(
           clipFulPathName.string(),
           overlayMaker.getWidth(),
           overlayMaker.getHeight(),
           overlaysFps,
-          startTimeMs
+          startTimeMs  + offsetSec * 1000
   );
 
   if (!initSuccess) {
