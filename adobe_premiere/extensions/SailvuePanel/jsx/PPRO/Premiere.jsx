@@ -161,6 +161,159 @@ $._PPP_={
 		return null;
 	},
 
+	// Ensure a nested bin path exists, like "10-FOOTAGE/40-PILOTS"; returns the final bin ProjectItem or null on failure.
+	getOrCreateBinByPath : function(pathStr) {
+		if (!app || !app.project || !app.project.rootItem) {
+			$._PPP_.updateEventPanel('No project is open.');
+			return null;
+		}
+		var root = app.project.rootItem;
+		var parts = pathStr.split('/');
+		var current = root;
+		for (var i = 0; i < parts.length; i++) {
+			var part = parts[i];
+			if (!part || part === '.') continue;
+			var found = null;
+			for (var c = 0; c < current.children.numItems; c++) {
+				var child = current.children[c];
+				if (child && child.name === part && child.type === ProjectItemType.BIN) {
+					found = child;
+					break;
+				}
+			}
+			if (!found) {
+				current.createBin(part);
+				// find it again
+				for (var c2 = 0; c2 < current.children.numItems; c2++) {
+					var child2 = current.children[c2];
+					if (child2 && child2.name === part && child2.type === ProjectItemType.BIN) {
+						found = child2;
+						break;
+					}
+				}
+			}
+			if (!found) {
+				$._PPP_.updateEventPanel('Failed to create/find bin: ' + part);
+				return null;
+			}
+			current = found;
+		}
+		return current;
+	},
+
+	// Insert pilot clips from a chosen folder onto the "pilots" track, aligned with matching clips on V1.
+	insertPilotClips : function () {
+
+		var seq = app.project.activeSequence;
+		if (!seq) {
+			$._PPP_.updateEventPanel('No active sequence.');
+			return;
+		}
+
+		// Find the target video track named "pilots"
+		var pilotTrack = null;
+		for (var vt = 0; vt < seq.videoTracks.numTracks; vt++) {
+			if (seq.videoTracks[vt].name === 'pilots') { pilotTrack = seq.videoTracks[vt]; break; }
+		}
+		if (!pilotTrack) {
+			$._PPP_.updateEventPanel('Please add a video track named "pilots" to the sequence.');
+			return;
+		}
+
+		$._PPP_.updateEventPanel('pilot 1');
+		// Choose folder
+		var folder = Folder.selectDialog();
+		if (!folder) {
+			$._PPP_.updateEventPanel('Folder selection cancelled.');
+			return;
+		}
+		$._PPP_.updateEventPanel('pilot 2');
+
+		// Collect pilot files in the selected folder
+		var files = folder.getFiles(function(f){
+			return (f instanceof File) && /\.pilot\.mov$/i.test(f.name);
+		});
+		if (!files || files.length === 0) {
+			$._PPP_.updateEventPanel('No *.pilot.mov files found in selected folder.');
+			return;
+		}
+
+		// Ensure destination bin exists
+		var destBin = $._PPP_.getOrCreateBinByPath('10-FOOTAGE/40-PILOTS');
+		if (!destBin) {
+			$._PPP_.updateEventPanel('Could not create or locate destination bin 10-FOOTAGE/40-PILOTS');
+			return;
+		}
+
+		// Helper to get or import a file into destBin and return its ProjectItem
+		function getOrImportPilotItem(f) {
+			// Look for an item with this media path in destBin
+			for (var i = 0; i < destBin.children.numItems; i++) {
+				var child = destBin.children[i];
+				if (child && typeof child.getMediaPath === 'function' && child.getMediaPath() === f.fsName) {
+					return child;
+				}
+			}
+			app.project.importFiles([f.fsName], true, destBin, false);
+			// Try to find it again
+			for (var j = 0; j < destBin.children.numItems; j++) {
+				var child2 = destBin.children[j];
+				if (child2 && typeof child2.getMediaPath === 'function' && child2.getMediaPath() === f.fsName) {
+					return child2;
+				}
+			}
+			return null;
+		}
+
+		// Build an index of V1 clips by name for faster lookup
+		var v1 = seq.videoTracks[0];
+		if (!v1) {
+			$._PPP_.updateEventPanel('Could not access V1 track.');
+			return;
+		}
+		var v1Clips = v1.clips;
+
+		// For each pilot file
+		for (var fi = 0; fi < files.length; fi++) {
+			var file = files[fi];
+			var pilotName = file.name; // e.g., Foo.pilot.mov
+			var base = pilotName.replace(/\.pilot\.mov$/i, '');
+
+			// Find matching clip on V1: match either projectItem.name (with extension) or basename without extension
+			var match = null;
+			for (var ci = 0; ci < v1Clips.numItems; ci++) {
+				var clip = v1Clips[ci];
+				var pi = clip.projectItem;
+				var name1 = clip.name ? clip.name : '';
+				var name2 = pi ? pi.name : '';
+				var name2NoExt = name2.replace(/\.[^\.]+$/,'');
+				if (name1 === base || name2 === base || name2NoExt === base) {
+					match = clip;
+					break;
+				}
+			}
+			if (!match) {
+				$._PPP_.updateEventPanel('No matching V1 clip found for ' + pilotName + ' (base=' + base + ').');
+				continue;
+			}
+
+			var startTime = match.start.seconds; // sequence time in seconds
+			var pilotItem = getOrImportPilotItem(file);
+			if (!pilotItem) {
+				$._PPP_.updateEventPanel('Failed to import/find pilot media for ' + pilotName);
+				continue;
+			}
+
+			// Insert onto the pilots track at the same start time
+			try {
+				pilotTrack.insertClip(pilotItem, startTime);
+				$._PPP_.updateEventPanel('Inserted ' + pilotName + ' at ' + startTime + 's on track "pilots".');
+			} catch (e) {
+				$._PPP_.updateEventPanel('Error inserting ' + pilotName + ': ' + e);
+			}
+		}
+	},
+
 	insertSailVueOverlays : function () {
 
 		var seq = app.project.activeSequence;

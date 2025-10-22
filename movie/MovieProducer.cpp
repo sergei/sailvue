@@ -35,7 +35,7 @@ MovieProducer::MovieProducer(const std::string &path, const std::string &polarPa
 
 void MovieProducer::makePilotClips(std::list<CameraClipInfo *> &rCameraClipsList){
   Caffeine caffeine;  // Prevent Mac from going to sleep while this variable is in scope
-  std::filesystem::path raceFolder = std::filesystem::path(m_moviePath) / "pilots";
+  std::filesystem::path raceFolder = std::filesystem::path(m_moviePath) / "40-PILOTS";
   std::cout << "Creating race folder " << raceFolder << std::endl;
   std::filesystem::create_directories(raceFolder);
 
