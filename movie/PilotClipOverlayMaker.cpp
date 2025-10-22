@@ -42,9 +42,22 @@ void PilotClipOverlayMaker::addEpoch(QPainter &painter, const InstrumentInput &e
     int textHeight = fm.height();
 
     int x = (m_width - textWidth) / 2;
-    int y = (m_height / 4) + (textHeight / 2); // Center in top half
+    int y = (m_height / 4) + (textHeight / 2); // Center in top half (baseline)
 
+    // Draw the time
     painter.drawText(x, y, timeString);
+
+    // Draw the date just below the time, 4x smaller font
+    QString dateString = epochTime.toString("yyyy-MM-dd");
+    int dateFontSize = std::max(1, m_height / 12); // 4x smaller than time font (m_height/3)
+    QFont dateFont("Arial", dateFontSize, QFont::Normal);
+    painter.setFont(dateFont);
+    QFontMetrics dfm(dateFont);
+    int dateTextWidth = dfm.horizontalAdvance(dateString);
+    int dateX = (m_width - dateTextWidth) / 2;
+    // place one small gap below the time baseline
+    int dateY = y + fm.descent() + 2 + dfm.ascent();
+    painter.drawText(dateX, dateY, dateString);
 
     // Display SOW and TWS in bottom half - bigger font
     QFont dataFont("Arial", m_height / 4, QFont::Bold);
