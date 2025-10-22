@@ -82,6 +82,11 @@ void MovieProducer::makePilotClips(std::list<CameraClipInfo *> &rCameraClipsList
           }
       }
 
+      if ( totalCount < 2 ) {
+          std::cerr << "Clip file " << clipPath << " has too few epochs, skipping" << std::endl;
+          continue;
+      }
+
       // End timing image creation
       auto endImageGeneration = std::chrono::high_resolution_clock::now();
       auto imageGenerationTime = std::chrono::duration_cast<std::chrono::milliseconds>(
