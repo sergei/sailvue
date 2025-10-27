@@ -16,6 +16,7 @@ public:
   int getWidth() const { return m_width; }
   int getHeight() const { return m_height; }
   const std::vector<QImage>& getImageQueue() const { return m_imageQueue; }
+  void clearImageQueue() { m_imageQueue.clear(); }
   void setMakeDebugPngs(bool makeDebugPngs) { m_makeDebugPngs = makeDebugPngs; }
 
 private:

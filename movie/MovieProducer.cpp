@@ -474,6 +474,7 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
   // Encode all images from the queue
   std::cout << "Starting encoding of " << overlayMaker.getImageQueue().size() << " frames..." << std::endl;
   bool encodingSuccess = ffmpeg.encodeQImageSequence(overlayMaker.getImageQueue(), overlaysFps, progressListener, "Title");
+  overlayMaker.clearImageQueue();
 
   // End timing encoding process
   auto endEncoding = std::chrono::high_resolution_clock::now();
