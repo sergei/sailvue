@@ -1,0 +1,2 @@
+--srt-name=/Users/sergei/SailingVideos/2026-YRA-DH-MW-1/60-VOICEOVER/20-ROUGH-CUT.srt
+--output-dir=/Users/sergei/SailingVideos/2026-YRA-DH-MW-1/60-VOICEOVER/
