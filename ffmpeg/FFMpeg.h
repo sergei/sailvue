@@ -19,7 +19,7 @@ extern "C" {
 #include <libavutil/opt.h>
 }
 
-const int MAX_BATCH_SIZE = 1024*10;
+const int MAX_BATCH_SIZE = 1024*100;
 
 struct ClipFragment {
     ClipFragment(int64_t in, int64_t out, const std::string &fileName, int w, int h):
