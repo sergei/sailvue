@@ -351,12 +351,14 @@ $._PPP_={
 						for (var markerIdx = 0; markerIdx < markers.numMarkers; markerIdx++) {
 							var marker = markers[markerIdx];
 							if (marker.type === "Segmentation") {
-								// Check if the marker is between in and out of the clip
-								// spot one second on both sides, to allow for some slop
-								var markerIsInsideTrackItem = (marker.start.seconds >= (trackItemIn-1)
-									&& marker.end.seconds <= (trackItemOut + 1)) ;
+								var ci = trackItemIn-1;
+								var co = trackItemOut+1;
+								var mi = marker.start.seconds;
+								var mo = marker.end.seconds;
 
-								if ( ! markerIsInsideTrackItem  ) {
+								var markerIsOutside = (mo < ci) || (mi > co);
+
+								if (  markerIsOutside  ) {
 									$._PPP_.updateEventPanel('Marker ' + $._PPP_.formatMarker(marker) + ' is outside of the clip');
 									continue;
 								}
@@ -425,7 +427,7 @@ $._PPP_={
 		}
 	},
 
-	exportMarkersForSequence : function () {
+		exportMarkersForSequence : function () {
 
 		var seq = app.project.activeSequence;
 		if (seq) {
@@ -442,7 +444,7 @@ $._PPP_={
 						var trackItemIn = trackItem.inPoint.seconds;
 						var trackItemOut = trackItem.outPoint.seconds;
 						var projectItem = trackItem.projectItem;
-
+						
 						if( trackItem.name.indexOf('.insv') !== -1) {
 							var newline = projectItem.getMediaPath()
 								+ ", " + trackItemIn
@@ -458,7 +460,7 @@ $._PPP_={
 			}
 			if ( outString.length > 0 ) {
 				var fileToOpen = File.saveDialog("Select markers file",
-														"*.csv");
+													"*.csv");
 				if (fileToOpen) {
 					fileToOpen.encoding = "UTF8";
 					fileToOpen.open("w", "TEXT", "????");
@@ -473,6 +475,40 @@ $._PPP_={
 		} else {
 			$._PPP_.updateEventPanel('No active sequence to export markers.');
 		}
+	},
+
+	// Export active sequence markers to plain text file, one line per marker: "MM:SS Marker name Description"
+	exportSequenceMarkersTxt : function () {
+		var seq = app.project.activeSequence;
+		if (!seq) {
+			$._PPP_.updateEventPanel('No active sequence to export sequence markers.');
+			return;
+		}
+		var markers = seq.markers;
+		if (!markers || markers.numMarkers === 0) {
+			$._PPP_.updateEventPanel('Active sequence has no markers to export.');
+			return;
+		}
+		var fileToOpen = File.saveDialog('Save sequence markers as .txt', '*.txt');
+		if (!fileToOpen) {
+			$._PPP_.updateEventPanel('No valid output file chosen.');
+			return;
+		}
+		function pad2(n){ return (n < 10 ? '0' : '') + n; }
+		fileToOpen.encoding = 'UTF8';
+		fileToOpen.open('w', 'TEXT', '????');
+		// Iterate markers using getFirstMarker/getNextMarker to ensure correct order
+		for (var m = markers.getFirstMarker(); m !== undefined; m = markers.getNextMarker(m)) {
+			var totalSeconds = Math.floor(m.start.seconds);
+			var minutes = Math.floor(totalSeconds / 60);
+			var seconds = totalSeconds % 60;
+			var timeStr = pad2(minutes) + ':' + pad2(seconds);
+			var name = m.name ? m.name : '';
+			var desc = m.comments ? m.comments : '';
+			fileToOpen.write(timeStr + ' ' + name + ' ' + desc + '\n');
+		}
+		fileToOpen.close();
+		$._PPP_.updateEventPanel('Exported sequence markers to ' + fileToOpen.fsName);
 	},
 
 
