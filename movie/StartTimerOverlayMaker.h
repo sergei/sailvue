@@ -30,6 +30,7 @@ private:
 
     void selectFont(QFont &font, int h, const QString &s) ;
     static QString formatSeconds(int64_t timeSec);
+    static QString formatSecondsLate(int64_t timeSec);
 };
 
 

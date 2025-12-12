@@ -201,7 +201,7 @@ void MovieProducer::produce() {
         int endIdx = (int)chapterList.back()->getEndIdx();
 
         int timerHeight = 256;
-        int timerWidth = 320;
+        int timerWidth = 360;
         int timerX = -1;  // Right aligned
 
         int perf_ovl_width = 200;

@@ -90,7 +90,7 @@ void StartTimerOverlayMaker::addEpoch(QPainter &painter, const InstrumentInput &
         if( timeToKill > 0) {
             painter.drawText(0, m_timerHeight + m_distHeight * 2, "TTK: " + formatSeconds(timeToKill));
         }else{
-            painter.drawText(0, m_timerHeight + m_distHeight * 2, "late !");
+            painter.drawText(0, m_timerHeight + m_distHeight * 2, "Late: " + formatSecondsLate(-timeToKill));
         }
     }
 
@@ -104,4 +104,17 @@ QString StartTimerOverlayMaker::formatSeconds(int64_t timeSec){
     oss <<  std::setw(1) << std::setfill('0') << timeToStartMin << ":" << std::setw(2) << std::setfill('0') << timeToStartSecRem;
 
     return QString::fromStdString(oss.str());
+}
+
+QString StartTimerOverlayMaker::formatSecondsLate(int64_t timeSec){
+    int64_t timeToStartMin = timeSec / 60;
+    int64_t timeToStartSecRem = timeSec % 60;
+
+    if (timeToStartMin == 0 ){
+        std::ostringstream oss;
+        oss << "+" << std::setfill('0') << timeToStartSecRem << "s";
+        return QString::fromStdString(oss.str());
+    }
+
+    return   "+" + formatSeconds(timeToStartMin);
 }
