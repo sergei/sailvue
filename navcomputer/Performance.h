@@ -28,7 +28,7 @@ public:
            << ",t_sow_kts," << targetSpeed.toString(utc.getUnixTimeMs())
            << ",t_twa_deg," << targetTwa.toString(utc.getUnixTimeMs())
            << ",t_vmg_kts," << targetVmg.toString(utc.getUnixTimeMs())
-           << ",vmg_kts," << ourVmg.toString(utc.getUnixTimeMs())
+           << ",our_vmg_kts," << ourVmg.toString(utc.getUnixTimeMs())
            << ",is_fetch," << (isValid ? std::to_string(isFetching) : "")
            << ",ldlt_m," <<  (isValid ? std::to_string(int(legDistLostToTargetMeters)) : "" )
            << ",ltlt_sec," <<  (isValid ? std::to_string(int(legTimeLostToTargetSec)) : "" )
