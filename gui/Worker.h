@@ -37,6 +37,7 @@ public slots:
     void makePilotClips(const QString &produceFolder, const QString &polarFile);
     void exportStats(const QString &polarUrl, const QString &path);
     void exportGpx(const QString &path);
+    void exportExpeditionCsv(const QString &path);
 signals:
     void markersImported();
 

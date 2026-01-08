@@ -168,6 +168,7 @@ RaceTreeModel::RaceTreeModel(QObject *parent)
 
     connect(this, &RaceTreeModel::exportStats, worker, &Worker::exportStats);
     connect(this, &RaceTreeModel::exportGpx, worker, &Worker::exportGpx);
+    connect(this, &RaceTreeModel::exportExpeditionCsvSignal, worker, &Worker::exportExpeditionCsv);
 
     workerThread.start();
 

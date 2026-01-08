@@ -194,6 +194,12 @@ ApplicationWindow {
             }
 
             Action {
+                text: qsTr("Export Expedition (&CSV)...")
+                onTriggered: expeditionCsvFileDialog.open()
+                enabled: raceTreeModel.projectName !== "Untitled"
+            }
+
+            Action {
                 text: qsTr("&Produce...")
                 onTriggered: produceFolderDialog.open()
                 enabled: raceTreeModel.projectName !== "Untitled"
@@ -391,6 +397,17 @@ ApplicationWindow {
         nameFilters: ["GPX files (*.gpx)"]
         onAccepted: {
             raceTreeModel.exportGpx(currentFile)
+        }
+    }
+
+    FileDialog {
+        id: expeditionCsvFileDialog
+        visible: false
+        title: "Export Expedition file"
+        fileMode: FileDialog.SaveFile
+        nameFilters: ["Expedition files (*.csv)"]
+        onAccepted: {
+            raceTreeModel.exportExpeditionCsvSignal(currentFile)
         }
     }
 

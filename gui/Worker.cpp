@@ -366,3 +366,64 @@ void Worker::exportStats(const QString &polarUrl, const QString &path) {
     std::cout << "Export complete" << std::endl;
 }
 
+void Worker::exportExpeditionCsv(const QString &path) {
+    // For each race iterate over instrument data
+    std::string csvName = QUrl(path).toLocalFile().toStdString();
+    std::cout << "exporting expedition csv to  " << csvName << std::endl;
+    std::ofstream ofs(csvName);
+
+    // Write Expedition header
+    ofs << "Utc,Bsp,Awa,Aws,Twa,Tws,Twd,Rudder2,Leeway,Set,Drift,Hdg,AirTmp,SeaTmp,Baro,Depth,Heel,Trim,Rudder,Tab,"
+           "Forestay,Downhaul,MastAng,FrstyLen,MastButt,StbJmpr,PrtJmpr,Rake,Volts,ROT,"
+           "GpsQual,PDOP,GpsNum,GpsAge,GpsGeoHt,GpsAntHt,GpsPosFx,Lat,Lon,Cog,Sog" << std::endl;
+
+    for (const auto *race: m_RaceDataList) {
+        for(auto idx = race->getStartIdx(); idx < race->getEndIdx(); idx ++){
+            auto  ii = m_rInstrDataVector[idx];
+            // Convert UNIX ms to string Excel format like 38249.70139
+            double excelDate = ii.utc.getUnixTimeMs() / 86400000.0 + 25569.0;
+            ofs << std::fixed << std::setprecision(5) << excelDate << ",";
+            ofs << ii.sow.toString(ii.utc.getUnixTimeMs()) << ","; // sow
+            ofs << ii.awa.toString(ii.utc.getUnixTimeMs()) << ","; // awa
+            ofs << ii.aws.toString(ii.utc.getUnixTimeMs()) << ","; // aws
+            ofs << ii.twa.toString(ii.utc.getUnixTimeMs()) << ","; // twa
+            ofs << ii.tws.toString(ii.utc.getUnixTimeMs()) << ","; // tws
+            Direction twd = Direction::fromDegrees(ii.twa.getDegrees() + ii.mag.getDegrees(), ii.utc.getUnixTimeMs());
+            ofs << twd.toString(ii.utc.getUnixTimeMs()) << ","; // twd
+            ofs <<  ","; // rudder2
+            ofs << ii.leeway.toString(ii.utc.getUnixTimeMs()) << ","; // leeway
+            ofs << ","; // set
+            ofs << ","; // drift
+            ofs << ","; // hdg
+            ofs << ","; // airTmp
+            ofs << ","; // seaTmp
+            ofs << ","; // baro
+            ofs << ","; // depth
+            ofs << ","; // heel
+            ofs <<",";  // trim
+            ofs << ","; // rudder
+            ofs << ","; // tab
+            ofs << ","; // forestay
+            ofs << ","; // downhaul
+            ofs << ","; // mastAng
+            ofs << ","; // frstyLen
+            ofs << ","; // mastButt
+            ofs << ","; // stbJmpr
+            ofs << ","; // prtJmpr
+            ofs << ","; // rake
+            ofs << ","; // volts
+            ofs << ","; // rot
+            ofs << ","; // gpsQual
+            ofs << ","; // pdop
+            ofs << ","; // gpsNum
+            ofs << ","; // gpsAge
+            ofs << ","; // gpsGeoHt
+            ofs << ","; // gpsAntHt
+            ofs << ","; // gpsPosFx
+            ofs << ii.loc.getLat() << ",";
+            ofs << ii.loc.getLon() << ",";
+            ofs << ii.cog.toString(ii.utc.getUnixTimeMs()) << ",";
+            ofs << ii.sog.toString(ii.utc.getUnixTimeMs()) << std::endl;
+        }
+    }
+}

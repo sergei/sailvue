@@ -1,4 +1,3 @@
-
 #ifndef SAILVUE_RACETREEMODEL_H
 #define SAILVUE_RACETREEMODEL_H
 
@@ -250,6 +249,7 @@ signals:
 
     void exportStats(const QString &polarUrl, const QString &path);
     void exportGpx(const QString &path);
+    void exportExpeditionCsvSignal(const QString &path);
     void beginSimulation(const QString &addr, uint16_t port);
     void endSimulation();
 
