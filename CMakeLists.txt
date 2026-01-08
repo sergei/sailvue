@@ -272,3 +272,32 @@ target_link_libraries(ffmpeg_test
         PRIVATE
         PkgConfig::FFMPEG
 )
+
+add_executable(ydvr2csv
+        ydvr2csv.cpp
+        navcomputer/InstrumentInput.h
+        navcomputer/IProgressListener.h
+        n2k/geo/Quantity.cpp
+        n2k/YdvrReader.cpp
+        n2k/InitCanBoat.c
+        n2k/canboat/analyzer/pgn.c
+        n2k/canboat/analyzer/pgn.h
+        n2k/canboat/analyzer/lookup.c
+        n2k/canboat/analyzer/lookup.h
+        n2k/canboat/analyzer/print.c
+        n2k/canboat/analyzer/fieldtype.c
+        n2k/canboat/analyzer/fieldtype.h
+        n2k/canboat/common/common.c
+        n2k/canboat/common/utf.c
+)
+
+target_include_directories(ydvr2csv PUBLIC
+        n2k/canboat/analyzer
+        n2k/canboat/common
+        n2k
+        gui
+        navcomputer
+        libInterpolate/src
+)
+
+target_link_libraries(ydvr2csv PUBLIC Qt::Core)
