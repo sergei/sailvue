@@ -220,33 +220,54 @@ $._PPP_={
 			return;
 		}
 
-		$._PPP_.updateEventPanel('pilot 1');
+		// Find the target video track named "sailvue" for overlays
+		var overlayTrack = $._PPP_.isSailvueTrackAvailable(seq);
+		if (!overlayTrack) {
+			$._PPP_.updateEventPanel('Please add a video track named "sailvue" to the sequence for overlays.');
+			return;
+		}
+
 		// Choose folder
-		var folder = Folder.selectDialog();
-		if (!folder) {
+		var selectedFolder = Folder.selectDialog();
+		if (!selectedFolder) {
 			$._PPP_.updateEventPanel('Folder selection cancelled.');
 			return;
 		}
-		$._PPP_.updateEventPanel('pilot 2');
 
-		// Collect pilot files in the selected folder
-		var files = folder.getFiles(function(f){
-			return (f instanceof File) && /\.pilot\.mov$/i.test(f.name);
-		});
-		if (!files || files.length === 0) {
-			$._PPP_.updateEventPanel('No *.pilot.mov files found in selected folder.');
+		// Pilot clips in 40-PILOTS subfolder
+		var pilotFolder = new Folder(selectedFolder.fsName + '/40-PILOTS');
+		var pilotFiles = [];
+		if (pilotFolder.exists) {
+			pilotFiles = pilotFolder.getFiles(function(f){
+				return (f instanceof File) && /\.pilot\.mov$/i.test(f.name);
+			});
+		} else {
+			$._PPP_.updateEventPanel('No 40-PILOTS subfolder found.');
+		}
+
+		// Overlay clips in 50-INSTR-OVERLAYS subfolder
+		var overlayFolder = new Folder(selectedFolder.fsName + '/50-INSTR-OVERLAYS');
+		var overlayFiles = [];
+		if (overlayFolder.exists) {
+			overlayFiles = overlayFolder.getFiles(function(f){
+				return (f instanceof File) && /overlay\.mov$/i.test(f.name);
+			});
+		} else {
+			$._PPP_.updateEventPanel('No 50-INSTR-OVERLAYS subfolder found.');
+		}
+
+		if ((!pilotFiles || pilotFiles.length === 0) && (!overlayFiles || overlayFiles.length === 0)) {
+			$._PPP_.updateEventPanel('No pilot or overlay files found in subfolders.');
 			return;
 		}
 
-		// Ensure destination bin exists
-		var destBin = $._PPP_.getOrCreateBinByPath('10-FOOTAGE/40-PILOTS');
-		if (!destBin) {
-			$._PPP_.updateEventPanel('Could not create or locate destination bin 10-FOOTAGE/40-PILOTS');
-			return;
-		}
+		// Ensure destination bins exist
+		var pilotBin = $._PPP_.getOrCreateBinByPath('10-FOOTAGE/40-PILOTS');
+		var overlayBin = $._PPP_.getOrCreateBinByPath('10-FOOTAGE/50-INSTR-OVERLAYS');
 
-		// Helper to get or import a file into destBin and return its ProjectItem
-		function getOrImportPilotItem(f) {
+		// Helper to get or import a file into a bin and return its ProjectItem
+		function getOrImportItem(f, destBin) {
+			if (!destBin) return null;
 			// Look for an item with this media path in destBin
 			for (var i = 0; i < destBin.children.numItems; i++) {
 				var child = destBin.children[i];
@@ -273,44 +294,54 @@ $._PPP_={
 		}
 		var v1Clips = v1.clips;
 
-		// For each pilot file
-		for (var fi = 0; fi < files.length; fi++) {
-			var file = files[fi];
-			var pilotName = file.name; // e.g., Foo.pilot.mov
-			var base = pilotName.replace(/\.pilot\.mov$/i, '');
+		function processFiles(files, destTrack, destBin, isPilot) {
+			for (var fi = 0; fi < files.length; fi++) {
+				var file = files[fi];
+				var fileName = file.name;
+				var base = isPilot ? fileName.replace(/\.pilot\.mov$/i, '') : fileName.replace(/\.overlay\.mov$/i, '');
 
-			// Find matching clip on V1: match either projectItem.name (with extension) or basename without extension
-			var match = null;
-			for (var ci = 0; ci < v1Clips.numItems; ci++) {
-				var clip = v1Clips[ci];
-				var pi = clip.projectItem;
-				var name1 = clip.name ? clip.name : '';
-				var name2 = pi ? pi.name : '';
-				var name2NoExt = name2.replace(/\.[^\.]+$/,'');
-				if (name1 === base || name2 === base || name2NoExt === base) {
-					match = clip;
-					break;
+				// Find matching clip on V1
+				var match = null;
+				for (var ci = 0; ci < v1Clips.numItems; ci++) {
+					var clip = v1Clips[ci];
+					var pi = clip.projectItem;
+					var name1 = clip.name ? clip.name : '';
+					var name2 = pi ? pi.name : '';
+					var name2NoExt = name2.replace(/\.[^\.]+$/,'');
+					if (name1 === base || name2 === base || name2NoExt === base) {
+						match = clip;
+						break;
+					}
+				}
+				if (!match) {
+					$._PPP_.updateEventPanel('No matching V1 clip found for ' + fileName + ' (base=' + base + ').');
+					continue;
+				}else{
+					$._PPP_.updateEventPanel('Found matching clip for ' + fileName + ' (base=' + base + ').');
+				}
+
+				var startTime = match.start.seconds;
+				var item = getOrImportItem(file, destBin);
+				if (!item) {
+					$._PPP_.updateEventPanel('Failed to import/find media for ' + fileName);
+					continue;
+				}
+
+				try {
+					destTrack.insertClip(item, startTime);
+					$._PPP_.updateEventPanel('Inserted ' + fileName + ' at ' + startTime + 's on track "' + destTrack.name + '".');
+				} catch (e) {
+					$._PPP_.updateEventPanel('Error inserting ' + fileName + ': ' + e);
 				}
 			}
-			if (!match) {
-				$._PPP_.updateEventPanel('No matching V1 clip found for ' + pilotName + ' (base=' + base + ').');
-				continue;
-			}
+		}
 
-			var startTime = match.start.seconds; // sequence time in seconds
-			var pilotItem = getOrImportPilotItem(file);
-			if (!pilotItem) {
-				$._PPP_.updateEventPanel('Failed to import/find pilot media for ' + pilotName);
-				continue;
-			}
+		if (pilotFiles && pilotFiles.length > 0) {
+			processFiles(pilotFiles, pilotTrack, pilotBin, true);
+		}
 
-			// Insert onto the pilots track at the same start time
-			try {
-				pilotTrack.insertClip(pilotItem, startTime);
-				$._PPP_.updateEventPanel('Inserted ' + pilotName + ' at ' + startTime + 's on track "pilots".');
-			} catch (e) {
-				$._PPP_.updateEventPanel('Error inserting ' + pilotName + ': ' + e);
-			}
+		if (overlayFiles && overlayFiles.length > 0) {
+			processFiles(overlayFiles, overlayTrack, overlayBin, false);
 		}
 	},
 
