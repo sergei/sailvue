@@ -45,13 +45,14 @@ void OverlayMaker::addEpoch(const InstrumentInput &epoch, bool ignoreCache) {
 
     int frameIndex = m_OverlayCount++;
 
-    // Create image for the frame
+    // Create an image for the frame
     QImage fullImage(m_width, m_height, QImage::Format_ARGB32);
     fullImage.fill(QColor(0, 0, 0, 0));
     QPainter fullPainter(&fullImage);
 
     // Draw all elements onto the image
     for (auto &element : m_elements) {
+        element->updateHistory(epoch);
         QImage elementImage(element->getWidth(), element->getHeight(), QImage::Format_ARGB32);
         elementImage.fill(QColor(0, 0, 0, 0));
         QPainter elementPainter(&elementImage);

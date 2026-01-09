@@ -47,8 +47,55 @@ void StartTimerOverlayMaker::setChapter(Chapter &chapter, const std::list<Instru
     }
 }
 
+void StartTimerOverlayMaker::initStartEpochs(uint64_t gunIdx) {
+    if (gunIdx != UINT64_MAX ) {
+        m_gunUtcTimeMs = m_rInstrDataVector[gunIdx].utc.getUnixTimeMs();
+        // Set startIdx so it's 5 minutes before gunIdx
+        uint64_t startIdx = 0;
+        for (auto it = m_rInstrDataVector.begin() + long(gunIdx); it != m_rInstrDataVector.end(); --it) {
+            if (it->utc.getUnixTimeMs() < m_gunUtcTimeMs - 5 * 60 * 1000) {
+                startIdx = uint64_t(std::distance(m_rInstrDataVector.begin(), it));
+                break;
+            }
+        }
+        // Set endIdx to so it's 1 minute after gunIdx
+        uint64_t endIdx = 0;
+        for (auto it = m_rInstrDataVector.begin() + long(gunIdx); it != m_rInstrDataVector.end(); ++it) {
+            if (it->utc.getUnixTimeMs() > m_gunUtcTimeMs + 1 * 60 * 1000) {
+                endIdx = uint64_t(std::distance(m_rInstrDataVector.begin(), it));
+                break;
+            }
+        }
+
+        m_beginUtcTimeMs = m_rInstrDataVector[startIdx].utc.getUnixTimeMs();
+        m_endUtcTimeMs = m_rInstrDataVector[endIdx].utc.getUnixTimeMs();
+
+        // Get median TWS and corresponding VMG for entire start chapter
+        InstrumentInput median = InstrumentInput::median(m_rInstrDataVector.begin() + long(startIdx),
+                                                         m_rInstrDataVector.begin() + long(endIdx));
+        if ( median.tws.isValid(median.utc.getUnixTimeMs())){
+            double tws = median.tws.getKnots();
+            auto targets = m_polars.getTargets(tws, true);
+            m_startVmg = Speed::fromKnots(targets.second, median.utc.getUnixTimeMs());
+        }else{
+            m_startVmg = Speed::INVALID;
+        }
+    }
+}
+
+bool StartTimerOverlayMaker::isInStartSequence(const InstrumentInput &epoch) const {
+    if ( m_isStart ) {
+        return true;
+    }
+    if ( epoch.utc.getUnixTimeMs() >= m_beginUtcTimeMs &&
+         epoch.utc.getUnixTimeMs() <= m_endUtcTimeMs ) {
+        return true;
+    }
+    return false;
+}
+
 void StartTimerOverlayMaker::addEpoch(QPainter &painter, const InstrumentInput &epoch) {
-    if ( ! m_isStart ){
+    if ( ! isInStartSequence(epoch) ){
         return;
     }
 

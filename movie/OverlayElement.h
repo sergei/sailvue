@@ -10,6 +10,11 @@ public:
     OverlayElement(int width, int height, int x, int y) : m_width(width), m_height(height), m_x(x), m_y(y){}
     virtual void addEpoch(QPainter &painter, const InstrumentInput &epoch) = 0;
     virtual void setChapter(Chapter &chapter, const std::list<InstrumentInput> &chapterEpochs) {} ;
+
+    // The methods below used when we produce overlay clip per clip so no setChapter is called
+    virtual void initHistory(std::vector<InstrumentInput> &rInstrDataVector) {};
+    virtual void updateHistory(const InstrumentInput &epoc) {};
+
     [[nodiscard]] int getWidth() const { return m_width; }
     [[nodiscard]] int getHeight() const { return m_height; }
     [[nodiscard]] int getX() const { return m_x; }

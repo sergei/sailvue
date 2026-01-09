@@ -133,6 +133,7 @@ void Worker::makePilotClips(const QString &moviePathUrl, const QString &polarUrl
                               m_RaceDataList, *this);
 
   movieProducer.makePilotClips(m_rCameraClipsList);
+  movieProducer.makeOverlaysForAllClips(m_rCameraClipsList);
 
   emit makePilotClipsFinished(moviePathUrl, "Done making pilot clips");
 

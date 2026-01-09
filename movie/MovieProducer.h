@@ -40,6 +40,7 @@ public:
 
     void produce();
     void makePilotClips(std::list<CameraClipInfo *> &rCameraClipsList);
+    void makeOverlaysForAllClips(std::list<CameraClipInfo *> &rCameraClipsList);
     std::string produceChapter(OverlayMaker &overlayMaker, Chapter &chapter, int chapterNum, int totalChapters);
 
 private:

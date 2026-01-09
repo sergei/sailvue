@@ -15,12 +15,19 @@ public:
     void setChapter(Chapter &chapter, const std::list<InstrumentInput> &chapterEpochs) override;
 
     [[nodiscard]] int getWidth() const { return m_width; }
+
+    void initStartEpochs(uint64_t gunIdx);
+
+    bool isInStartSequence(const InstrumentInput &epoch) const;
+
 private:
     Polars &m_polars;
     Speed m_startVmg;
     std::vector<InstrumentInput> &m_rInstrDataVector;
     bool m_isStart = false;
     uint64_t m_gunUtcTimeMs = 0;
+    uint64_t m_beginUtcTimeMs = 0;
+    uint64_t m_endUtcTimeMs = 0;
     QFont m_timeStampFont;
     QFont m_distFont;
     QPen m_distToLinePen = NOT_OCS_PEN;

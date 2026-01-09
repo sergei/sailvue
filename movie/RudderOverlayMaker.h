@@ -11,6 +11,8 @@ public:
     virtual ~RudderOverlayMaker();
     void setChapter(Chapter &chapter, const std::list<InstrumentInput> &chapterEpochs) override;
     void addEpoch(QPainter &painter, const InstrumentInput &epoch) override;
+    void initHistory(std::vector<InstrumentInput> &rInstrDataVector) override;
+    void updateHistory(const InstrumentInput &epoch) override;
 
 private:
     [[nodiscard]] std::pair<QPoint, QPoint> toScreen(const float angle) const;
@@ -19,6 +21,7 @@ private:
     int getFontSize(const char *fontFamily, const char *text, int width, int height) const;
 
 private:
+    const size_t MAX_HISTORY_SIZE = 30;
     std::map<uint64_t, Angle> m_history;
     std::vector<uint64_t> m_TimeStamps;
     QImage *m_pBackgroundImage = nullptr;

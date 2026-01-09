@@ -57,6 +57,31 @@ void RudderOverlayMaker::setChapter(Chapter &chapter, const std::list<Instrument
     drawGrid();
 }
 
+void RudderOverlayMaker::initHistory(std::vector<InstrumentInput> &rInstrDataVector) {
+    delete m_pBackgroundImage;
+    m_pBackgroundImage = new QImage(m_width, m_height, QImage::Format_ARGB32);
+    m_pBackgroundImage->fill(QColor(0, 0, 0, 0));
+
+    // Init chapter epochs from rInstrDataVector using either MAX_HISTORY_SIZE or size of rInstrDataVector
+    size_t historySize = std::min(MAX_HISTORY_SIZE, rInstrDataVector.size());
+    std::list chapterEpochs(rInstrDataVector.begin(), rInstrDataVector.begin() + historySize);
+    setHistory(chapterEpochs);
+    drawGrid();
+}
+
+void RudderOverlayMaker::updateHistory(const InstrumentInput &epoch) {
+    auto utcMs = epoch.utc.getUnixTimeMs();
+    if (epoch.rdr.isValid(utcMs)) {
+        m_history[utcMs] = epoch.rdr;
+        m_TimeStamps.push_back(utcMs);
+        if (m_TimeStamps.size() > MAX_HISTORY_SIZE) {
+            auto firstTs = m_TimeStamps.front();
+            m_TimeStamps.erase(m_TimeStamps.begin());
+            m_history.erase(firstTs);
+        }
+    }
+}
+
 void RudderOverlayMaker::setHistory(const std::list<InstrumentInput> &chapterEpochs) {
     m_history.clear();
     m_TimeStamps.clear();
