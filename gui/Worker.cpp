@@ -14,6 +14,10 @@
 #include "adobe_premiere/MarkerReader.h"
 #include "Insta360/Insta360.h"
 
+#include <map>
+#include <cmath>
+#include <cstdint>
+
 void Worker::readData(const QString &goproDir, const QString &insta360Dir, const QString &logsType, const QString &nmeaDir, const QString &polarFile, bool bIgnoreCache){
     std::cout << "goproDir " + goproDir.toStdString() << std::endl;
     std::cout << "logsType " + nmeaDir.toStdString() << std::endl;
@@ -278,8 +282,7 @@ void Worker::exportGpx(const QString &path) {
     for ( auto *race: m_RaceDataList) {
         s.writeStartElement("trk");
         s.writeTextElement("name", race->getName());
-        s.writeStartElement("trkseg");
-
+        std::map<uint64_t, std::pair<uint64_t, uint64_t>> points;
         for(auto idx = race->getStartIdx(); idx < race->getEndIdx(); idx ++){
             int perc = count * 100 / int(totalLen);
             if( perc != prevPerc){
@@ -291,7 +294,20 @@ void Worker::exportGpx(const QString &path) {
             }
             count ++;
 
-            auto  ii = m_rInstrDataVector[idx];
+            auto ii = m_rInstrDataVector[idx];
+            uint64_t ms = ii.utc.getUnixTimeMs();
+            uint64_t sec = round(ms / 1000.0);
+            uint64_t diff = abs(static_cast<int64_t>(ms) - static_cast<int64_t>(sec) * 1000);
+            auto it = points.find(sec);
+            if (it == points.end() || diff < it->second.second) {
+                points[sec] = {idx, diff};
+            }
+        }
+
+        s.writeStartElement("trkseg");
+        for (auto& p : points) {
+            auto ii = m_rInstrDataVector[p.second.first];
+            uint64_t sec = p.first;
             s.writeStartElement("trkpt");
             char acBuff[80];
             snprintf(acBuff,sizeof(acBuff), "%.5f", ii.loc.getLat());
@@ -299,11 +315,11 @@ void Worker::exportGpx(const QString &path) {
             snprintf(acBuff, sizeof(acBuff), "%.5f", ii.loc.getLon());
             s.writeAttribute("lon", acBuff);
 
-            QDateTime time = QDateTime::fromMSecsSinceEpoch(qint64(ii.utc.getUnixTimeMs())).toUTC();
+            QDateTime time = QDateTime::fromMSecsSinceEpoch(qint64(sec * 1000)).toUTC();
             QString txt = time.toString("yyyy-MM-ddThh:mm:ssZ");
             s.writeTextElement("time", txt);
 
-            s.writeEndElement();  // </trkpt>
+            s.writeEndElement(); // </trkpt>
         }
 
         s.writeEndElement(); // </trkseg>

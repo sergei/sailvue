@@ -108,7 +108,7 @@ void PolarOverlayMaker::draw_grid_and_polar_curve() {
         float twa = m_twaHistory[i];
         float sow = m_sowHistory[i];
         float tws = m_twsHistory[i];
-        if (!std::isnan(twa) && !std::isnan(sow)) {
+        if (!std::isnan(twa) && !std::isnan(sow) && !std::isnan(tws)) {
             m_minTwa = std::min(m_minTwa, twa);
             m_maxTwa = std::max(m_maxTwa, twa);
             m_maxSpeedKts = (int)lround(std::max(float(m_maxSpeedKts), sow));
@@ -152,7 +152,9 @@ void PolarOverlayMaker::draw_grid_and_polar_curve() {
         whatToShow = SHOW_FULL_POLAR;
     }
 
+    bool newBackgroundImage = false;
     if (whatToShow != m_whatToShow) {
+        newBackgroundImage = true;
         m_whatToShow = whatToShow;
         delete m_pBackgroundImage;
         m_pBackgroundImage = new QImage(m_width, m_height, QImage::Format_ARGB32);
@@ -160,7 +162,7 @@ void PolarOverlayMaker::draw_grid_and_polar_curve() {
         m_origin = drawGrid();
     }
 
-    if ( abs(m_lastMeanTws - meanTws) > 2 ) {
+    if ( newBackgroundImage || (abs(m_lastMeanTws - meanTws) > 1) ) {
         m_lastMeanTws = meanTws;
         delete m_PolarCurveImage;
         m_PolarCurveImage = new QImage(m_width, m_height, QImage::Format_ARGB32);
