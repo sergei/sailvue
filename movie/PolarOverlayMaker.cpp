@@ -176,6 +176,7 @@ void PolarOverlayMaker::setHistory(const std::list<InstrumentInput> &chapterEpoc
     m_TimeStamps.clear();
     m_twaHistory.clear();
     m_sowHistory.clear();
+    m_twsHistory.clear();
 
     // First, initialize m_history, m_TimeStamps, m_twaHistory, m_sowHistory
     for (const auto &instrData : chapterEpochs) {
@@ -222,6 +223,7 @@ void PolarOverlayMaker::updateHistory(const InstrumentInput &epoch) {
         m_history.erase(oldestUtc);
         m_twaHistory.erase(m_twaHistory.begin());
         m_sowHistory.erase(m_sowHistory.begin());
+        m_twsHistory.erase(m_twsHistory.begin());
     }
     // Add new epoch
     if (epoch.twa.isValid(utcMs) && epoch.sow.isValid(utcMs)) {
@@ -229,10 +231,12 @@ void PolarOverlayMaker::updateHistory(const InstrumentInput &epoch) {
         m_history[utcMs] = xy;
         m_twaHistory.push_back(abs(epoch.twa.getDegrees()));
         m_sowHistory.push_back(float(epoch.sow.getKnots()));
+        m_twsHistory.push_back(float(epoch.tws.getKnots()));
     } else {
         m_history[utcMs] = {nanf(""), nanf("")};
         m_twaHistory.push_back(std::numeric_limits<float>::quiet_NaN());
         m_sowHistory.push_back(std::numeric_limits<float>::quiet_NaN());
+        m_twsHistory.push_back(std::numeric_limits<float>::quiet_NaN());
     }
     m_TimeStamps.push_back(utcMs);
 

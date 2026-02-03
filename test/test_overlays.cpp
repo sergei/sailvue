@@ -349,3 +349,42 @@ TEST(MedianTests, PilotClipOverlayTest) {
 
 
 }
+
+TEST(MedianTests, ClipOverlayTest) {
+    std::vector<InstrumentInput> iiVector;
+
+    const char *const overlayDir = "./clip_overlays";
+    std::string iiFile = "./data/VID_20260131_094112_00_011.insv.csv";
+    std::string clipFileName = "/Users/sergei/SailingVideos/2026-3BF/10-FOOTAGE/01-INSTA-360/VID_20260131_094112_00_011.insv";
+
+
+    std::cout << "Reading data file: " << iiFile << std::endl;
+    std::ifstream cache (iiFile, std::ios::in);
+    std::string line;
+    while (std::getline(cache, line)) {
+        std::stringstream ss(line);
+        std::string item;
+        std::getline(ss, item, ',');
+        InstrumentInput ii = InstrumentInput::fromString(line);
+        iiVector.push_back(ii);
+    }
+    ASSERT_FALSE(iiVector.empty());
+
+    std::list instrDataList(iiVector.begin(), iiVector.end());
+    CameraClipInfo cameraClip(clipFileName, iiVector[0].utc.getUnixTimeMs(),
+                              iiVector.back().utc.getUnixTimeMs(), &instrDataList, 1920, 1080);
+    std::list<CameraClipInfo *> cameraClipsList;
+    cameraClipsList.push_back(&cameraClip);
+
+    std::filesystem::remove_all(overlayDir);
+
+    std::list<GoProClipInfo> clipsList;
+    ProgressListener progressListener;
+    std::map<uint64_t, Performance> performanceVector;
+    std::list<RaceData *> raceList;
+    const std::string  polarPath = "./data/polars-arkana.csv";
+    MovieProducer movieProducer(overlayDir, polarPath, clipsList, iiVector, performanceVector, raceList, progressListener );
+    movieProducer.makeOverlaysForAllClips(cameraClipsList);
+
+
+}
