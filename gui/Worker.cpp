@@ -255,6 +255,66 @@ void Worker::computeStats(const QString &polarUrl){
 
 }
 
+void Worker::computeStatsForCsv(const QString &polarUrl){
+    Polars polars;
+    polars.loadPolar(QUrl(polarUrl).toLocalFile().toStdString());
+
+    m_rPerformanceMap.clear();
+    int raceIdx = 0;
+
+    uint64_t raceStartIdx = 0;
+    for ( RaceData *race: m_RaceDataList) {
+        // Find race start index
+        for(auto it = race->getChapters().begin(); it != race->getChapters().end(); it++) {
+            Chapter *chapter = *it;
+            for( uint64_t idx= chapter->getStartIdx(); idx < chapter->getEndIdx(); idx++){
+                if ( chapter->getChapterType() == ChapterTypes::ChapterType::START && idx == chapter->getGunIdx() ) {
+                    raceStartIdx = idx;
+                    break;
+                }
+            }
+            if ( raceStartIdx != 0 ) {
+                break;
+            }
+        }
+
+        // Some inits
+        TimeDeltaComputer timeDeltaComputer(polars, m_rInstrDataVector);
+        timeDeltaComputer.startRace();
+        timeDeltaComputer.startLeg();
+        int totalLen = race->getEndIdx() - race->getStartIdx();
+        int prevPerc = 0;
+        int count = 0;
+
+        for ( auto idx = race->getStartIdx(); idx < race->getEndIdx(); idx ++ ){
+            int perc = count * 100 / int(totalLen);
+            if( perc != prevPerc){
+                progress("Computing CSV stats", perc);
+                if ( stopRequested() ){
+                    break;
+                }
+                prevPerc = perc;
+            }
+            count ++;
+
+            auto utcMs = m_rInstrDataVector[idx].utc.getUnixTimeMs();
+            if ( idx < raceStartIdx  ){
+                m_rPerformanceMap[utcMs].isValid = false;
+                m_rPerformanceMap[utcMs].legDistLostToTargetMeters = 0;
+                m_rPerformanceMap[utcMs].legTimeLostToTargetSec = 0;
+            }else {
+                m_rPerformanceMap[utcMs].raceIdx = raceIdx;
+                m_rPerformanceMap[utcMs].legIdx = 0;
+                timeDeltaComputer.updatePerformance(idx, m_rPerformanceMap[m_rInstrDataVector[idx].utc.getUnixTimeMs()], false);
+            }
+        }
+        raceIdx ++;
+    }
+
+}
+
+
+
 void Worker::exportGpx(const QString &path) {
     std::string gpxName = QUrl(path).toLocalFile().toStdString();
     QFile gpxFile(QUrl(path).toLocalFile());
@@ -340,9 +400,9 @@ void Worker::exportStats(const QString &polarUrl, const QString &path) {
 
     std::cout << "Computing stats" << std::endl;
     emit produceStarted();
-    progress("Computing stats", 0);
+    progress("Computing stats for CSV", 0);
 
-    computeStats(polarUrl);
+    computeStatsForCsv(polarUrl);
 
     progress("Exporting CSV", 0);
 

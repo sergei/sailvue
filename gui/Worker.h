@@ -60,6 +60,7 @@ private:
     CameraBase *m_pCamera = nullptr;
 
     void computeStats(const QString &polarUrl);
+    void computeStatsForCsv(const QString &polarUrl);
 };
 
 

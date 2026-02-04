@@ -28,14 +28,20 @@ void TimeDeltaComputer::updatePerformance(uint64_t idx, Performance &performance
     if ( isFetch ){ // Compute delta time using the boat speed vs target boat speed
         targetSpeed = m_polars.getSpeed(instr.twa.getDegrees(), instr.tws.getKnots());
         performance.targetSpeed = Speed::fromKnots(targetSpeed, instr.utc.getUnixTimeMs());
+        ourSpeed = instr.sow.getKnots();
+
+        // VMG is N/A on a fetch leg
         performance.targetTwa = Angle::INVALID;
         performance.targetVmg = Speed::INVALID;
-        ourSpeed = instr.sow.getKnots();
         performance.ourVmg = Speed::INVALID;
     }else {  // Compute delta time using the boat VMG vs target VMG
+        // Just target boatspeed at current TWA and TWS
+        targetSpeed = m_polars.getSpeed(instr.twa.getDegrees(), instr.tws.getKnots());
+        performance.targetSpeed = Speed::fromKnots(targetSpeed, instr.utc.getUnixTimeMs());
+
+        // VMG stuff
         std::pair<double, double> targets =  m_polars.getTargets(instr.tws.getKnots(), instr.twa.getDegrees() < 90);
         targetSpeed = abs(targets.second);
-        performance.targetSpeed = Speed::INVALID;
         performance.targetTwa = Angle::fromDegrees(targets.first, instr.utc.getUnixTimeMs());
         performance.targetVmg = Speed::fromKnots(targetSpeed, instr.utc.getUnixTimeMs());
         ourSpeed = abs(instr.sow.getKnots() * cos(instr.twa.getRadians()));
