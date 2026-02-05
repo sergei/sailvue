@@ -223,6 +223,13 @@ void MovieProducer::makeOverlaysForAllClips(std::list<CameraClipInfo *> &rCamera
 
     auto clipBaseName = std::filesystem::path(clip->getFileName()).filename();
     auto pilotClipName = std::filesystem::path(clip->getFileName() + ".overlay.mov").filename();
+    std::filesystem::path clipFulPathName = raceFolder / pilotClipName;
+    // Skip if file already exists
+    if (std::filesystem::exists(clipFulPathName)) {
+      std::cout << "Overlay clip " << clipFulPathName << " already exists, skipping" << std::endl;
+      continue;
+    }
+
 
     uint64_t startTimeMs = clip->getInstrData()->front().utc.getUnixTimeMs();
     uint64_t endTimeMs = clip->getInstrData()->back().utc.getUnixTimeMs();
@@ -267,7 +274,6 @@ void MovieProducer::makeOverlaysForAllClips(std::list<CameraClipInfo *> &rCamera
     auto presentationDuration = float(endTimeMs - startTimeMs) / 1000;
     float overlaysFps = float(totalCount) / presentationDuration;
 
-    std::filesystem::path clipFulPathName = raceFolder / pilotClipName;
 
     // Convert startTimeMs from UTC to local so it matches time shown in the instrument cell
     QDateTime time = QDateTime::fromMSecsSinceEpoch(qint64(startTimeMs));

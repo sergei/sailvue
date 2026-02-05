@@ -132,7 +132,7 @@ void StartTimerOverlayMaker::addEpoch(QPainter &painter, const InstrumentInput &
 
     // Compute time to start line using VMG
     if (  timeToStartSec > 0  ){
-        int64_t timeToStartLineSec = lround(distanceToLineMeters / m_startVmg.getMetersPerSec());
+        int64_t timeToStartLineSec = lround(abs(distanceToLineMeters) / m_startVmg.getMetersPerSec());
         int64_t timeToKill = timeToStartSec - timeToStartLineSec ;
         if( timeToKill > 0) {
             painter.drawText(0, m_timerHeight + m_distHeight * 2, "TTK: " + formatSeconds(timeToKill));

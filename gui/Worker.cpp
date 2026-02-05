@@ -136,8 +136,8 @@ void Worker::makePilotClips(const QString &moviePathUrl, const QString &polarUrl
   MovieProducer movieProducer(moviePath, polarPath, m_rGoProClipInfoList, m_rInstrDataVector, m_rPerformanceMap,
                               m_RaceDataList, *this);
 
-  movieProducer.makePilotClips(m_rCameraClipsList);
   movieProducer.makeOverlaysForAllClips(m_rCameraClipsList);
+  movieProducer.makePilotClips(m_rCameraClipsList);
 
   emit makePilotClipsFinished(moviePathUrl, "Done making pilot clips");
 
