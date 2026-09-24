@@ -207,6 +207,10 @@ void RudderOverlayMaker::addEpoch(QPainter &painter, const InstrumentInput &epoc
 
 void RudderOverlayMaker::plotHistory(QPainter &painter, const InstrumentInput &epoch) {
 
+    if ( m_TimeStamps.empty() ){
+        return;
+    }
+
     // Show no more than HIST_DISPLAY_LEN_MS of history
     uint64_t epochUtcMs = epoch.utc.getUnixTimeMs();
 
