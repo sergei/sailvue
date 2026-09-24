@@ -535,7 +535,7 @@ bool FFMpeg::copyQImageToAVFrame(const QImage& image, AVFrame* frame) {
     return ret > 0;
 }
 
-bool FFMpeg::encodeQImageSequence(const std::vector<QImage>& images, float fps,
+bool FFMpeg::encodeQImageSequence(const std::vector<QImage>& images, double fps,
                                  FfmpegProgressListener& progressListener) {
     if (images.empty()) {
         std::cerr << "No images to encode" << std::endl;
@@ -609,7 +609,7 @@ bool FFMpeg::encodeQImageSequence(const std::vector<QImage>& images, float fps,
     return result;
 }
 
-bool FFMpeg::encodeQImageSequence(const std::vector<QImage>& images, float fps,
+bool FFMpeg::encodeQImageSequence(const std::vector<QImage>& images, double fps,
                                  FfmpegProgressListener& progressListener,
                                  const std::string& title) {
     if (images.empty()) {
@@ -765,7 +765,7 @@ void FFMpeg::msToTimecode(uint64_t ms, double fps, char* timecodeBuf, size_t buf
   );
 }
 
-bool FFMpeg::initializeEncoder(const std::string &filename, int width, int height, float fps, uint64_t startTimeMs) {
+bool FFMpeg::initializeEncoder(const std::string &filename, int width, int height, double fps, uint64_t startTimeMs) {
   // Clean up any existing resources
   if (m_formatContext) {
     avformat_free_context(m_formatContext);
@@ -811,16 +811,17 @@ bool FFMpeg::initializeEncoder(const std::string &filename, int width, int heigh
     std::cerr << "Could not create codec context" << std::endl;
     return false;
   }
-  int int_fps = int(fps + 0.5);
+
+  AVRational rational_fps = av_d2q(fps, 1000000);
 
   // Set video stream parameters
-  m_videoStream->time_base = m_codecContext->time_base;
-  m_videoStream->avg_frame_rate = (AVRational){int_fps, 1};
+  m_videoStream->time_base = av_inv_q(rational_fps);
+  m_videoStream->avg_frame_rate = rational_fps;
 
   // Set codec parameters
   m_codecContext->width = width;
   m_codecContext->height = height;
-  m_codecContext->time_base = (AVRational){1, int_fps};
+  m_codecContext->time_base = av_inv_q(rational_fps);
   m_codecContext->pix_fmt = pixFmt;
   m_codecContext->thread_count = 16; // Use more threads for better performance
   m_codecContext->thread_type = FF_THREAD_FRAME | FF_THREAD_SLICE; // Use both threading models

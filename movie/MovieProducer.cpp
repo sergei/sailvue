@@ -526,23 +526,25 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
   int prevProgress = -1;
   int totalCount = int(chapter.getEndIdx() - chapter.getStartIdx());
   // determine overlays framerate
-  float overlaysFps = float(totalCount) / presentationDuration;
+  double overlaysFps = double(totalCount) / presentationDuration;
   u_int64_t ulEpochStep = 1;
   if (overlaysFps > 10) {
     // We  don't want to have too many frames
     // let's skip some epochs
-    int targetFps = 10;
-    ulEpochStep = totalCount / u_int64_t(presentationDuration) / targetFps;
+    double targetFps = 10.0;
+    ulEpochStep = u_int64_t(double(totalCount) / presentationDuration / targetFps);
+    if (ulEpochStep == 0) ulEpochStep = 1;
     // Recompute overlay FPS
-    overlaysFps = float(totalCount / ulEpochStep) / presentationDuration;
+    overlaysFps = double(totalCount / ulEpochStep) / presentationDuration;
   }
 
   if (chapter.getChapterType() == ChapterTypes::ChapterType::SPEED_PERFORMANCE && totalCount > 1200) {
     // We don't want to have too many frames
     // let's skip some epochs
     ulEpochStep = totalCount / 1000;
+    if (ulEpochStep == 0) ulEpochStep = 1;
     // Recompute overlay FPS
-    overlaysFps = float(totalCount / ulEpochStep) / presentationDuration;
+    overlaysFps = double(totalCount / ulEpochStep) / presentationDuration;
   }
 
   std::list<InstrumentInput> chapterEpochs;
@@ -556,6 +558,9 @@ std::string MovieProducer::produceChapter(OverlayMaker &overlayMaker, Chapter &c
     }
     chapterEpochs.push_back(epoch);
   }
+
+  // Recompute overlay FPS based on the actual number of frames
+  overlaysFps = double(chapterEpochs.size()) / presentationDuration;
 
   std::filesystem::path chapterFolder = overlayMaker.setChapter(chapter, chapterEpochs);
   // This call creates new chapter name

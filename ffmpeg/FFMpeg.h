@@ -203,14 +203,14 @@ public:
     static void joinChapters(std::list<std::string> &chaptersList, const std::basic_string<char> &moviePath,
                       FfmpegProgressListener &progressListener);
 
-    bool initializeEncoder(const std::string &outputPath, int width, int height, float fps, uint64_t startTimeMs);
+    bool initializeEncoder(const std::string &outputPath, int width, int height, double fps, uint64_t startTimeMs);
     bool encodeFrame(AVFrame* frame);
     bool finalizeEncoding();
 
     bool copyQImageToAVFrame(const QImage& image, AVFrame* frame);
-    bool encodeQImageSequence(const std::vector<QImage>& images, float fps,
+    bool encodeQImageSequence(const std::vector<QImage>& images, double fps,
                               FfmpegProgressListener& progressListener);
-    bool encodeQImageSequence(const std::vector<QImage>& images, float fps,
+    bool encodeQImageSequence(const std::vector<QImage>& images, double fps,
                               FfmpegProgressListener& progressListener, const std::string& title);
 
 private:
