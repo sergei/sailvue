@@ -101,7 +101,7 @@ public:
     double stbdEndLon = DBL_MAX;
 };
 
-const size_t  REASSEMBLY_BUFFER_SIZE = 64;
+const size_t  REASSEMBLY_BUFFER_SIZE = 64*4;
 
 
 class YdvrReader : public InstrDataReader {
