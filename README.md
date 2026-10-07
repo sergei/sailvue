@@ -36,3 +36,6 @@ No support is offered whatsoever, it's my pet project to create videos for Javel
 ## Some videos created by sailvue 
  - [Three Bridges Fiasco](https://youtu.be/7mJTKAoThuE)
  
+## Acknowledgements
+The NMEA 2000 PGN definitions and parser come from [CANboat](https://github.com/canboat/canboat) (Apache License 2.0). 
+I'm super grateful to these guys for making this possible.
