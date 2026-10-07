@@ -53,7 +53,7 @@ void StartTimerOverlayMaker::initStartEpochs(uint64_t gunIdx) {
         // Set startIdx so it's 5 minutes before gunIdx
         uint64_t startIdx = 0;
         for (auto it = m_rInstrDataVector.begin() + long(gunIdx); it != m_rInstrDataVector.end(); --it) {
-            if (it->utc.getUnixTimeMs() < m_gunUtcTimeMs - 5 * 60 * 1000) {
+            if (it->utc.getUnixTimeMs() < m_gunUtcTimeMs - SHOW_TIMER_BEFORE_START_MIN * 60 * 1000) {
                 startIdx = uint64_t(std::distance(m_rInstrDataVector.begin(), it));
                 break;
             }
@@ -61,7 +61,7 @@ void StartTimerOverlayMaker::initStartEpochs(uint64_t gunIdx) {
         // Set endIdx to so it's 1 minute after gunIdx
         uint64_t endIdx = 0;
         for (auto it = m_rInstrDataVector.begin() + long(gunIdx); it != m_rInstrDataVector.end(); ++it) {
-            if (it->utc.getUnixTimeMs() > m_gunUtcTimeMs + 1 * 60 * 1000) {
+            if (it->utc.getUnixTimeMs() > m_gunUtcTimeMs + SHOW_TIMER_AFTER_START_MIN * 60 * 1000) {
                 endIdx = uint64_t(std::distance(m_rInstrDataVector.begin(), it));
                 break;
             }

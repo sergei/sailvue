@@ -1,0 +1,2 @@
+--srt-name=/Users/sergei/SailingVideos/2026-PACCUP-2026/60-VOICEOVER/PRESTART/10-PRESTART.srt
+--output-dir=/Users/sergei/SailingVideos/2026-PACCUP-2026/60-VOICEOVER/PRESTART/

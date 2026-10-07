@@ -8,6 +8,9 @@
 #include "OverlayElement.h"
 #include "ColorPalette.h"
 
+static constexpr int SHOW_TIMER_BEFORE_START_MIN = 5;
+static constexpr int SHOW_TIMER_AFTER_START_MIN = 3;
+
 class StartTimerOverlayMaker : public OverlayElement {
 public:
     StartTimerOverlayMaker(Polars &polars, std::vector<InstrumentInput> &instrData, int width, int height, int x, int y);
