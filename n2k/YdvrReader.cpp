@@ -227,19 +227,14 @@ void YdvrReader::readDatFile(const std::string &ydvrFile, const std::filesystem:
             }
             const Pgn * pgn = searchForPgn(int(m.pgn));
 
-            if ( pgn == nullptr ) { // Unknown to us PGN, just skip this message
-                m.len = 8;
-                if ( offset + m.len > size )
-                    break;
-                offset += m.len;
-            }else if ( m.pgn == 59904 ) {
+            // The record length is defined by the YDVR format, so decide it before looking at canboat
+            if ( m.pgn == 59904 ) {
                 m.len = 3;
                 if ( offset + m.len > size )
                     break;
                 m.data =  (uint8_t  *)(buff + offset);
                 offset += m.len;
-
-            } else if ( pgn->type == PACKET_FAST && pgn->complete == PACKET_COMPLETE ) {
+            } else if ( YDVR_FAST_PACKET_PGNS.count(m.pgn) ) { // Stored by YDVR already assembled
                 uint8_t seqNo;
                 if ( offset + 1 > size )
                     break;
@@ -251,18 +246,24 @@ void YdvrReader::readDatFile(const std::string &ydvrFile, const std::filesystem:
                 m.len = buff[offset];
                 offset += 1;
 
-                if( m.len > FASTPACKET_MAX_SIZE ) {
-                    std::cerr << "Invalid length: " << m.len <<  " offset " << offset << std::endl;
-                    continue;
-                }
-
                 if ( offset + m.len > size )
                     break;
                 m.data =  (uint8_t *)(buff + offset);
                 offset += m.len;
 
+                if( m.len > FASTPACKET_MAX_SIZE ) {
+                    std::cerr << "Invalid length: " << int(m.len) <<  " offset " << offset << std::endl;
+                    continue;
+                }
+
 //                std::cout << "Fast complete PGN: " << m.pgn << " src: " << int(m.src) << " len: " << int(m.len) <<  " offset " << offset << std::endl;
-                ProcessPgn(m, cache);
+                if ( pgn != nullptr )
+                    ProcessPgn(m, cache);
+            } else if ( pgn == nullptr ) { // Unknown to us PGN, just skip this message
+                m.len = 8;
+                if ( offset + m.len > size )
+                    break;
+                offset += m.len;
             }else {
                 // Might be a single frame message of fast message not known to YDVR
                 m.len = 8;

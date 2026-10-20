@@ -47,6 +47,21 @@ public:
 
 static const int PGN_BANG_KEY_VALUE = 130824;
 
+// Standard fast-packet PGNs that YDVR-04 stores already assembled (seq byte, length byte, payload).
+// All other PGNs (except 59904) are stored as raw 8-byte frames, including proprietary fast-packet ones.
+// This must not be derived from canboat: its PACKET_COMPLETE flag describes field documentation, not framing.
+const std::set<uint32_t> YDVR_FAST_PACKET_PGNS({
+    126208, 126464, 126983, 126984, 126985, 126986, 126987, 126988, 126996, 126998,
+    127233, 127237, 127489, 127496, 127497, 127498, 127503, 127504, 127506, 127507,
+    127509, 127510, 127511, 127512, 127513, 127514, 128275, 128520, 129029, 129038,
+    129039, 129040, 129041, 129044, 129045, 129284, 129285, 129301, 129302, 129538,
+    129540, 129541, 129542, 129545, 129547, 129549, 129551, 129556, 129792, 129793,
+    129794, 129795, 129796, 129797, 129798, 129799, 129800, 129801, 129802, 129803,
+    129804, 129805, 129806, 129807, 129808, 129809, 129810, 130060, 130061, 130064,
+    130065, 130066, 130067, 130068, 130069, 130070, 130071, 130072, 130073, 130074,
+    130320, 130321, 130322, 130323, 130324, 130567, 130577, 130578,
+});
+
 const std::set<uint32_t> REQUIRED_PGNS({
     129029, // GNSS Position Data
     129025, // GNSS Position Rapid Update
@@ -143,7 +158,7 @@ private:
     bool isUint32Valid(int64_t val) const { return val < 4294967293; }
 
     bool isInt32Valid(int64_t val) const { return val != 0x7FFFFFFF; }
-    bool isInt16Valid(int64_t val) const { return val != 0x7FFFF; }
+    bool isInt16Valid(int64_t val) const { return val != 0x7FFF; }
 
 private:
     static bool m_sCanBoatInitialized;
@@ -183,7 +198,7 @@ private:
 
     Packet *assembleFastPacket(YdvrMessage *msg);
 
-    Packet reassemblyBuffer[REASSEMBLY_BUFFER_SIZE];
+    Packet reassemblyBuffer[REASSEMBLY_BUFFER_SIZE]{};
 
     void lookupBangField(int64_t val, int64_t key, BangStartLineData &startLineData);
 };
