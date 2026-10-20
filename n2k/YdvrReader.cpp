@@ -538,7 +538,7 @@ void YdvrReader::lookupBangField(int64_t val, int64_t key, BangStartLineData &st
             break;
         case BANG_KEY_TARGET_SPEED: // "Target Boat Speed", "SPEED_FIX16_CM"
             if ( isInt16Valid(val) ) {
-                m_epoch.targetSpeed = Speed::fromMetersPerSecond(double(val) * RES_MPS, m_ulLatestGpsTimeMs);
+                m_epoch.targetSpeed = Speed::fromMetersPerSecond(double((int16_t)val) * RES_MPS, m_ulLatestGpsTimeMs);
             } else {
                 m_epoch.targetSpeed = Speed::INVALID;
             }
@@ -552,28 +552,28 @@ void YdvrReader::lookupBangField(int64_t val, int64_t key, BangStartLineData &st
             break;
         case BANG_KEY_VMG: // "VMG", "SPEED_FIX16_CM"
             if ( isInt16Valid(val) ) {
-                m_epoch.vmg = Speed::fromMetersPerSecond(double(val) * RES_MPS, m_ulLatestGpsTimeMs);
+                m_epoch.vmg = Speed::fromMetersPerSecond(double((int16_t)val) * RES_MPS, m_ulLatestGpsTimeMs);
             } else {
                 m_epoch.vmg = Speed::INVALID;
             }
             break;
         case BANG_KEY_LEEWAY: // "Leeway", "ANGLE_FIX16"
             if ( isInt16Valid(val) ) {
-                m_epoch.leeway = Angle::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs);
+                m_epoch.leeway = Angle::fromRadians(double((int16_t)val) * RES_RADIANS, m_ulLatestGpsTimeMs);
             } else {
                 m_epoch.leeway = Angle::INVALID;
             }
             break;
         case BANG_KEY_CURRENT_DRIFT: // "Current Drift", "SPEED_FIX16_CM"
             if ( isInt16Valid(val) ) {
-                m_epoch.currentDrift = Speed::fromMetersPerSecond(double(val) * RES_MPS, m_ulLatestGpsTimeMs);
+                m_epoch.currentDrift = Speed::fromMetersPerSecond(double((int16_t)val) * RES_MPS, m_ulLatestGpsTimeMs);
             } else {
                 m_epoch.currentDrift = Speed::INVALID;
             }
             break;
         case BANG_KEY_CURRENT_SET: // "Current Set", "ANGLE_FIX16"
             if ( isInt16Valid(val) ) {
-                m_epoch.currentSet = Direction::fromRadians(double(val) * RES_RADIANS, m_ulLatestGpsTimeMs);
+                m_epoch.currentSet = Direction::fromRadians(double((int16_t)val) * RES_RADIANS, m_ulLatestGpsTimeMs);
             } else {
                 m_epoch.currentSet = Direction::INVALID;
             }
@@ -587,12 +587,8 @@ void YdvrReader::lookupBangField(int64_t val, int64_t key, BangStartLineData &st
             break;
         case BANG_KEY_PILOT_TARGET_TWA: // "Pilot Target Wind Angle", "ANGLE_FIX16" Value
             if ( isInt16Valid(val) ) {
-                double twaRads = double(val) * RES_RADIANS;
-                // FIXME: For some reasons the negative value always more by fifteen degrees, so we correct it
-                double correctedTwa = twaRads;
-                if( twaRads < 0 || twaRads > M_PI )
-                    correctedTwa -= 15.4 * M_PI / 180;
-                m_epoch.pilotTwa = Angle::fromRadians(correctedTwa, m_ulLatestGpsTimeMs);
+                // Values are extracted unsigned, so cast to get negative (port) angles
+                m_epoch.pilotTwa = Angle::fromRadians(double((int16_t)val) * RES_RADIANS, m_ulLatestGpsTimeMs);
             } else {
                 m_epoch.pilotTwa = Angle::INVALID;
             }
@@ -616,6 +612,39 @@ void YdvrReader::lookupBangField(int64_t val, int64_t key, BangStartLineData &st
             if ( isInt32Valid(val) ) {
                 startLineData.stbdEndLon = double((int32_t)val) * RES_LL_32;
             }
+            break;
+        case BANG_KEY_TRIP_AVG_SPEED:
+            m_epoch.tripAvgSpeed = isUint16Valid(val) ? Speed::fromMetersPerSecond(double(val) * RES_MPS, m_ulLatestGpsTimeMs) : Speed::INVALID;
+            break;
+        case BANG_KEY_POLAR_PERFORMANCE:
+            m_epoch.polarPerformance = isUint16Valid(val) ? double(val) * 0.1 : NAN;
+            break;
+        case BANG_KEY_DR_DISTANCE:
+            m_epoch.drDist = isUint32Valid(val) ? Distance::fromMeters(int32_t(val / 100), m_ulLatestGpsTimeMs) : Distance::INVALID;
+            break;
+        case BANG_KEY_DR_TIME:
+            m_epoch.drTimeMs = isUint32Valid(val) ? val / 10 : INT64_MIN;
+            break;
+        case BANG_KEY_HEADING_ON_NEXT_TACK: // True, convert to magnetic
+            m_epoch.nextTackHdg = isUint16Valid(val) && m_magVar.isValid(m_ulLatestGpsTimeMs)
+                    ? Direction::fromRadians(double(val) * RES_RADIANS - m_magVar.getRadians(), m_ulLatestGpsTimeMs) : Direction::INVALID;
+            break;
+        case BANG_KEY_DR_BEARING: // True, convert to magnetic
+            m_epoch.drBearing = isUint16Valid(val) && m_magVar.isValid(m_ulLatestGpsTimeMs)
+                    ? Direction::fromRadians(double(val) * RES_RADIANS - m_magVar.getRadians(), m_ulLatestGpsTimeMs) : Direction::INVALID;
+            break;
+        case BANG_KEY_START_LINE_BIAS:
+            m_epoch.startLineBias = isInt16Valid(val) ? Angle::fromRadians(double((int16_t)val) * RES_RADIANS, m_ulLatestGpsTimeMs) : Angle::INVALID;
+            break;
+        case BANG_KEY_TWD_REFERENCE: // True, convert to magnetic
+            m_epoch.twdReference = isUint16Valid(val) && m_magVar.isValid(m_ulLatestGpsTimeMs)
+                    ? Direction::fromRadians(double(val) * RES_RADIANS - m_magVar.getRadians(), m_ulLatestGpsTimeMs) : Direction::INVALID;
+            break;
+        case BANG_KEY_WIND_SHIFT:
+            m_epoch.windShift = isInt16Valid(val) ? Angle::fromRadians(double((int16_t)val) * RES_RADIANS, m_ulLatestGpsTimeMs) : Angle::INVALID;
+            break;
+        case BANG_KEY_WIND_LIFT:
+            m_epoch.windLift = isInt16Valid(val) ? Angle::fromRadians(double((int16_t)val) * RES_RADIANS, m_ulLatestGpsTimeMs) : Angle::INVALID;
             break;
         default:
 //            printf("Unknown key %d with value %08X,%d, %.5f\n", key, val, val, double(val) *  RES_LL_32);

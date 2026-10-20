@@ -93,6 +93,18 @@ enum BangKeys{
     BANG_KEY_START_LINE_PORT_END_LON = 0x115,
     BANG_KEY_START_LINE_STBD_END_LAT = 0x116,
     BANG_KEY_START_LINE_STBD_END_LON = 0x117,
+    // Keys are H5000 function numbers (H5000 Operation Manual, "H5000 Function numbers").
+    // Scales were verified on H5000 CPU data; names marked "not in manual" are inferred.
+    BANG_KEY_TRIP_AVG_SPEED = 100,        // Trip average boat speed 1, u16 cm/s
+    BANG_KEY_POLAR_PERFORMANCE = 124,     // Polar performance, u16 0.1 %
+    BANG_KEY_DR_DISTANCE = 129,           // DR distance, u32 cm
+    BANG_KEY_HEADING_ON_NEXT_TACK = 154,  // Heading on next tack, u16 1e-4 rad, true
+    BANG_KEY_DR_BEARING = 211,            // DR bearing, u16 1e-4 rad, true
+    BANG_KEY_DR_TIME = 265,               // Not in manual: elapsed time since DR reset, u32 1e-4 s
+    BANG_KEY_START_LINE_BIAS = 273,       // Start line bias, i16 1e-4 rad
+    BANG_KEY_TWD_REFERENCE = 336,         // Not in manual: reference TWD for wind shifts, u16 1e-4 rad, true
+    BANG_KEY_WIND_SHIFT = 337,            // Not in manual: TWD - reference TWD, i16 1e-4 rad, positive is veer
+    BANG_KEY_WIND_LIFT = 338,             // Not in manual: wind shift signed by tack, i16 1e-4 rad, positive is lift
 };
 
 typedef struct

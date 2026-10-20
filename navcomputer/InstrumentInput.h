@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <list>
+#include <cmath>
 #include "n2k/geo/Angle.h"
 #include "n2k/geo/Direction.h"
 #include "n2k/geo/Speed.h"
@@ -43,6 +44,16 @@ static const char *const ITEMS_START_LINE_PORT_LAT_LON = "start_line_port_lat_de
 static const char *const ITEM_START_LINE_STBD_LOC = "start_line_stbd_loc";
 static const char *const ITEMS_START_LINE_STBD_LAT_LON = "start_stbd_port_lat_deg,start_line_stbd_lon_deg";
 static const char *const ITEM_PILOT_TWA = "pilot_twa_deg";
+static const char *const ITEM_POLAR_PERFORMANCE = "polar_perf_pct";
+static const char *const ITEM_DR_DIST = "dr_dist_m";
+static const char *const ITEM_DR_TIME = "dr_time_ms";
+static const char *const ITEM_TRIP_AVG_SPEED = "trip_avg_speed_kts";
+static const char *const ITEM_NEXT_TACK_HDG = "next_tack_hdg_deg_mag";
+static const char *const ITEM_DR_BEARING = "dr_bearing_deg_mag";
+static const char *const ITEM_START_LINE_BIAS = "start_line_bias_deg";
+static const char *const ITEM_TWD_REFERENCE = "twd_ref_deg_mag";
+static const char *const ITEM_WIND_SHIFT = "wind_shift_deg";
+static const char *const ITEM_WIND_LIFT = "wind_lift_deg";
 
 class InstrumentInput {
 public:
@@ -89,6 +100,24 @@ public:
     Distance distToStart = Distance::INVALID;
     // Pilot Target Wind Angle
     Angle pilotTwa = Angle::INVALID;
+    // Polar performance, percent of polar speed
+    double polarPerformance = NAN;
+    // Dead reckoning distance, bearing (magnetic) and elapsed time since DR reset
+    Distance drDist = Distance::INVALID;
+    Direction drBearing = Direction::INVALID;
+    int64_t drTimeMs = INT64_MIN;
+    // Trip average boat speed
+    Speed tripAvgSpeed = Speed::INVALID;
+    // Heading on next tack, magnetic
+    Direction nextTackHdg = Direction::INVALID;
+    // Start line bias
+    Angle startLineBias = Angle::INVALID;
+    // Reference TWD used for wind shifts, magnetic
+    Direction twdReference = Direction::INVALID;
+    // TWD minus reference TWD, positive is veer
+    Angle windShift = Angle::INVALID;
+    // Wind shift signed by tack, positive is lift
+    Angle windLift = Angle::INVALID;
 
     [[nodiscard]] std::string toCsv(bool isHeader) const {
         std::stringstream ss;
@@ -167,6 +196,16 @@ public:
               <<  "," << ITEM_START_LINE_PORT_LOC << "," << startLinePortEnd.toString(utc.getUnixTimeMs())
               <<  "," << ITEM_START_LINE_STBD_LOC << "," << startLineStbdEnd.toString(utc.getUnixTimeMs())
               <<  "," << ITEM_PILOT_TWA << "," << pilotTwa.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_POLAR_PERFORMANCE << "," << (std::isnan(polarPerformance) ? "" : std::to_string(polarPerformance))
+              <<  "," << ITEM_DR_DIST << "," << drDist.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_DR_TIME << "," << (drTimeMs == INT64_MIN ? "" : std::to_string(drTimeMs))
+              <<  "," << ITEM_TRIP_AVG_SPEED << "," << tripAvgSpeed.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_NEXT_TACK_HDG << "," << nextTackHdg.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_DR_BEARING << "," << drBearing.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_START_LINE_BIAS << "," << startLineBias.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_TWD_REFERENCE << "," << twdReference.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_WIND_SHIFT << "," << windShift.toString(utc.getUnixTimeMs())
+              <<  "," << ITEM_WIND_LIFT << "," << windLift.toString(utc.getUnixTimeMs())
               ;
         return ss.str();
     }
@@ -244,6 +283,26 @@ public:
                 ii.distToStart = Distance::fromMeters(std::stod(value), ulGpsTimeMs);
             else if (item == ITEM_PILOT_TWA)
                 ii.pilotTwa = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
+            else if (item == ITEM_POLAR_PERFORMANCE)
+                ii.polarPerformance = std::stod(value);
+            else if (item == ITEM_DR_DIST)
+                ii.drDist = Distance::fromMeters(std::stod(value), ulGpsTimeMs);
+            else if (item == ITEM_DR_TIME)
+                ii.drTimeMs = std::stoll(value);
+            else if (item == ITEM_TRIP_AVG_SPEED)
+                ii.tripAvgSpeed = Speed::fromKnots(std::stod(value), ulGpsTimeMs);
+            else if (item == ITEM_NEXT_TACK_HDG)
+                ii.nextTackHdg = Direction::fromDegrees(std::stod(value), ulGpsTimeMs);
+            else if (item == ITEM_DR_BEARING)
+                ii.drBearing = Direction::fromDegrees(std::stod(value), ulGpsTimeMs);
+            else if (item == ITEM_START_LINE_BIAS)
+                ii.startLineBias = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
+            else if (item == ITEM_TWD_REFERENCE)
+                ii.twdReference = Direction::fromDegrees(std::stod(value), ulGpsTimeMs);
+            else if (item == ITEM_WIND_SHIFT)
+                ii.windShift = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
+            else if (item == ITEM_WIND_LIFT)
+                ii.windLift = Angle::fromDegrees(std::stod(value), ulGpsTimeMs);
             else if (item == ITEM_START_LINE_PORT_LOC) {
                 std::stringstream ss(value);
                 std::string lat, lon;
@@ -284,6 +343,10 @@ public:
         std::list<Speed> currentDrifts;
         std::list<Direction> currentSets;
         std::list<Angle> pilotTwas;
+        std::list<Direction> nextTackHdgs;
+        std::list<Direction> twdReferences;
+        std::list<Angle> windShifts;
+        std::list<Angle> windLifts;
 
         for( auto it = from; it != to; it++){
             InstrumentInput ii = *it;
@@ -309,6 +372,10 @@ public:
             currentDrifts.push_back(ii.currentDrift);
             currentSets.push_back(ii.currentSet);
             pilotTwas.push_back(ii.pilotTwa);
+            nextTackHdgs.push_back(ii.nextTackHdg);
+            twdReferences.push_back(ii.twdReference);
+            windShifts.push_back(ii.windShift);
+            windLifts.push_back(ii.windLift);
         }
 
         InstrumentInput median;
@@ -340,6 +407,16 @@ public:
         median.currentSet = Direction::median(currentSets, from->utc.getUnixTimeMs());
         median.distToStart = from->distToStart;
         median.pilotTwa = Angle::median(pilotTwas, from->utc.getUnixTimeMs());
+        median.polarPerformance = from->polarPerformance;
+        median.drDist = from->drDist;
+        median.drBearing = from->drBearing;
+        median.drTimeMs = from->drTimeMs;
+        median.startLineBias = from->startLineBias;
+        median.tripAvgSpeed = from->tripAvgSpeed;
+        median.nextTackHdg = Direction::median(nextTackHdgs, from->utc.getUnixTimeMs());
+        median.twdReference = Direction::median(twdReferences, from->utc.getUnixTimeMs());
+        median.windShift = Angle::median(windShifts, from->utc.getUnixTimeMs());
+        median.windLift = Angle::median(windLifts, from->utc.getUnixTimeMs());
 
         return median;
     }
