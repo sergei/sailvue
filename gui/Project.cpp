@@ -191,3 +191,32 @@ int Project::cameraUtcOffset() {
     return utcOffsetMs;
 }
 
+
+void Project::setSurfParams(const SurfParams &params) {
+    QSettings settings;
+    settings.setValue(SETTINGS_SURF_MIN_TWA_DEG, params.minTwaDeg);
+    settings.setValue(SETTINGS_SURF_ENTER_RATIO, params.enterRatio);
+    settings.setValue(SETTINGS_SURF_EXIT_RATIO, params.exitRatio);
+    settings.setValue(SETTINGS_SURF_MIN_DURATION_SEC, double(params.minDurationMs) / 1000.);
+    settings.setValue(SETTINGS_SURF_MERGE_GAP_SEC, double(params.mergeGapMs) / 1000.);
+    settings.setValue(SETTINGS_SURF_MAX_PER_RACE, qulonglong(params.maxPerRace));
+    settings.setValue(SETTINGS_SURF_MIN_SPACING_SEC, double(params.minSpacingMs) / 1000.);
+    settings.setValue(SETTINGS_SURF_PRE_ROLL_SEC, double(params.preRollMs) / 1000.);
+    settings.setValue(SETTINGS_SURF_POST_ROLL_SEC, double(params.postRollMs) / 1000.);
+}
+
+SurfParams Project::surfParams() {
+    QSettings settings;
+    SurfParams d;
+    SurfParams params;
+    params.minTwaDeg = settings.value(SETTINGS_SURF_MIN_TWA_DEG, d.minTwaDeg).toDouble();
+    params.enterRatio = settings.value(SETTINGS_SURF_ENTER_RATIO, d.enterRatio).toDouble();
+    params.exitRatio = settings.value(SETTINGS_SURF_EXIT_RATIO, d.exitRatio).toDouble();
+    params.minDurationMs = uint64_t(settings.value(SETTINGS_SURF_MIN_DURATION_SEC, double(d.minDurationMs) / 1000.).toDouble() * 1000);
+    params.mergeGapMs = uint64_t(settings.value(SETTINGS_SURF_MERGE_GAP_SEC, double(d.mergeGapMs) / 1000.).toDouble() * 1000);
+    params.maxPerRace = settings.value(SETTINGS_SURF_MAX_PER_RACE, qulonglong(d.maxPerRace)).toULongLong();
+    params.minSpacingMs = uint64_t(settings.value(SETTINGS_SURF_MIN_SPACING_SEC, double(d.minSpacingMs) / 1000.).toDouble() * 1000);
+    params.preRollMs = uint64_t(settings.value(SETTINGS_SURF_PRE_ROLL_SEC, double(d.preRollMs) / 1000.).toDouble() * 1000);
+    params.postRollMs = uint64_t(settings.value(SETTINGS_SURF_POST_ROLL_SEC, double(d.postRollMs) / 1000.).toDouble() * 1000);
+    return params;
+}

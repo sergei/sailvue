@@ -170,6 +170,9 @@ public:
     void addChapter(Chapter *chapter);
     Q_INVOKABLE void detectManeuvers();
     Q_INVOKABLE void makeAnalytics();
+    Q_INVOKABLE void detectSurfing(const QVariantMap &params);
+    Q_INVOKABLE [[nodiscard]] QVariantMap surfParams() const;
+    Q_INVOKABLE [[nodiscard]] QVariantMap defaultSurfParams() const;
     Q_INVOKABLE void updateChapter(const QString &uuid, const QString &chapterName, ChapterTypes::ChapterType chapterType,
                                    uint64_t startIdx, uint64_t endIdx, uint64_t gunIdx);
 

@@ -345,8 +345,12 @@ void MovieProducer::produce() {
     std::filesystem::path descFileName = raceFolder / "description.txt";
     std::ofstream df(descFileName, std::ios::out);
 
-    // Augment charter list with performance chapters
-    std::list<Chapter *> chapterList = race->getChapters();
+    // Surf chapters overlap other chapters, they are exported as markers only
+    std::list<Chapter *> chapterList;
+    for (Chapter *chapter: race->getChapters()) {
+      if (chapter->getChapterType() != ChapterTypes::SURF)
+        chapterList.push_back(chapter);
+    }
 
 
     int movieWidth = 1920;

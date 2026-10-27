@@ -12,7 +12,8 @@ public:
         TACK_GYBE,
         SPEED_PERFORMANCE,
         START,
-        MARK_ROUNDING
+        MARK_ROUNDING,
+        SURF
     };
     Q_ENUM(ChapterType)
 };

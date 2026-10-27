@@ -6,6 +6,7 @@
 #include <qqml.h>
 #include <QSettings>
 #include "navcomputer/RaceData.h"
+#include "navcomputer/SurfDetector.h"
 #include "Settings.h"
 
 class Project {
@@ -87,6 +88,9 @@ public:
 
     static void setCameraUtcOffset(const int cameraUtcOffsetMs);
     static int cameraUtcOffset();
+
+    static void setSurfParams(const SurfParams &params);
+    static SurfParams surfParams();
 
 private:
     std::list<RaceData *> &m_RaceDataList;

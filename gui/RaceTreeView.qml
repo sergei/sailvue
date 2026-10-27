@@ -195,10 +195,26 @@ Rectangle {
         text: "Make analytics"
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.bottom: addRaceButton.top
+        anchors.bottom: detectSurfing.top
         onClicked: {
             raceModel.makeAnalytics()
         }
+    }
+
+    Button {
+        id: detectSurfing
+        text: "Detect surfing"
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: addRaceButton.top
+        onClicked: {
+            surfParamsDialog.open()
+        }
+    }
+
+    SurfParamsDialog {
+        id: surfParamsDialog
+        raceModel: parent.raceModel
     }
 
     Button {

@@ -162,11 +162,21 @@ void Worker::produce(const QString &moviePathUrl, const QString &polarUrl) {
 }
 
 
+// Surf chapters overlap the legs, so they are not part of the stats
+static std::list<Chapter *> legChapters(RaceData *race) {
+    std::list<Chapter *> chapters;
+    for (Chapter *chapter: race->getChapters()) {
+        if (chapter->getChapterType() != ChapterTypes::SURF)
+            chapters.push_back(chapter);
+    }
+    return chapters;
+}
+
 void Worker::computeStats(const QString &polarUrl){
 
     int totalLen = 0;
     for ( auto *r: m_RaceDataList) {
-        for (auto chapter: r->getChapters()) {
+        for (auto chapter: legChapters(r)) {
             totalLen += int(chapter->getEndIdx() - chapter->getStartIdx());
         }
     }
@@ -182,9 +192,10 @@ void Worker::computeStats(const QString &polarUrl){
     TimeDeltaComputer timeDeltaComputer(polars, m_rInstrDataVector);
 
     for ( RaceData *race: m_RaceDataList) {
+        std::list<Chapter *> chapters = legChapters(race);
 
         // Go through the list of chapters and determine if they are fetches or not
-        for(auto it = race->getChapters().begin(); it != race->getChapters().end(); it++) {
+        for(auto it = chapters.begin(); it != chapters.end(); it++) {
             Chapter *chapter = *it;
 
             auto nextIt = it;
@@ -192,7 +203,7 @@ void Worker::computeStats(const QString &polarUrl){
             nextIt++;
             bool isFetch = false;
             // Entire chapter is a fetch if it goes directly from mark to mark or start to mark
-            if (it != race->getChapters().begin() && nextIt != race->getChapters().end()) {
+            if (it != chapters.begin() && nextIt != chapters.end()) {
                 prevIt--;
                 isFetch = ((*prevIt)->getChapterType() == ChapterTypes::START ||
                            (*prevIt)->getChapterType() == ChapterTypes::MARK_ROUNDING)
@@ -203,7 +214,7 @@ void Worker::computeStats(const QString &polarUrl){
 
         timeDeltaComputer.startRace();
         int chapterIdx = 0;
-        for(auto it = race->getChapters().begin(); it != race->getChapters().end(); it++, chapterIdx++) {
+        for(auto it = chapters.begin(); it != chapters.end(); it++, chapterIdx++) {
             Chapter *chapter = *it;
 
             auto nextIt = it;
@@ -227,11 +238,11 @@ void Worker::computeStats(const QString &polarUrl){
                 bool isFetch = chapter->isFetch();
                 if ( chapter->getChapterType() == ChapterTypes::MARK_ROUNDING ) {
                     if (idx < chapter->getGunIdx()) {
-                        if ( it!=race->getChapters().begin() ) {
+                        if ( it!=chapters.begin() ) {
                             isFetch = (*prevIt)->isFetch();
                         }
                     }else{
-                        if( nextIt != race->getChapters().end() ){
+                        if( nextIt != chapters.end() ){
                             isFetch = (*nextIt)->isFetch();
                         }
                     }

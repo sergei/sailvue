@@ -1,3 +1,5 @@
+#include <iomanip>
+#include <sstream>
 #include "ChapterMaker.h"
 
 ChapterMaker::ChapterMaker(TreeItem *raceTreeItem, std::vector<InstrumentInput> &instrDataVector)
@@ -121,4 +123,25 @@ bool ChapterMaker::isFetch(const Chapter *pPrevChapter,
     bool isFetch = pPrevChapter->getChapterType() != ChapterTypes::TACK_GYBE &&
                    pNextChapter->getChapterType() != ChapterTypes::TACK_GYBE;
     return isFetch;
+}
+
+Chapter *ChapterMaker::makeSurfChapter(const SurfEpisode &episode) {
+    RaceData *pRaceData = m_pRaceTreeItem->getRaceData();
+
+    std::ostringstream oss;
+    oss << "Surf " << std::fixed << std::setprecision(1) << episode.maxSpeedKts << " kts";
+
+    std::cout << "insertChapter " << oss.str() << " startIdx " << episode.startIdx << " endIdx " << episode.endIdx
+              << " score " << episode.score << std::endl;
+
+    auto *chapter = new Chapter(episode.startIdx, episode.endIdx);
+    chapter->SetName(oss.str());
+    chapter->setChapterType(ChapterTypes::ChapterType::SURF);
+    pRaceData->insertChapter(chapter);
+
+    // Add data to the view model
+    auto *chapterTreeItem = new TreeItem(pRaceData, chapter, m_pRaceTreeItem);
+    m_pRaceTreeItem->insertChapterChild(chapterTreeItem);
+
+    return chapter;
 }

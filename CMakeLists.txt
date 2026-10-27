@@ -149,6 +149,8 @@ set (NAV_SRC
         navcomputer/NavStats.h
         navcomputer/Polars.cpp
         navcomputer/Polars.h
+        navcomputer/SurfDetector.cpp
+        navcomputer/SurfDetector.h
         navcomputer/TimeDeltaComputer.cpp
         navcomputer/TimeDeltaComputer.h
         navcomputer/Performance.h
@@ -229,6 +231,7 @@ set(qml_resource_files
         "gui/RaceVideo.qml"
         "gui/RaceMap.qml"
         "gui/RaceTreeView.qml"
+        "gui/SurfParamsDialog.qml"
         "gui/RaceTimeLine.qml"
 )
 

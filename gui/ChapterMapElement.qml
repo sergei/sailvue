@@ -25,6 +25,8 @@ MapItemGroup {
                 return "green"
             case ChapterTypes.MARK_ROUNDING:
                 return  "blue"
+            case ChapterTypes.SURF:
+                return  "deepskyblue"
         }
     }
 

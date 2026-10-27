@@ -1043,7 +1043,12 @@ void RaceTreeModel::makeAnalytics() {
     // Insert performance chapters
     emit layoutAboutToBeChanged();
 
-    auto originalList = pRaceData->getChapters();
+    // Surf chapters overlap other chapters, so ignore them when looking for gaps
+    std::list<Chapter *> originalList;
+    for (Chapter *chapter: pRaceData->getChapters()) {
+        if (chapter->getChapterType() != ChapterTypes::SURF)
+            originalList.push_back(chapter);
+    }
     ChapterMaker chapterMaker(raceTreeItem, m_InstrDataVector);
 
     for(auto it = originalList.begin(); it != originalList.end(); it++) {
@@ -1066,6 +1071,95 @@ void RaceTreeModel::makeAnalytics() {
         }
     }
 
+    emit layoutChanged();
+}
+
+// Durations are in seconds on the QML side
+static QVariantMap surfParamsToMap(const SurfParams &params) {
+    QVariantMap map;
+    map["minTwaDeg"] = params.minTwaDeg;
+    map["enterRatio"] = params.enterRatio;
+    map["exitRatio"] = params.exitRatio;
+    map["minDurationSec"] = double(params.minDurationMs) / 1000.;
+    map["mergeGapSec"] = double(params.mergeGapMs) / 1000.;
+    map["maxPerRace"] = qulonglong(params.maxPerRace);
+    map["minSpacingSec"] = double(params.minSpacingMs) / 1000.;
+    map["preRollSec"] = double(params.preRollMs) / 1000.;
+    map["postRollSec"] = double(params.postRollMs) / 1000.;
+    return map;
+}
+
+static SurfParams surfParamsFromMap(const QVariantMap &map) {
+    SurfParams params;
+    params.minTwaDeg = map.value("minTwaDeg", params.minTwaDeg).toDouble();
+    params.enterRatio = map.value("enterRatio", params.enterRatio).toDouble();
+    params.exitRatio = map.value("exitRatio", params.exitRatio).toDouble();
+    params.minDurationMs = uint64_t(map.value("minDurationSec", double(params.minDurationMs) / 1000.).toDouble() * 1000);
+    params.mergeGapMs = uint64_t(map.value("mergeGapSec", double(params.mergeGapMs) / 1000.).toDouble() * 1000);
+    params.maxPerRace = map.value("maxPerRace", qulonglong(params.maxPerRace)).toULongLong();
+    params.minSpacingMs = uint64_t(map.value("minSpacingSec", double(params.minSpacingMs) / 1000.).toDouble() * 1000);
+    params.preRollMs = uint64_t(map.value("preRollSec", double(params.preRollMs) / 1000.).toDouble() * 1000);
+    params.postRollMs = uint64_t(map.value("postRollSec", double(params.postRollMs) / 1000.).toDouble() * 1000);
+    return params;
+}
+
+QVariantMap RaceTreeModel::surfParams() const {
+    return surfParamsToMap(Project::surfParams());
+}
+
+QVariantMap RaceTreeModel::defaultSurfParams() const {
+    return surfParamsToMap(SurfParams());
+}
+
+void RaceTreeModel::detectSurfing(const QVariantMap &params) {
+    SurfParams surfParams = surfParamsFromMap(params);
+    Project::setSurfParams(surfParams);
+
+    if (!m_selectedTreeIdx.isValid())
+        return ;
+
+    if (m_project.polarPath().isEmpty()) {
+        std::cerr << "No polar file is set, can't detect surfing" << std::endl;
+        return ;
+    }
+
+    // Find selected race
+    auto *raceTreeItem = static_cast<TreeItem*>(m_selectedTreeIdx.internalPointer());
+    if ( !raceTreeItem->isRace() ){
+        raceTreeItem = raceTreeItem->parentItem();
+    }
+
+    RaceData *pRaceData = raceTreeItem->getRaceData();
+
+    Polars polars;
+    polars.loadPolar(QUrl(m_project.polarPath()).toLocalFile().toStdString());
+
+    emit layoutAboutToBeChanged();
+
+    // Remove surf chapters from the previous run
+    for (int row = raceTreeItem->childCount() - 1; row >= 0; row--) {
+        TreeItem *chapterTreeItem = raceTreeItem->child(row);
+        Chapter *chapter = chapterTreeItem->getChapter();
+        if (chapter->getChapterType() == ChapterTypes::SURF) {
+            std::cout << "Delete chapter " << chapter->getName() << std::endl;
+            pRaceData->getChapters().remove(chapter);
+            raceTreeItem->removeChild(chapterTreeItem);
+            emit chapterDeleted(chapter->getUuid());
+        }
+    }
+
+    SurfDetector surfDetector(polars, m_InstrDataVector, surfParams);
+    auto episodes = surfDetector.detect(pRaceData->getStartIdx(), pRaceData->getEndIdx());
+
+    ChapterMaker chapterMaker(raceTreeItem, m_InstrDataVector);
+    for (const auto &episode: episodes) {
+        auto *chapter = chapterMaker.makeSurfChapter(episode);
+        emit chapterAdded(chapter->getUuid(), QString::fromStdString(chapter->getName()), chapter->getChapterType(),
+                          chapter->getStartIdx(),  chapter->getEndIdx(), chapter->getGunIdx());
+    }
+
+    m_project.raceDataChanged();
+    emit isDirtyChanged();
     emit layoutChanged();
 }
 

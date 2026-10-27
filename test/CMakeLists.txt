@@ -16,6 +16,7 @@ target_link_libraries(GTest::GTest INTERFACE gtest_main)
 add_executable (TestPolars
         ../navcomputer/polars.h
         ../navcomputer/polars.cpp
+        ../navcomputer/SurfDetector.cpp
         ../navcomputer/Chapter.cpp
         ../navcomputer/RaceData.cpp
 
@@ -56,6 +57,7 @@ add_executable (TestPolars
         test_overlays.cpp
         test_adobe_markers.cpp
         test_n2k.cpp
+        test_surf_detector.cpp
         )
 
 target_include_directories(TestPolars PUBLIC
