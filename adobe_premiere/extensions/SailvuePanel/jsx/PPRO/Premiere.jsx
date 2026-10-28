@@ -101,6 +101,21 @@ function makeUUid() {
 	return false;
 }
 
+// True if bin is 60-VOICEOVER or any of its child bins
+function isInVoiceOverBin(bin) {
+	if (bin.name === "60-VOICEOVER") {
+		return true;
+	}
+	var parts = bin.treePath ? bin.treePath.split(/[\\\/]/) : [];
+	// parts[0] is empty, parts[1] is the project file; bins follow
+	for (var i = 2; i < parts.length; i++) {
+		if (parts[i] === "60-VOICEOVER") {
+			return true;
+		}
+	}
+	return false;
+}
+
 $._PPP_={
 
 	formatMarker: function (marker) {
@@ -755,9 +770,9 @@ $._PPP_={
 	insertSailVueVoiceOver : function () {
 		var destBin = app.project.getInsertionBin();
 		if ( destBin ) {
-			$._PPP_.updateEventPanel("destBin.name [" + destBin.name + "]");
-			if ( destBin.name !== "60-VOICEOVER" ) {
-				alert("Please select 60-VOICEOVER bin");
+			$._PPP_.updateEventPanel("destBin.name [" + destBin.name + "] treePath [" + destBin.treePath + "]");
+			if ( !isInVoiceOverBin(destBin) ) {
+				alert("Please select 60-VOICEOVER bin or one of its child bins");
 				return;
 			}
 
@@ -928,7 +943,7 @@ $._PPP_={
 
 
 		}else{
-			alert("Please select 60-VOICEOVER bin");
+			alert("Please select 60-VOICEOVER bin or one of its child bins");
 		}
 	},
 
