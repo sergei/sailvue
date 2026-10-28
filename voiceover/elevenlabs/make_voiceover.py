@@ -1,11 +1,15 @@
 import argparse
 import hashlib
+import json
+import math
 import re
 import os
 import shutil
+import subprocess
 from datetime import datetime, timedelta
 
 import requests
+from mutagen.id3 import ID3, TXXX, ID3NoHeaderError
 from mutagen.mp3 import MP3
 
 CHUNK_SIZE = 1024
@@ -18,6 +22,12 @@ VOICE_IDS = {
     'Pirate': 'PPzYpIqttlTYA83688JI',
     'Joe': 'PPzYpIqttlTYA83688JI',
     'Shirley': 'L4so9SudEsIYzE9j4qlR',
+}
+
+# Position of each speaker in the stereo field, -1 is full left, 1 is full right. Unlisted speakers are centered
+SPEAKER_PAN = {
+    'Shirley': -0.3,
+    'Joe': 0.3,
 }
 
 
@@ -97,6 +107,76 @@ def make_voiceover_file(number, text, api_key, voice_id, output_dir):
     return file_name
 
 
+LOUDNORM_TAG = 'loudnorm'
+TRUE_PEAK = -1.5
+LOUDNESS_RANGE = 11
+
+
+def processing_tag(target_lufs, pan):
+    return f'{target_lufs} pan={pan}'
+
+
+def is_processed(file_name, target_lufs, pan):
+    try:
+        tags = ID3(file_name)
+    except ID3NoHeaderError:
+        return False
+    frame = tags.get(f'TXXX:{LOUDNORM_TAG}')
+    return frame is not None and frame.text and frame.text[0] == processing_tag(target_lufs, pan)
+
+
+def process_audio(file_name, target_lufs, pan):
+    """ Pans the voice in the stereo field and applies two pass EBU R128 loudness normalization with ffmpeg,
+    so all voiceovers have the same perceived volume
+    """
+    print(f'Normalizing {file_name} to {target_lufs} LUFS, pan {pan} ...')
+    # Constant power pan, so the loudness doesn't depend on the position.
+    # Downmix to mono first, so already processed stereo files can be re-panned
+    theta = (pan + 1) * math.pi / 4
+    pan_filter = f'aformat=channel_layouts=mono,pan=stereo|c0={math.cos(theta):.4f}*c0|c1={math.sin(theta):.4f}*c0'
+    loudnorm = f'{pan_filter},loudnorm=I={target_lufs}:TP={TRUE_PEAK}:LRA={LOUDNESS_RANGE}'
+
+    # First pass: measure the loudness
+    result = subprocess.run(['ffmpeg', '-hide_banner', '-nostats', '-i', file_name,
+                             '-af', loudnorm + ':print_format=json', '-f', 'null', '-'],
+                            check=True, capture_output=True, text=True)
+    stats = json.loads(result.stderr[result.stderr.rindex('{'):result.stderr.rindex('}') + 1])
+
+    # Second pass: apply a constant gain based on the measurements
+    loudnorm += (f":measured_I={stats['input_i']}:measured_TP={stats['input_tp']}"
+                 f":measured_LRA={stats['input_lra']}:measured_thresh={stats['input_thresh']}"
+                 f":offset={stats['target_offset']}:linear=true")
+    tmp_name = file_name + '.tmp.mp3'
+    subprocess.run(['ffmpeg', '-hide_banner', '-nostats', '-y', '-i', file_name, '-af', loudnorm,
+                    '-ar', '44100', '-ac', '2', '-c:a', 'libmp3lame', '-b:a', '192k', tmp_name],
+                   check=True, capture_output=True, text=True)
+    os.replace(tmp_name, file_name)
+
+    # Mark the file as processed, so we don't re-encode it on every run
+    try:
+        tags = ID3(file_name)
+    except ID3NoHeaderError:
+        tags = ID3()
+    tags.add(TXXX(encoding=3, desc=LOUDNORM_TAG, text=[processing_tag(target_lufs, pan)]))
+    tags.save(file_name)
+
+
+def get_speaker_pans(param):
+    pans = dict(SPEAKER_PAN)
+    for item in param.pan or []:
+        name, value = item.split('=')
+        pans[name.strip()] = float(value)
+    return pans
+
+
+def normalize_if_needed(param, file_name, speaker):
+    if param.no_normalize or file_name is None:
+        return
+    pan = get_speaker_pans(param).get(speaker, 0.0)
+    if not is_processed(file_name, param.target_lufs, pan):
+        process_audio(file_name, param.target_lufs, pan)
+
+
 def decode_time(line):
     """ Decodes SRT time stamp such as 00:03:20,476 --> 00:03:22,671
     """
@@ -166,6 +246,7 @@ def make_voiceover(param):
                 # Find the name of the speaker denoted as [name]: in the text
                 text, voice_id, speaker = get_voice_id(require_voice_name, text, default_voice_id)
                 file_name = make_voiceover_file(number, text, key, voice_id, output_dir)
+                normalize_if_needed(param, file_name, speaker)
                 chapters.append(make_chapter(number, start_time, end_time, text, file_name, speaker))
                 got_number = False
                 got_time = False
@@ -178,6 +259,7 @@ def make_voiceover(param):
             print(f'Chapter {number}:\n[{text}]')
             text, voice_id, speaker = get_voice_id(require_voice_name, text, default_voice_id)
             file_name = make_voiceover_file(number, text, key, voice_id, output_dir)
+            normalize_if_needed(param, file_name, speaker)
             chapters.append(make_chapter(number, start_time, end_time, text, file_name, speaker))
 
     adjust_time_stamps(chapters)
@@ -231,4 +313,8 @@ if __name__ == '__main__':
     parser.add_argument("--srt-name", help="Name of .SRT file", required=True)
     parser.add_argument("--output-dir", help="Output directory", required=True)
     parser.add_argument("--require-voice-name", help="Require voice name in the text", action='store_true')
+    parser.add_argument("--target-lufs", help="Target loudness of the voiceover files", type=float, default=-16.0)
+    parser.add_argument("--no-normalize", help="Don't normalize loudness of the voiceover files", action='store_true')
+    parser.add_argument("--pan", help="Speaker position in stereo field as NAME=VALUE, -1 is left, 1 is right",
+                        action='append')
     make_voiceover(parser.parse_args())
